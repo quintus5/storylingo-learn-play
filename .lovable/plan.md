@@ -1,56 +1,37 @@
-## Goal
+## The bug
 
-1. Harden the AI-generated story JSON with real schema validation, and prove it with unit tests that feed malformed fixtures.
-2. Let users generate as few as 1 chapter — the slider starts at 1 (currently the slider and server validator both require 8–10).
+Your source is a PDF. `fetchStoryText` (`src/lib/story.server.ts`) fetches the URL, runs HTML tag-stripping regexes over it, and accepts the result if it is longer than 200 characters. Raw PDF bytes survive that check as meaningless characters, so the model got junk and invented a panda story that has nothing to do with your document.
 
-## Current state (verified)
+Both existing books in the shelf came from that PDF link, so both are fabricated.
 
-- `src/lib/story.functions.ts` validates *user* input with Zod, but the *model output* (`buildOutline`, `buildChapterContent` in `src/lib/story.server.ts`) is only loosely filtered — `pages.filter(p => p.sentences?.length)` and a truthy check on `hanzi`/`pinyin`. Missing `native`, empty `words`, non-string fields, or a page of junk would flow into the reader.
-- No test runner is installed (no vitest, no test files).
-- `create.tsx` slider is `min={8}`; server schema is `min(8).max(10)`.
+## Fix
 
-## 1. Extract validators into a testable, client-safe module
+**1. Detect the content type before parsing**
 
-New `src/lib/story-schema.ts` (plain module, no server imports so tests run fast):
+In `fetchStoryText`, read the `Content-Type` header and the URL extension, then branch:
+- `text/html` → existing tag-stripping path
+- `application/pdf` → PDF text extraction path
+- `text/plain` → use as-is
+- anything else (images, video, octet-stream) → throw a clear error: "That link isn't a readable story page or PDF."
 
-- `WordSchema`, `SentenceSchema`, `PageSchema`, `ChapterContentSchema`, `OutlineSchema` built with Zod, mirroring `src/lib/types.ts`.
-- Rules that matter for the reader: non-empty `hanzi`/`pinyin`/`native`/`dict` strings after trim, `words` non-empty per sentence, each page ≥1 sentence, chapter ≥1 page, top-level `words` ≥1, outline chapters each with title + summary.
-- Lenient-but-safe repair pass: `parseChapterContent(raw)` drops individually invalid sentences/words/pages (models often produce one bad row), then requires the surviving structure to be non-empty — otherwise throws a clear `StoryValidationError` with the Zod issue paths.
-- Same for `parseOutline(raw, expectedCount)`.
+**2. Extract real PDF text**
 
-## 2. Wire into generation
+Add an `unpdf`-style pure-JS PDF text extractor (no native binaries — the server runs on a Worker runtime, so `pdf-parse`/`canvas`-based libraries won't work). Download the PDF as an ArrayBuffer and pull the text layer out.
 
-`story.server.ts` calls `parseChapterContent` / `parseOutline` instead of the ad-hoc filters. `buildChapterContent` retries the model once on validation failure before throwing, so a single bad generation doesn't kill the whole book.
+If the PDF is scanned images with no text layer, throw: "That PDF has no readable text — it looks like scanned images."
 
-## 3. Unit tests
+**3. Guard against garbage text reaching the AI**
 
-Install `vitest` (dev dependency), add a `test` script and a minimal `vitest.config.ts` with the `@/` alias.
+Add a sanity check after extraction: the text must contain a reasonable ratio of letter/CJK characters to total characters. If it fails, reject with a clear message rather than handing nonsense to the model. This is the check that would have caught your PDF today.
 
-New `src/lib/story-schema.test.ts` with fixtures:
+**4. Surface the failure in the UI**
 
-| Fixture | Expectation |
-| --- | --- |
-| valid chapter | parses unchanged |
-| `pages: []` / missing `pages` | throws |
-| page with `sentences: []` | page dropped; throws only if no pages remain |
-| sentence missing `native` | that sentence dropped, rest kept |
-| sentence with empty-string `hanzi` / whitespace only | dropped |
-| `words` containing non-object / missing `dict` | bad words dropped, sentence kept if any remain |
-| top-level `words: []` | throws |
-| model returned a JSON string, array, or `null` instead of object | throws, no crash |
-| extra unknown fields | ignored, parse succeeds |
-| outline with wrong chapter count / missing summary | throws or drops per spec |
+The create page already shows errors — make sure these new messages come through as the friendly text above rather than a generic "Something went wrong."
 
-Assertions check both that bad input throws `StoryValidationError` and that surviving good data is intact.
+## Cleanup
 
-## 4. Chapter count starts at 1
+Delete the two fabricated books (and their storage art) so the shelf starts clean, then you can re-run your PDF link.
 
-- `create.tsx`: slider `min={1}` (range 1–10), default stays 8, label reads "1 chapter" in the singular.
-- Server: `chapterCount` schema becomes `min(1).max(10)`; the `chapters.length < 2` guard in `createBook` relaxes to `< 1`.
-- Outline prompt gets a note so a single chapter reads as a complete mini-story.
-- Reader/quiz unlock logic already keys off `chapter_count`, so a 1-chapter book finishes after one quiz — no change needed there.
+## Out of scope
 
-## Technical notes
-
-- Validators live in a client-safe file (not `*.server.ts`) so vitest can import them with no Supabase or worker mocks.
-- No database or schema changes.
+File upload of a local PDF, and DOCX/EPUB sources — say the word and I'll add PDF upload too.
