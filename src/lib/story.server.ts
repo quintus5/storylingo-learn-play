@@ -1,14 +1,12 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { ART_STYLE, chatJson, generateIllustration } from "./ai.server";
 import type { Page, Word } from "./types";
+import { StoryValidationError, parseChapterContent, parseOutline } from "./story-schema";
+import type { Outline } from "./story-schema";
 
 const BUCKET = "story-art";
 
-export type Outline = {
-  title: string;
-  blurb: string;
-  chapters: { title: string; summary: string; illustration: string }[];
-};
+export type { Outline };
 
 /** Fetch a web page and reduce it to readable plain text. */
 export async function fetchStoryText(url: string): Promise<string> {
@@ -41,7 +39,7 @@ export async function buildOutline(
   fallbackTitle: string,
   chapterCount: number,
 ): Promise<Outline> {
-  return chatJson<Outline>(
+  const raw = await chatJson<unknown>(
     "You are a children's story editor building beginner Mandarin learning material for Thai-speaking children aged 6-10. " +
       "You must RETELL stories in your own original words — never reproduce, quote or closely paraphrase the source wording. " +
       "Reply with JSON only.",
@@ -50,8 +48,12 @@ export async function buildOutline(
       `Write an ORIGINAL retelling plan with exactly ${chapterCount} short chapters.\n` +
       `Return JSON: {"title": string (a friendly retold title in English), "blurb": string (one short English sentence), ` +
       `"chapters": [{"title": string (short, English), "summary": string (2-3 sentences describing what happens, in English), ` +
-      `"illustration": string (a vivid English description of one scene to paint, no text in image)}]}`,
+      `"illustration": string (a vivid English description of one scene to paint, no text in image)}]}` +
+      (chapterCount === 1
+        ? `\nThis is a ONE-chapter book, so that single chapter must be a complete little story with a beginning, middle and happy ending.`
+        : ``),
   );
+  return parseOutline(raw, chapterCount);
 }
 
 export type ChapterContent = { pages: Page[]; words: Word[] };
@@ -63,7 +65,8 @@ export async function buildChapterContent(
   chapterSummary: string,
   knownWords: string[],
 ): Promise<ChapterContent> {
-  const content = await chatJson<ChapterContent>(
+  const ask = () =>
+    chatJson<unknown>(
     "You write beginner Mandarin Chinese reading material for Thai-speaking children. " +
       "Everything must be your own original simple writing (HSK1-HSK2 level), never copied text. " +
       "Pinyin must include tone marks. Thai translations must be natural Thai. Reply with JSON only.",
@@ -79,10 +82,14 @@ export async function buildChapterContent(
       `The top-level "words" array holds 6 to 10 key vocabulary words for this chapter's quiz.`,
   );
 
-  const pages = (content.pages ?? []).filter((p) => p.sentences?.length);
-  const words = (content.words ?? []).filter((w) => w.hanzi && w.pinyin);
-  if (!pages.length || !words.length) throw new Error("Chapter generation returned empty content");
-  return { pages, words };
+  // Models occasionally emit malformed JSON; retry once before giving up.
+  try {
+    return parseChapterContent(await ask());
+  } catch (err) {
+    if (!(err instanceof StoryValidationError)) throw err;
+    console.warn("Chapter content failed validation, retrying:", err.message);
+    return parseChapterContent(await ask());
+  }
 }
 
 /** Generate an illustration, store it, and return its public app URL. */

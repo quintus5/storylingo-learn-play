@@ -4,7 +4,7 @@ import { z } from "zod";
 const CreateBookInput = z.object({
   title: z.string().trim().min(1).max(120),
   url: z.string().trim().url().max(2000),
-  chapterCount: z.number().int().min(8).max(10),
+  chapterCount: z.number().int().min(1).max(10),
 });
 
 export const createBook = createServerFn({ method: "POST" })
@@ -16,7 +16,7 @@ export const createBook = createServerFn({ method: "POST" })
     const storyText = await fetchStoryText(data.url);
     const outline = await buildOutline(storyText, data.title, data.chapterCount);
     const chapters = (outline.chapters ?? []).slice(0, data.chapterCount);
-    if (chapters.length < 2) throw new Error("Could not split that story into chapters.");
+    if (chapters.length < 1) throw new Error("Could not split that story into chapters.");
 
     const { data: book, error } = await supabaseAdmin
       .from("books")
