@@ -1,9 +1,20 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { Loader2, Wand2 } from "lucide-react";
+import { BookOpen, Loader2, Search, Wand2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { createBook, generateChapter } from "@/lib/story.functions";
+import { createBook, generateChapter, previewBook } from "@/lib/story.functions";
+
+type StoryPreview = {
+  title: string;
+  blurb: string;
+  suggestedChapters: number;
+  reason: string;
+  chapterTitles: string[];
+  wordCount: number;
+};
+
+
 
 export const Route = createFileRoute("/create")({
   head: () => ({
@@ -28,15 +39,34 @@ function CreatePage() {
   const navigate = useNavigate();
   const create = useServerFn(createBook);
   const chapter = useServerFn(generateChapter);
+  const preview = useServerFn(previewBook);
 
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
   const [chapterCount, setChapterCount] = useState(8);
   const [log, setLog] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [fetching, setFetching] = useState(false);
+  const [plan, setPlan] = useState<StoryPreview | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const say = (line: string) => setLog((l) => [...l, line]);
+
+  async function onFetch() {
+    setError(null);
+    setPlan(null);
+    setFetching(true);
+    try {
+      const result = await preview({ data: { title: title.trim(), url: url.trim() } });
+      setPlan(result);
+      setChapterCount(result.suggestedChapters);
+      if (!title.trim()) setTitle(result.title);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not read that link.");
+    } finally {
+      setFetching(false);
+    }
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -44,6 +74,7 @@ function CreatePage() {
     setLog([]);
     setBusy(true);
     try {
+
       say("Reading the story…");
       const { bookId, chapterCount: count } = await create({
         data: { title: title.trim() || "A new story", url: url.trim(), chapterCount },
@@ -105,8 +136,25 @@ function CreatePage() {
             StoryLingo writes its own retelling of the story, so nothing is copied word for word.
           </p>
 
+          <button
+            type="button"
+            onClick={() => void onFetch()}
+            disabled={fetching || busy || !url.trim()}
+            className="press mt-4 inline-flex items-center gap-2 rounded-2xl bg-secondary px-4 py-2 text-sm font-bold text-secondary-foreground disabled:opacity-60"
+          >
+            {fetching ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Search className="h-4 w-4" />
+            )}
+            {fetching ? "Reading the story…" : "Fetch book"}
+          </button>
+
           <label className="mt-5 block text-sm font-semibold" htmlFor="chapters">
             {chapterCount === 1 ? "1 chapter (quick mini-book)" : `${chapterCount} chapters`}
+            {plan && chapterCount === plan.suggestedChapters && (
+              <span className="ml-2 font-normal text-primary">· suggested</span>
+            )}
           </label>
           <input
             id="chapters"
@@ -119,10 +167,57 @@ function CreatePage() {
             className="mt-3 w-full accent-[var(--gold)]"
           />
 
+
           <div className="mt-5 rounded-2xl bg-secondary/50 p-3 text-sm text-muted-foreground">
             Learning Mandarin Chinese (with pinyin) · explained in Thai
           </div>
         </div>
+
+        {plan && (
+          <section className="animate-[float-in_0.4s_ease-out] rounded-3xl border border-primary/25 bg-card/70 p-5">
+            <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-primary">
+              <BookOpen className="h-4 w-4" /> Suggested plan
+            </p>
+            <h3 className="mt-2 text-xl font-extrabold">{plan.title}</h3>
+            {plan.blurb && <p className="mt-1 text-sm text-muted-foreground">{plan.blurb}</p>}
+
+            <div className="mt-4 rounded-2xl bg-secondary/50 p-3 text-sm">
+              <p className="font-bold">
+                {plan.suggestedChapters === 1
+                  ? "1 chapter suggested"
+                  : `${plan.suggestedChapters} chapters suggested`}
+              </p>
+              {plan.reason && <p className="mt-1 text-muted-foreground">{plan.reason}</p>}
+              <p className="mt-1 text-xs text-muted-foreground">
+                About {plan.wordCount.toLocaleString()} words of source text. You can still move the
+                slider.
+              </p>
+            </div>
+
+            {plan.chapterTitles.length > 0 && (
+              <ol className="mt-4 space-y-1 text-sm">
+                {plan.chapterTitles.slice(0, chapterCount).map((t, i) => (
+                  <li key={i} className="flex gap-2">
+                    <span className="font-bold text-primary">{i + 1}.</span>
+                    <span>{t}</span>
+                  </li>
+                ))}
+              </ol>
+            )}
+
+            {chapterCount !== plan.suggestedChapters && (
+              <button
+                type="button"
+                onClick={() => setChapterCount(plan.suggestedChapters)}
+                className="press mt-4 rounded-2xl bg-secondary px-4 py-2 text-sm font-bold text-secondary-foreground"
+              >
+                Use suggested ({plan.suggestedChapters})
+              </button>
+            )}
+          </section>
+        )}
+
+
 
         <button
           type="submit"
