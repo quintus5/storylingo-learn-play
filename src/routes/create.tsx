@@ -39,15 +39,34 @@ function CreatePage() {
   const navigate = useNavigate();
   const create = useServerFn(createBook);
   const chapter = useServerFn(generateChapter);
+  const preview = useServerFn(previewBook);
 
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
   const [chapterCount, setChapterCount] = useState(8);
   const [log, setLog] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [fetching, setFetching] = useState(false);
+  const [plan, setPlan] = useState<StoryPreview | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const say = (line: string) => setLog((l) => [...l, line]);
+
+  async function onFetch() {
+    setError(null);
+    setPlan(null);
+    setFetching(true);
+    try {
+      const result = await preview({ data: { title: title.trim(), url: url.trim() } });
+      setPlan(result);
+      setChapterCount(result.suggestedChapters);
+      if (!title.trim()) setTitle(result.title);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not read that link.");
+    } finally {
+      setFetching(false);
+    }
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -55,6 +74,7 @@ function CreatePage() {
     setLog([]);
     setBusy(true);
     try {
+
       say("Reading the story…");
       const { bookId, chapterCount: count } = await create({
         data: { title: title.trim() || "A new story", url: url.trim(), chapterCount },
