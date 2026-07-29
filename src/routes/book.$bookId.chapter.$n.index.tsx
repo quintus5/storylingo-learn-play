@@ -126,6 +126,9 @@ function Reader() {
     stopAudio();
     setPlaying(false);
     setPage((p) => Math.min(Math.max(p + delta, 0), pages.length - 1));
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   }
 
   return (
@@ -160,11 +163,13 @@ function Reader() {
       }
     >
       {(current.image_url || (page === 0 && chapter.image_url)) && (
-        <img
-          src={current.image_url ?? chapter.image_url ?? undefined}
-          alt={`Illustration for ${chapter.title}, page ${page + 1}`}
-          className="mb-5 aspect-[4/3] w-full rounded-3xl object-cover animate-[float-in_.4s_ease-out]"
-        />
+        <div className="sticky top-2 z-10 mb-5">
+          <img
+            src={current.image_url ?? chapter.image_url ?? undefined}
+            alt={`Illustration for ${chapter.title}, page ${page + 1}`}
+            className="h-40 w-full rounded-3xl object-cover shadow-lg sm:h-56 md:h-64 animate-[float-in_.4s_ease-out]"
+          />
+        </div>
       )}
 
       <div className="space-y-4">
