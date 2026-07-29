@@ -163,14 +163,16 @@ function Reader() {
       }
     >
       {(current.image_url || (page === 0 && chapter.image_url)) && (
-        <div className="sticky top-2 z-10 mb-5">
+        <div className="sticky top-[3.75rem] z-10 -mx-4 mb-5 bg-background px-4 pb-4 pt-3 sm:top-[4rem]">
           <img
+            key={current.image_url ?? chapter.image_url ?? "cover"}
             src={current.image_url ?? chapter.image_url ?? undefined}
             alt={`Illustration for ${chapter.title}, page ${page + 1}`}
-            className="h-56 w-full rounded-3xl object-cover shadow-lg sm:h-80 md:h-[26rem] animate-[float-in_.4s_ease-out]"
+            className="h-40 w-full rounded-3xl object-cover shadow-lg sm:h-64 md:h-80 animate-[float-in_.4s_ease-out]"
           />
         </div>
       )}
+
 
       <div className="space-y-4">
         {current.sentences.map((sentence, i) => (
