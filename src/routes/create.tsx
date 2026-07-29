@@ -4,7 +4,16 @@ import { useState } from "react";
 import { BookOpen, Loader2, Search, Wand2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { createBook, generateChapter, previewBook } from "@/lib/story.functions";
-import type { StoryPreview } from "@/lib/story.server";
+
+type StoryPreview = {
+  title: string;
+  blurb: string;
+  suggestedChapters: number;
+  reason: string;
+  chapterTitles: string[];
+  wordCount: number;
+};
+
 
 
 export const Route = createFileRoute("/create")({
