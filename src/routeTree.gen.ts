@@ -9,38 +9,153 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as CreateRouteImport } from './routes/create'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiTtsRouteImport } from './routes/api/tts'
+import { Route as BookBookIdIndexRouteImport } from './routes/book.$bookId.index'
+import { Route as BookBookIdVocabRouteImport } from './routes/book.$bookId.vocab'
+import { Route as BookBookIdProgressRouteImport } from './routes/book.$bookId.progress'
+import { Route as ApiPublicArtSplatRouteImport } from './routes/api/public/art/$'
+import { Route as BookBookIdChapterNIndexRouteImport } from './routes/book.$bookId.chapter.$n.index'
+import { Route as BookBookIdChapterNQuizRouteImport } from './routes/book.$bookId.chapter.$n.quiz'
 
+const CreateRoute = CreateRouteImport.update({
+  id: '/create',
+  path: '/create',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiTtsRoute = ApiTtsRouteImport.update({
+  id: '/api/tts',
+  path: '/api/tts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BookBookIdIndexRoute = BookBookIdIndexRouteImport.update({
+  id: '/book/$bookId/',
+  path: '/book/$bookId/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BookBookIdVocabRoute = BookBookIdVocabRouteImport.update({
+  id: '/book/$bookId/vocab',
+  path: '/book/$bookId/vocab',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BookBookIdProgressRoute = BookBookIdProgressRouteImport.update({
+  id: '/book/$bookId/progress',
+  path: '/book/$bookId/progress',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicArtSplatRoute = ApiPublicArtSplatRouteImport.update({
+  id: '/api/public/art/$',
+  path: '/api/public/art/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BookBookIdChapterNIndexRoute = BookBookIdChapterNIndexRouteImport.update({
+  id: '/book/$bookId/chapter/$n/',
+  path: '/book/$bookId/chapter/$n/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BookBookIdChapterNQuizRoute = BookBookIdChapterNQuizRouteImport.update({
+  id: '/book/$bookId/chapter/$n/quiz',
+  path: '/book/$bookId/chapter/$n/quiz',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/create': typeof CreateRoute
+  '/api/tts': typeof ApiTtsRoute
+  '/book/$bookId/progress': typeof BookBookIdProgressRoute
+  '/book/$bookId/vocab': typeof BookBookIdVocabRoute
+  '/book/$bookId/': typeof BookBookIdIndexRoute
+  '/api/public/art/$': typeof ApiPublicArtSplatRoute
+  '/book/$bookId/chapter/$n/quiz': typeof BookBookIdChapterNQuizRoute
+  '/book/$bookId/chapter/$n/': typeof BookBookIdChapterNIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/create': typeof CreateRoute
+  '/api/tts': typeof ApiTtsRoute
+  '/book/$bookId/progress': typeof BookBookIdProgressRoute
+  '/book/$bookId/vocab': typeof BookBookIdVocabRoute
+  '/book/$bookId': typeof BookBookIdIndexRoute
+  '/api/public/art/$': typeof ApiPublicArtSplatRoute
+  '/book/$bookId/chapter/$n/quiz': typeof BookBookIdChapterNQuizRoute
+  '/book/$bookId/chapter/$n': typeof BookBookIdChapterNIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/create': typeof CreateRoute
+  '/api/tts': typeof ApiTtsRoute
+  '/book/$bookId/progress': typeof BookBookIdProgressRoute
+  '/book/$bookId/vocab': typeof BookBookIdVocabRoute
+  '/book/$bookId/': typeof BookBookIdIndexRoute
+  '/api/public/art/$': typeof ApiPublicArtSplatRoute
+  '/book/$bookId/chapter/$n/quiz': typeof BookBookIdChapterNQuizRoute
+  '/book/$bookId/chapter/$n/': typeof BookBookIdChapterNIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/create'
+    | '/api/tts'
+    | '/book/$bookId/progress'
+    | '/book/$bookId/vocab'
+    | '/book/$bookId/'
+    | '/api/public/art/$'
+    | '/book/$bookId/chapter/$n/quiz'
+    | '/book/$bookId/chapter/$n/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/create'
+    | '/api/tts'
+    | '/book/$bookId/progress'
+    | '/book/$bookId/vocab'
+    | '/book/$bookId'
+    | '/api/public/art/$'
+    | '/book/$bookId/chapter/$n/quiz'
+    | '/book/$bookId/chapter/$n'
+  id:
+    | '__root__'
+    | '/'
+    | '/create'
+    | '/api/tts'
+    | '/book/$bookId/progress'
+    | '/book/$bookId/vocab'
+    | '/book/$bookId/'
+    | '/api/public/art/$'
+    | '/book/$bookId/chapter/$n/quiz'
+    | '/book/$bookId/chapter/$n/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CreateRoute: typeof CreateRoute
+  ApiTtsRoute: typeof ApiTtsRoute
+  BookBookIdProgressRoute: typeof BookBookIdProgressRoute
+  BookBookIdVocabRoute: typeof BookBookIdVocabRoute
+  BookBookIdIndexRoute: typeof BookBookIdIndexRoute
+  ApiPublicArtSplatRoute: typeof ApiPublicArtSplatRoute
+  BookBookIdChapterNQuizRoute: typeof BookBookIdChapterNQuizRoute
+  BookBookIdChapterNIndexRoute: typeof BookBookIdChapterNIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/create': {
+      id: '/create'
+      path: '/create'
+      fullPath: '/create'
+      preLoaderRoute: typeof CreateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,22 +163,69 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/tts': {
+      id: '/api/tts'
+      path: '/api/tts'
+      fullPath: '/api/tts'
+      preLoaderRoute: typeof ApiTtsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/book/$bookId/': {
+      id: '/book/$bookId/'
+      path: '/book/$bookId'
+      fullPath: '/book/$bookId/'
+      preLoaderRoute: typeof BookBookIdIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/book/$bookId/vocab': {
+      id: '/book/$bookId/vocab'
+      path: '/book/$bookId/vocab'
+      fullPath: '/book/$bookId/vocab'
+      preLoaderRoute: typeof BookBookIdVocabRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/book/$bookId/progress': {
+      id: '/book/$bookId/progress'
+      path: '/book/$bookId/progress'
+      fullPath: '/book/$bookId/progress'
+      preLoaderRoute: typeof BookBookIdProgressRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/art/$': {
+      id: '/api/public/art/$'
+      path: '/api/public/art/$'
+      fullPath: '/api/public/art/$'
+      preLoaderRoute: typeof ApiPublicArtSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/book/$bookId/chapter/$n/': {
+      id: '/book/$bookId/chapter/$n/'
+      path: '/book/$bookId/chapter/$n'
+      fullPath: '/book/$bookId/chapter/$n/'
+      preLoaderRoute: typeof BookBookIdChapterNIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/book/$bookId/chapter/$n/quiz': {
+      id: '/book/$bookId/chapter/$n/quiz'
+      path: '/book/$bookId/chapter/$n/quiz'
+      fullPath: '/book/$bookId/chapter/$n/quiz'
+      preLoaderRoute: typeof BookBookIdChapterNQuizRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CreateRoute: CreateRoute,
+  ApiTtsRoute: ApiTtsRoute,
+  BookBookIdProgressRoute: BookBookIdProgressRoute,
+  BookBookIdVocabRoute: BookBookIdVocabRoute,
+  BookBookIdIndexRoute: BookBookIdIndexRoute,
+  ApiPublicArtSplatRoute: ApiPublicArtSplatRoute,
+  BookBookIdChapterNQuizRoute: BookBookIdChapterNQuizRoute,
+  BookBookIdChapterNIndexRoute: BookBookIdChapterNIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

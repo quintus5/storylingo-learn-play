@@ -1,0 +1,193 @@
+/**
+ * Audio: one shared player, IndexedDB clip cache, background preloading.
+ * A new request always cancels whatever is currently playing.
+ */
+
+const DB_NAME = "storylingo-audio";
+const STORE = "clips";
+
+let dbPromise: Promise<IDBDatabase | null> | null = null;
+
+function openDb(): Promise<IDBDatabase | null> {
+  if (typeof indexedDB === "undefined") return Promise.resolve(null);
+  if (!dbPromise) {
+    dbPromise = new Promise((resolve) => {
+      const req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = () => {
+        if (!req.result.objectStoreNames.contains(STORE)) req.result.createObjectStore(STORE);
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+    });
+  }
+  return dbPromise;
+}
+
+async function readCache(key: string): Promise<Blob | null> {
+  const db = await openDb();
+  if (!db) return null;
+  return new Promise((resolve) => {
+    const req = db.transaction(STORE, "readonly").objectStore(STORE).get(key);
+    req.onsuccess = () => resolve((req.result as Blob) ?? null);
+    req.onerror = () => resolve(null);
+  });
+}
+
+async function writeCache(key: string, blob: Blob): Promise<void> {
+  const db = await openDb();
+  if (!db) return;
+  await new Promise<void>((resolve) => {
+    const tx = db.transaction(STORE, "readwrite");
+    tx.objectStore(STORE).put(blob, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => resolve();
+  });
+}
+
+const memory = new Map<string, Blob>();
+const inflight = new Map<string, Promise<Blob | null>>();
+
+function cacheKey(text: string, slow: boolean) {
+  return `${slow ? "slow" : "normal"}:${text}`;
+}
+
+export async function getClip(text: string, slow: boolean): Promise<Blob | null> {
+  const key = cacheKey(text, slow);
+  const hit = memory.get(key);
+  if (hit) return hit;
+
+  const existing = inflight.get(key);
+  if (existing) return existing;
+
+  const task = (async () => {
+    const cached = await readCache(key);
+    if (cached) {
+      memory.set(key, cached);
+      return cached;
+    }
+    try {
+      const res = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, slow }),
+      });
+      if (!res.ok) return null;
+      const blob = await res.blob();
+      if (blob.size < 600) return null;
+      memory.set(key, blob);
+      void writeCache(key, blob);
+      return blob;
+    } catch {
+      return null;
+    } finally {
+      inflight.delete(key);
+    }
+  })();
+
+  inflight.set(key, task);
+  return task;
+}
+
+let current: HTMLAudioElement | null = null;
+let currentUrl: string | null = null;
+let token = 0;
+const listeners = new Set<(text: string | null) => void>();
+let speakingText: string | null = null;
+
+function setSpeaking(text: string | null) {
+  speakingText = text;
+  listeners.forEach((l) => l(text));
+}
+
+export function onSpeakingChange(listener: (text: string | null) => void): () => void {
+  listeners.add(listener);
+  listener(speakingText);
+  return () => listeners.delete(listener);
+}
+
+export function stopAudio() {
+  token += 1;
+  if (current) {
+    current.pause();
+    current.src = "";
+    current = null;
+  }
+  if (currentUrl) {
+    URL.revokeObjectURL(currentUrl);
+    currentUrl = null;
+  }
+  setSpeaking(null);
+}
+
+/** Play one clip. Any clip already playing is cancelled first. */
+export async function speak(text: string, slow = false): Promise<void> {
+  stopAudio();
+  const mine = token;
+  const blob = await getClip(text, slow);
+  if (!blob || mine !== token) return;
+
+  const url = URL.createObjectURL(blob);
+  const audio = new Audio(url);
+  current = audio;
+  currentUrl = url;
+  setSpeaking(text);
+
+  await new Promise<void>((resolve) => {
+    const done = () => {
+      if (mine === token) {
+        if (currentUrl) URL.revokeObjectURL(currentUrl);
+        current = null;
+        currentUrl = null;
+        setSpeaking(null);
+      }
+      resolve();
+    };
+    audio.onended = done;
+    audio.onerror = done;
+    void audio.play().catch(done);
+  });
+}
+
+/** Play a list of clips one after another (cancelled by any new speak/stop). */
+export async function speakSequence(texts: string[], slow = false): Promise<void> {
+  stopAudio();
+  const mine = token;
+  for (const text of texts) {
+    if (mine !== token) return;
+    const blob = await getClip(text, slow);
+    if (!blob || mine !== token) return;
+
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    current = audio;
+    currentUrl = url;
+    setSpeaking(text);
+
+    const finished = await new Promise<boolean>((resolve) => {
+      const done = () => resolve(mine === token);
+      audio.onended = done;
+      audio.onerror = done;
+      void audio.play().catch(done);
+    });
+    URL.revokeObjectURL(url);
+    if (!finished) return;
+  }
+  if (mine === token) {
+    current = null;
+    currentUrl = null;
+    setSpeaking(null);
+  }
+}
+
+/** Warm the cache for a chapter without playing anything. */
+export function preload(sentences: string[], words: string[]) {
+  const queue = [...words.map((w) => [w, true] as const), ...sentences.map((s) => [s, false] as const)];
+  let i = 0;
+  const step = async () => {
+    if (i >= queue.length) return;
+    const [text, slow] = queue[i++];
+    await getClip(text, slow);
+    setTimeout(step, 120);
+  };
+  void step();
+}
