@@ -126,6 +126,9 @@ function Reader() {
     stopAudio();
     setPlaying(false);
     setPage((p) => Math.min(Math.max(p + delta, 0), pages.length - 1));
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   }
 
   return (
