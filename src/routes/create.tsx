@@ -1,9 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { Loader2, Wand2 } from "lucide-react";
+import { BookOpen, Loader2, Search, Wand2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { createBook, generateChapter } from "@/lib/story.functions";
+import { createBook, generateChapter, previewBook } from "@/lib/story.functions";
+import type { StoryPreview } from "@/lib/story.server";
+
 
 export const Route = createFileRoute("/create")({
   head: () => ({
