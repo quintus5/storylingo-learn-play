@@ -96,7 +96,7 @@ function CreatePage() {
           </p>
 
           <label className="mt-5 block text-sm font-semibold" htmlFor="chapters">
-            Chapters: {chapterCount} {chapterCount === 1 ? "chapter" : "chapters"}
+            {chapterCount === 1 ? "1 chapter (quick mini-book)" : `${chapterCount} chapters`}
           </label>
           <input
             id="chapters"
