@@ -119,3 +119,15 @@ export const generateChapter = createServerFn({ method: "POST" })
 
     return { ok: true, idx: data.idx };
   });
+
+const PreviewInput = z.object({
+  title: z.string().trim().max(120).optional(),
+  url: z.string().trim().url().max(2000),
+});
+
+export const previewBook = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => PreviewInput.parse(input))
+  .handler(async ({ data }) => {
+    const { previewStory } = await import("./story.server");
+    return previewStory(data.url, data.title ?? "");
+  });

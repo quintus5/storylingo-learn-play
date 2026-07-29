@@ -163,3 +163,42 @@ export async function makeArt(bookId: string, name: string, scene: string): Prom
   if (error) throw new Error(`Could not store illustration: ${error.message}`);
   return `/api/public/art/${path}`;
 }
+
+export type StoryPreview = {
+  title: string;
+  blurb: string;
+  suggestedChapters: number;
+  reason: string;
+  chapterTitles: string[];
+  wordCount: number;
+};
+
+/** Read a source link and suggest how many chapters the picture book should have. */
+export async function previewStory(url: string, fallbackTitle: string): Promise<StoryPreview> {
+  const storyText = await fetchStoryText(url);
+  const raw = await chatJson<Partial<StoryPreview>>(
+    "You are a children's book editor planning beginner Mandarin picture books for Thai-speaking children aged 6-10. " +
+      "You never copy source wording — you plan an original retelling. Reply with JSON only.",
+    `Source material (understand the plot only):\n"""${storyText.slice(0, 12000)}"""\n\n` +
+      `Working title: ${fallbackTitle || "(none given)"}\n` +
+      `Decide how many short chapters this retelling should have (between 1 and 10). ` +
+      `Short simple stories need 1-3; longer or multi-episode material needs more.\n` +
+      `Return JSON: {"title": string (friendly English title), "blurb": string (one short English sentence), ` +
+      `"suggestedChapters": number (1-10), "reason": string (one short English sentence explaining the number), ` +
+      `"chapterTitles": [string] (one short English title per suggested chapter)}`,
+  );
+
+  const suggested = Math.min(10, Math.max(1, Math.round(Number(raw.suggestedChapters) || 3)));
+  const titles = (Array.isArray(raw.chapterTitles) ? raw.chapterTitles : [])
+    .filter((t): t is string => typeof t === "string" && t.trim().length > 0)
+    .slice(0, suggested);
+
+  return {
+    title: (raw.title ?? "").trim() || fallbackTitle || "A new story",
+    blurb: (raw.blurb ?? "").trim(),
+    suggestedChapters: suggested,
+    reason: (raw.reason ?? "").trim(),
+    chapterTitles: titles,
+    wordCount: storyText.split(/\s+/).filter(Boolean).length,
+  };
+}
