@@ -127,9 +127,11 @@ function Reader() {
     setPlaying(false);
     setPage((p) => Math.min(Math.max(p + delta, 0), pages.length - 1));
     if (typeof window !== "undefined") {
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      window.scrollTo({ top: 0, behavior: reduced ? "auto" : "instant" as ScrollBehavior });
     }
   }
+
 
   return (
     <AppShell
