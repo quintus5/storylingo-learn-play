@@ -8,14 +8,32 @@ const BUCKET = "story-art";
 
 export type { Outline };
 
-/** Fetch a web page and reduce it to readable plain text. */
-export async function fetchStoryText(url: string): Promise<string> {
-  const res = await fetch(url, {
-    headers: { "User-Agent": "Mozilla/5.0 (compatible; StoryLingoBot/1.0)" },
-  });
-  if (!res.ok) throw new Error(`Could not read that page (status ${res.status}).`);
-  const html = await res.text();
-  const text = html
+/** Reject text that is mostly binary junk rather than real prose. */
+function assertReadable(text: string): void {
+  if (text.length < 200) {
+    throw new Error("That page didn't contain enough story text to work with.");
+  }
+  const readable = (text.match(/[\p{Letter}\p{Mark}\s.,!?'"—-]/gu) ?? []).length;
+  if (readable / text.length < 0.8) {
+    throw new Error(
+      "That link didn't give back readable text — it looks like a file StoryLingo can't read.",
+    );
+  }
+}
+
+async function extractPdfText(buffer: ArrayBuffer): Promise<string> {
+  const { extractText, getDocumentProxy } = await import("unpdf");
+  const doc = await getDocumentProxy(new Uint8Array(buffer));
+  const { text } = await extractText(doc, { mergePages: true });
+  const clean = (Array.isArray(text) ? text.join("\n") : text).replace(/\s+/g, " ").trim();
+  if (clean.length < 200) {
+    throw new Error("That PDF has no readable text — it looks like scanned images.");
+  }
+  return clean;
+}
+
+function extractHtmlText(html: string): string {
+  return html
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
     .replace(/<style[\s\S]*?<\/style>/gi, " ")
     .replace(/<nav[\s\S]*?<\/nav>/gi, " ")
@@ -27,12 +45,33 @@ export async function fetchStoryText(url: string): Promise<string> {
     .replace(/&quot;|&ldquo;|&rdquo;/g, '"')
     .replace(/\s+/g, " ")
     .trim();
+}
 
-  if (text.length < 200) {
-    throw new Error("That page didn't contain enough story text to work with.");
+/** Fetch a web page or PDF and reduce it to readable plain text. */
+export async function fetchStoryText(url: string): Promise<string> {
+  const res = await fetch(url, {
+    headers: { "User-Agent": "Mozilla/5.0 (compatible; StoryLingoBot/1.0)" },
+  });
+  if (!res.ok) throw new Error(`Could not read that page (status ${res.status}).`);
+
+  const contentType = (res.headers.get("content-type") ?? "").toLowerCase();
+  const looksPdf = contentType.includes("pdf") || /\.pdf(\?|#|$)/i.test(url);
+
+  let text: string;
+  if (looksPdf) {
+    text = await extractPdfText(await res.arrayBuffer());
+  } else if (contentType.includes("html") || contentType.includes("xml") || !contentType) {
+    text = extractHtmlText(await res.text());
+  } else if (contentType.startsWith("text/")) {
+    text = (await res.text()).replace(/\s+/g, " ").trim();
+  } else {
+    throw new Error("That link isn't a readable story page or PDF.");
   }
+
+  assertReadable(text);
   return text.slice(0, 24000);
 }
+
 
 export async function buildOutline(
   storyText: string,
