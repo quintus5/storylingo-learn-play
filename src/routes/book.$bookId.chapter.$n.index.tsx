@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
@@ -44,7 +44,6 @@ function Reader() {
   const { bookId, n } = Route.useParams();
   const idx = Number(n);
   const { data } = useSuspenseQuery(bookQuery(bookId));
-  const navigate = useNavigate();
   const { markRead, seeWords } = useProgress();
   const speaking = useSpeakingText();
 
@@ -173,7 +172,6 @@ function Reader() {
       </nav>
 
       {word && <WordPopup word={word} onClose={() => setWord(null)} />}
-      <button hidden onClick={() => void navigate({ to: "/" })} />
     </AppShell>
   );
 }
