@@ -83,9 +83,18 @@ export function parseChapterContent(raw: unknown): { pages: Page[]; words: Word[
   for (const p of rawPages) {
     if (p === null || typeof p !== "object" || Array.isArray(p)) continue;
     const sentencesRaw = (p as { sentences?: unknown }).sentences;
-    const sentences = keepValid(SentenceSchema, sentencesRaw);
+    const list = Array.isArray(sentencesRaw) ? sentencesRaw : [];
+    const sentences = [];
+    for (const s of list) {
+      if (s === null || typeof s !== "object" || Array.isArray(s)) continue;
+      // Repair the word list first so one bad word doesn't discard the sentence.
+      const candidate = { ...(s as object), words: keepValid(WordSchema, (s as { words?: unknown }).words) };
+      const parsed = SentenceSchema.safeParse(candidate);
+      if (parsed.success) sentences.push(parsed.data);
+    }
     if (sentences.length) pages.push({ sentences });
   }
+
 
   const words = keepValid(WordSchema, obj.words);
 
