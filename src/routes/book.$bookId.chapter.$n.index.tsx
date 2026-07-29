@@ -176,7 +176,7 @@ function Reader() {
       )}
 
 
-      <div className="space-y-4">
+      <div key={page} className="space-y-4 animate-[float-in_.35s_ease-out]">
         {current.sentences.map((sentence, i) => (
           <SentenceCard
             key={i}
