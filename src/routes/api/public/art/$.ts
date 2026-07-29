@@ -5,7 +5,11 @@ export const Route = createFileRoute("/api/public/art/$")({
     handlers: {
       GET: async ({ params }) => {
         const path = (params as { _splat?: string })._splat ?? "";
-        if (!path || path.includes("..")) return new Response("Not found", { status: 404 });
+        // Only "<bookUuid>/<name>.png" is servable — no traversal, no listing.
+        if (!/^[0-9a-f-]{36}\/[a-z0-9-]{1,64}\.png$/i.test(path)) {
+          return new Response("Not found", { status: 404 });
+        }
+
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { data, error } = await supabaseAdmin.storage.from("story-art").download(path);
