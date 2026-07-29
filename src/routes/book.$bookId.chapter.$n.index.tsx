@@ -1,12 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
+import { ChevronLeft, ChevronRight, Music, Pause, Play, VolumeX } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { WordPopup } from "@/components/WordPopup";
 import { bookQuery } from "@/lib/books";
 import { useProgress } from "@/lib/progress";
 import { preload, speak, speakSequence, stopAudio } from "@/lib/audio";
+import { moodFor, setMusicDucked, startMusic, stopMusic } from "@/lib/music";
 import { useSpeakingText } from "@/hooks/use-speaking";
 import type { Sentence, Word } from "@/lib/types";
 
@@ -52,6 +53,7 @@ function Reader() {
   const [page, setPage] = useState(0);
   const [word, setWord] = useState<Word | null>(null);
   const [playing, setPlaying] = useState(false);
+  const [music, setMusic] = useState(false);
 
   const current = pages[page];
   const isLast = page >= pages.length - 1;
@@ -63,7 +65,25 @@ function Reader() {
     [current],
   );
 
-  useEffect(() => () => stopAudio(), []);
+  useEffect(() => () => {
+    stopAudio();
+    stopMusic();
+  }, []);
+
+  const mood = useMemo(
+    () => moodFor([chapter?.title, chapter?.summary, current?.scene].filter(Boolean).join(" ")),
+    [chapter?.title, chapter?.summary, current?.scene],
+  );
+
+  // Restart the loop whenever the scene's mood changes.
+  useEffect(() => {
+    if (music) startMusic(mood);
+  }, [music, mood]);
+
+  // Keep the music quiet under narration.
+  useEffect(() => {
+    setMusicDucked(Boolean(speaking));
+  }, [speaking]);
 
   useEffect(() => {
     if (!chapter) return;
@@ -113,6 +133,22 @@ function Reader() {
       title={`Ch. ${idx} · ${chapter.title}`}
       back={{ to: "/book/$bookId", params: { bookId } }}
       right={
+        <div className="flex items-center gap-2">
+        <button
+          onClick={() => {
+            if (music) {
+              stopMusic();
+              setMusic(false);
+            } else {
+              setMusic(true);
+            }
+          }}
+          aria-label={music ? "Turn off background music" : "Turn on background music"}
+          className="press inline-flex items-center gap-2 rounded-full bg-secondary px-3 py-2 text-sm font-bold text-secondary-foreground"
+        >
+          {music ? <Music className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+          <span className="hidden sm:inline">Music</span>
+        </button>
         <button
           onClick={() => void playPage()}
           className="press inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"
@@ -120,13 +156,14 @@ function Reader() {
           {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
           {playing ? "Stop" : "Read to me"}
         </button>
+        </div>
       }
     >
-      {page === 0 && chapter.image_url && (
+      {(current.image_url || (page === 0 && chapter.image_url)) && (
         <img
-          src={chapter.image_url}
-          alt={`Illustration for ${chapter.title}`}
-          className="mb-5 aspect-[4/3] w-full rounded-3xl object-cover"
+          src={current.image_url ?? chapter.image_url ?? undefined}
+          alt={`Illustration for ${chapter.title}, page ${page + 1}`}
+          className="mb-5 aspect-[4/3] w-full rounded-3xl object-cover animate-[float-in_.4s_ease-out]"
         />
       )}
 

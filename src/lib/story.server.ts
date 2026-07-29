@@ -113,9 +113,10 @@ export async function buildChapterContent(
       `Words already taught (reuse some of these): ${knownWords.slice(0, 60).join(", ") || "none yet"}\n\n` +
       `Write this chapter as 2 or 3 pages. Each page has 5 to 8 very short sentences (4-10 characters each).\n` +
       `Return JSON:\n` +
-      `{"pages":[{"sentences":[{"hanzi":"简体中文句子","pinyin":"jiǎn tǐ zhōng wén jù zi","native":"ประโยคภาษาไทย",` +
+      `{"pages":[{"scene":"a vivid English description of one picture to paint for this page (no text in image)","sentences":[{"hanzi":"简体中文句子","pinyin":"jiǎn tǐ zhōng wén jù zi","native":"ประโยคภาษาไทย",` +
       `"words":[{"hanzi":"词","pinyin":"cí","dict":"ความหมายทั่วไปในพจนานุกรม (Thai)","context":"ความหมายในประโยคนี้ (Thai)"}]}]}],` +
       `"words":[{"hanzi":"词","pinyin":"cí","dict":"ความหมายทั่วไป (Thai)"}]}\n\n` +
+      `Every page MUST include its own "scene" description matching what happens on that page. ` +
       `Rules: split every sentence into its real words (1-3 characters each, no punctuation as a word). ` +
       `"dict" is the GENERAL dictionary meaning of the word on its own; "context" is what it means in that sentence. ` +
       `The top-level "words" array holds 6 to 10 key vocabulary words for this chapter's quiz.`,
@@ -129,6 +130,27 @@ export async function buildChapterContent(
     console.warn("Chapter content failed validation, retrying:", err.message);
     return parseChapterContent(await ask());
   }
+}
+
+/** Paint one illustration per page, all in parallel. */
+export async function illustratePages(
+  bookId: string,
+  chapterIdx: number,
+  chapterTitle: string,
+  pages: Page[],
+): Promise<Page[]> {
+  return Promise.all(
+    pages.map(async (page, i) => {
+      const scene = page.scene?.trim() || `${chapterTitle}: ${page.sentences[0]?.native ?? ""}`;
+      try {
+        const url = await makeArt(bookId, `chapter-${chapterIdx}-page-${i + 1}`, scene);
+        return { ...page, image_url: url };
+      } catch (err) {
+        console.error(`Page ${i + 1} illustration failed`, err);
+        return { ...page, image_url: null };
+      }
+    }),
+  );
 }
 
 /** Generate an illustration, store it, and return its public app URL. */

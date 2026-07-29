@@ -49,9 +49,19 @@ function CreatePage() {
         data: { title: title.trim() || "A new story", url: url.trim(), chapterCount },
       });
       say(`Retelling it as ${count} chapters…`);
-      for (let i = 1; i <= count; i++) {
-        say(`Writing chapter ${i} and painting its picture…`);
-        await chapter({ data: { bookId, idx: i } });
+      // Chapters are built a few at a time so the whole book finishes much faster.
+      const BATCH = 3;
+      for (let start = 1; start <= count; start += BATCH) {
+        const batch = Array.from(
+          { length: Math.min(BATCH, count - start + 1) },
+          (_, k) => start + k,
+        );
+        say(
+          batch.length === 1
+            ? `Writing chapter ${batch[0]} and painting its pictures…`
+            : `Writing chapters ${batch[0]}–${batch[batch.length - 1]} and painting their pictures…`,
+        );
+        await Promise.all(batch.map((i) => chapter({ data: { bookId, idx: i } })));
       }
       say("Your book is ready!");
       await navigate({ to: "/book/$bookId", params: { bookId } });
