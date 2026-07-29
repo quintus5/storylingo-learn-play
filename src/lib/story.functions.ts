@@ -52,7 +52,7 @@ export const generateChapter = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => ChapterInput.parse(input))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { buildChapterContent, makeArt } = await import("./story.server");
+    const { buildChapterContent, illustratePages, makeArt } = await import("./story.server");
 
     const { data: book } = await supabaseAdmin
       .from("books")
@@ -86,30 +86,31 @@ export const generateChapter = createServerFn({ method: "POST" })
       known,
     );
 
-    let imageUrl: string | null = null;
-    try {
-      imageUrl = await makeArt(data.bookId, `chapter-${data.idx}`, scene);
-    } catch (err) {
-      console.error("Illustration failed", err);
-    }
+    // Paint every page (and the book cover on chapter 1) at the same time.
+    const [pages, cover] = await Promise.all([
+      illustratePages(data.bookId, data.idx, chapter.title, content.pages),
+      data.idx === 1
+        ? makeArt(
+            data.bookId,
+            "cover",
+            `Book cover scene for the children's story "${book.title}". ${scene}`,
+          ).catch((err) => {
+            console.error("Cover failed", err);
+            return null;
+          })
+        : Promise.resolve(null),
+    ]);
+
+    const imageUrl = pages.find((p) => p.image_url)?.image_url ?? null;
 
     const { error } = await supabaseAdmin
       .from("chapters")
-      .update({ pages: content.pages, words: content.words, image_url: imageUrl })
+      .update({ pages, words: content.words, image_url: imageUrl })
       .eq("id", chapter.id);
     if (error) throw new Error(error.message);
 
-    if (data.idx === 1) {
-      try {
-        const cover = await makeArt(
-          data.bookId,
-          "cover",
-          `Book cover scene for the children's story "${book.title}". ${scene}`,
-        );
-        await supabaseAdmin.from("books").update({ cover_url: cover }).eq("id", data.bookId);
-      } catch (err) {
-        console.error("Cover failed", err);
-      }
+    if (cover) {
+      await supabaseAdmin.from("books").update({ cover_url: cover }).eq("id", data.bookId);
     }
 
     if (data.idx >= (book.chapter_count ?? 0)) {
