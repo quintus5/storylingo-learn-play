@@ -111,6 +111,8 @@ function Quiz() {
   const question = questions[step];
 
   useEffect(() => {
+    // Always cut off whatever was playing for the previous question.
+    stopAudio();
     if (started && question?.kind === "listen") void speak(question.prompt.hanzi, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [started, step]);
