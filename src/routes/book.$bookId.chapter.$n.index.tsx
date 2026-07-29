@@ -167,7 +167,7 @@ function Reader() {
           <img
             src={current.image_url ?? chapter.image_url ?? undefined}
             alt={`Illustration for ${chapter.title}, page ${page + 1}`}
-            className="h-40 w-full rounded-3xl object-cover shadow-lg sm:h-56 md:h-64 animate-[float-in_.4s_ease-out]"
+            className="h-56 w-full rounded-3xl object-cover shadow-lg sm:h-80 md:h-[26rem] animate-[float-in_.4s_ease-out]"
           />
         </div>
       )}
