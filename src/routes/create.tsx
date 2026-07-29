@@ -173,6 +173,52 @@ function CreatePage() {
           </div>
         </div>
 
+        {plan && (
+          <section className="animate-[float-in_0.4s_ease-out] rounded-3xl border border-primary/25 bg-card/70 p-5">
+            <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-primary">
+              <BookOpen className="h-4 w-4" /> Suggested plan
+            </p>
+            <h3 className="mt-2 text-xl font-extrabold">{plan.title}</h3>
+            {plan.blurb && <p className="mt-1 text-sm text-muted-foreground">{plan.blurb}</p>}
+
+            <div className="mt-4 rounded-2xl bg-secondary/50 p-3 text-sm">
+              <p className="font-bold">
+                {plan.suggestedChapters === 1
+                  ? "1 chapter suggested"
+                  : `${plan.suggestedChapters} chapters suggested`}
+              </p>
+              {plan.reason && <p className="mt-1 text-muted-foreground">{plan.reason}</p>}
+              <p className="mt-1 text-xs text-muted-foreground">
+                About {plan.wordCount.toLocaleString()} words of source text. You can still move the
+                slider.
+              </p>
+            </div>
+
+            {plan.chapterTitles.length > 0 && (
+              <ol className="mt-4 space-y-1 text-sm">
+                {plan.chapterTitles.slice(0, chapterCount).map((t, i) => (
+                  <li key={i} className="flex gap-2">
+                    <span className="font-bold text-primary">{i + 1}.</span>
+                    <span>{t}</span>
+                  </li>
+                ))}
+              </ol>
+            )}
+
+            {chapterCount !== plan.suggestedChapters && (
+              <button
+                type="button"
+                onClick={() => setChapterCount(plan.suggestedChapters)}
+                className="press mt-4 rounded-2xl bg-secondary px-4 py-2 text-sm font-bold text-secondary-foreground"
+              >
+                Use suggested ({plan.suggestedChapters})
+              </button>
+            )}
+          </section>
+        )}
+
+
+
         <button
           type="submit"
           disabled={busy}
