@@ -136,8 +136,25 @@ function CreatePage() {
             StoryLingo writes its own retelling of the story, so nothing is copied word for word.
           </p>
 
+          <button
+            type="button"
+            onClick={() => void onFetch()}
+            disabled={fetching || busy || !url.trim()}
+            className="press mt-4 inline-flex items-center gap-2 rounded-2xl bg-secondary px-4 py-2 text-sm font-bold text-secondary-foreground disabled:opacity-60"
+          >
+            {fetching ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Search className="h-4 w-4" />
+            )}
+            {fetching ? "Reading the story…" : "Fetch book"}
+          </button>
+
           <label className="mt-5 block text-sm font-semibold" htmlFor="chapters">
             {chapterCount === 1 ? "1 chapter (quick mini-book)" : `${chapterCount} chapters`}
+            {plan && chapterCount === plan.suggestedChapters && (
+              <span className="ml-2 font-normal text-primary">· suggested</span>
+            )}
           </label>
           <input
             id="chapters"
@@ -149,6 +166,7 @@ function CreatePage() {
             onChange={(e) => setChapterCount(Number(e.target.value))}
             className="mt-3 w-full accent-[var(--gold)]"
           />
+
 
           <div className="mt-5 rounded-2xl bg-secondary/50 p-3 text-sm text-muted-foreground">
             Learning Mandarin Chinese (with pinyin) · explained in Thai
