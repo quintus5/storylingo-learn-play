@@ -29,6 +29,9 @@ export const SentenceSchema = z.object({
 
 export const PageSchema = z.object({
   sentences: z.array(SentenceSchema).min(1),
+  /** English description of one scene to illustrate for this page. */
+  scene: z.string().trim().max(600).optional(),
+  image_url: z.string().trim().max(500).nullable().optional(),
 });
 
 export const ChapterContentSchema = z.object({
@@ -40,6 +43,7 @@ export const OutlineChapterSchema = z.object({
   title: nonEmpty(120),
   summary: nonEmpty(1200),
   illustration: z.string().trim().max(1200).optional(),
+  mood: z.string().trim().max(40).optional(),
 });
 
 export const OutlineSchema = z.object({
@@ -92,7 +96,9 @@ export function parseChapterContent(raw: unknown): { pages: Page[]; words: Word[
       const parsed = SentenceSchema.safeParse(candidate);
       if (parsed.success) sentences.push(parsed.data);
     }
-    if (sentences.length) pages.push({ sentences });
+    const sceneRaw = (p as { scene?: unknown }).scene;
+    const scene = typeof sceneRaw === "string" && sceneRaw.trim() ? sceneRaw.trim().slice(0, 600) : undefined;
+    if (sentences.length) pages.push({ sentences, scene });
   }
 
 

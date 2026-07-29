@@ -16,6 +16,10 @@ export type Sentence = {
 
 export type Page = {
   sentences: Sentence[];
+  /** English description of the scene painted for this page. */
+  scene?: string;
+  /** URL of this page's illustration, when one was generated. */
+  image_url?: string | null;
 };
 
 export type ChapterRow = {
