@@ -17,7 +17,7 @@ export const Route = createFileRoute("/")({
       { property: "og:title", content: "StoryLingo — Your Mandarin bookshelf" },
       {
         property: "og:description",
-        content: "Illustrated Mandarin picture books with audio, word popups and quizzes.",
+        content: "A night-desert bookshelf of illustrated Mandarin picture books made from your favourite children's stories.",
       },
     ],
   }),

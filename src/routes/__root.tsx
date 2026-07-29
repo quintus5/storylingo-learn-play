@@ -77,14 +77,20 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "StoryLingo — Learn Mandarin through picture books" },
+      { title: "StoryLingo — Your Mandarin bookshelf" },
       {
         name: "description",
         content:
-          "Turn any children's story into an illustrated Mandarin picture book with audio, word popups and quizzes for Thai-speaking learners.",
+          "A night-desert bookshelf of illustrated Mandarin picture books made from your favourite children's stories.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { property: "og:title", content: "StoryLingo — Your Mandarin bookshelf" },
+      { name: "twitter:title", content: "StoryLingo — Your Mandarin bookshelf" },
+      { property: "og:description", content: "A night-desert bookshelf of illustrated Mandarin picture books made from your favourite children's stories." },
+      { name: "twitter:description", content: "A night-desert bookshelf of illustrated Mandarin picture books made from your favourite children's stories." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/11e02e38-7a10-4b1a-b9ae-d56e62d69754/id-preview-2fd1a8f5--db0a28a1-b4b3-43b4-bbc5-519608bd0a2e.lovable.app-1785332620765.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/11e02e38-7a10-4b1a-b9ae-d56e62d69754/id-preview-2fd1a8f5--db0a28a1-b4b3-43b4-bbc5-519608bd0a2e.lovable.app-1785332620765.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
