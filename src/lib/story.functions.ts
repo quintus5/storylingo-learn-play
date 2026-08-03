@@ -15,10 +15,11 @@ export const createBook = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => CreateBookInput.parse(input))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { fetchStoryText, buildOutline } = await import("./story.server");
+    const { getSourceText, buildOutline } = await import("./story.server");
 
-    const storyText = await fetchStoryText(data.url);
+    const storyText = await getSourceText(data.url);
     const outline = await buildOutline(storyText, data.title, data.chapterCount);
+
     const chapters = (outline.chapters ?? []).slice(0, data.chapterCount);
     if (chapters.length < 1) throw new Error("Could not split that story into chapters.");
 
