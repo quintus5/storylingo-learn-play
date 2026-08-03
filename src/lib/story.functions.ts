@@ -40,8 +40,14 @@ export const createBook = createServerFn({ method: "POST" })
       book_id: book.id,
       idx: i + 1,
       title: c.title || `Chapter ${i + 1}`,
-      summary: [c.summary, `SCENE: ${c.illustration ?? c.summary}`].join("\n"),
+      // Key beats are kept with the chapter so regeneration stays faithful.
+      summary: [
+        c.summary,
+        `KEY: ${(c.keyEvents ?? []).join(" | ")}`,
+        `SCENE: ${c.illustration ?? c.summary}`,
+      ].join("\n"),
     }));
+
     const { error: chErr } = await supabaseAdmin.from("chapters").insert(rows);
     if (chErr) throw new Error(chErr.message);
 
