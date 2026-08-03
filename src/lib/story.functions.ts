@@ -61,10 +61,12 @@ export const generateChapter = createServerFn({ method: "POST" })
 
     const { data: book } = await supabaseAdmin
       .from("books")
-      .select("id, title, chapter_count")
+      .select("id, title, chapter_count, art_style")
       .eq("id", data.bookId)
       .single();
     if (!book) throw new Error("Book not found");
+
+    const styleId = book.art_style ?? null;
 
     const { data: chapters } = await supabaseAdmin
       .from("chapters")
@@ -93,18 +95,20 @@ export const generateChapter = createServerFn({ method: "POST" })
 
     // Paint every page (and the book cover on chapter 1) at the same time.
     const [pages, cover] = await Promise.all([
-      illustratePages(data.bookId, data.idx, chapter.title, content.pages),
+      illustratePages(data.bookId, data.idx, chapter.title, content.pages, styleId),
       data.idx === 1
         ? makeArt(
             data.bookId,
             "cover",
             `Book cover scene for the children's story "${book.title}". ${scene}`,
+            styleId,
           ).catch((err) => {
             console.error("Cover failed", err);
             return null;
           })
         : Promise.resolve(null),
     ]);
+
 
     const imageUrl = pages.find((p) => p.image_url)?.image_url ?? null;
 
