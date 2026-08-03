@@ -171,13 +171,22 @@ function Reader() {
             key={current.image_url ?? chapter.image_url ?? "cover"}
             src={current.image_url ?? chapter.image_url ?? undefined}
             alt={`Illustration for ${chapter.title}, page ${page + 1}`}
-            className="h-40 w-full rounded-3xl object-cover shadow-lg sm:h-64 md:h-80 animate-[float-in_.4s_ease-out]"
+            className={`h-40 w-full rounded-3xl object-cover shadow-lg sm:h-64 md:h-80 ${
+              dir > 0 ? "animate-[page-in-next_.42s_cubic-bezier(.22,.8,.3,1)_both]" : "animate-[page-in-prev_.42s_cubic-bezier(.22,.8,.3,1)_both]"
+            }`}
           />
         </div>
       )}
 
 
-      <div key={page} className="space-y-4 animate-[float-in_.35s_ease-out]">
+      <div
+        key={page}
+        className={`space-y-4 ${
+          dir > 0
+            ? "animate-[page-in-next_.4s_cubic-bezier(.22,.8,.3,1)_both]"
+            : "animate-[page-in-prev_.4s_cubic-bezier(.22,.8,.3,1)_both]"
+        }`}
+      >
         {current.sentences.map((sentence, i) => (
           <SentenceCard
             key={i}
