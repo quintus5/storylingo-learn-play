@@ -63,11 +63,13 @@ export const generateChapter = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => ChapterInput.parse(input))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { buildChapterContent, illustratePages, makeArt } = await import("./story.server");
+    const { buildChapterContent, illustratePages, makeArt, getSourceText } = await import(
+      "./story.server"
+    );
 
     const { data: book } = await supabaseAdmin
       .from("books")
-      .select("id, title, chapter_count, art_style")
+      .select("id, title, chapter_count, art_style, source_url")
       .eq("id", data.bookId)
       .single();
     if (!book) throw new Error("Book not found");
@@ -88,8 +90,28 @@ export const generateChapter = createServerFn({ method: "POST" })
       .filter(Boolean);
 
     const summary = chapter.summary ?? "";
-    const [plot, scenePart] = summary.split("SCENE:");
-    const scene = (scenePart ?? plot ?? chapter.title).trim();
+    const [beforeScene, scenePart] = summary.split("SCENE:");
+    const scene = (scenePart ?? beforeScene ?? chapter.title).trim();
+    const [plot, keyPart] = (beforeScene ?? "").split("KEY:");
+    const keyEvents = (keyPart ?? "")
+      .split("|")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    // The original text keeps the retelling honest; it is cached per source link.
+    let sourceExcerpt = "";
+    if (book.source_url) {
+      try {
+        const full = await getSourceText(book.source_url);
+        const total = book.chapter_count || 1;
+        const size = Math.ceil(full.length / total);
+        // Give this chapter its slice of the source, with a little overlap.
+        const start = Math.max(0, (data.idx - 1) * size - 400);
+        sourceExcerpt = full.slice(start, start + size + 800);
+      } catch (err) {
+        console.warn("Could not re-read source for fidelity", err);
+      }
+    }
 
     const content = await buildChapterContent(
       book.title,
@@ -97,7 +119,10 @@ export const generateChapter = createServerFn({ method: "POST" })
       chapter.title,
       (plot ?? "").trim() || chapter.title,
       known,
+      keyEvents,
+      sourceExcerpt,
     );
+
 
     // Paint every page (and the book cover on chapter 1) at the same time.
     const [pages, cover] = await Promise.all([
