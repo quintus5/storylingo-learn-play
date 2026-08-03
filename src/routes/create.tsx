@@ -4,6 +4,8 @@ import { useState } from "react";
 import { BookOpen, Loader2, Search, Wand2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { createBook, generateChapter, previewBook } from "@/lib/story.functions";
+import { ART_STYLES, DEFAULT_ART_STYLE, artStyle } from "@/lib/art-styles";
+import type { ArtStyleId } from "@/lib/art-styles";
 
 type StoryPreview = {
   title: string;
@@ -12,6 +14,8 @@ type StoryPreview = {
   reason: string;
   chapterTitles: string[];
   wordCount: number;
+  artStyle: ArtStyleId;
+  artStyleReason: string;
 };
 
 
@@ -48,6 +52,7 @@ function CreatePage() {
   const [busy, setBusy] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [plan, setPlan] = useState<StoryPreview | null>(null);
+  const [style, setStyle] = useState<ArtStyleId>(DEFAULT_ART_STYLE);
   const [error, setError] = useState<string | null>(null);
 
   const say = (line: string) => setLog((l) => [...l, line]);
@@ -60,6 +65,7 @@ function CreatePage() {
       const result = await preview({ data: { title: title.trim(), url: url.trim() } });
       setPlan(result);
       setChapterCount(result.suggestedChapters);
+      setStyle(result.artStyle);
       if (!title.trim()) setTitle(result.title);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not read that link.");
@@ -77,7 +83,12 @@ function CreatePage() {
 
       say("Reading the story…");
       const { bookId, chapterCount: count } = await create({
-        data: { title: title.trim() || "A new story", url: url.trim(), chapterCount },
+        data: {
+          title: title.trim() || "A new story",
+          url: url.trim(),
+          chapterCount,
+          artStyle: style,
+        },
       });
       say(`Retelling it as ${count} chapters…`);
       // Chapters are built a few at a time so the whole book finishes much faster.
@@ -166,6 +177,30 @@ function CreatePage() {
             onChange={(e) => setChapterCount(Number(e.target.value))}
             className="mt-3 w-full accent-[var(--gold)]"
           />
+
+          <label className="mt-5 block text-sm font-semibold" htmlFor="art-style">
+            Illustration style
+            {plan && style === plan.artStyle && (
+              <span className="ml-2 font-normal text-primary">· detected</span>
+            )}
+          </label>
+          <select
+            id="art-style"
+            value={style}
+            onChange={(e) => setStyle(e.target.value as ArtStyleId)}
+            className="mt-2 w-full rounded-2xl border border-input bg-background px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
+          >
+            {ART_STYLES.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.label} — {s.hint}
+              </option>
+            ))}
+          </select>
+          <p className="mt-2 text-xs text-muted-foreground">
+            {plan?.artStyleReason && style === plan.artStyle
+              ? plan.artStyleReason
+              : artStyle(style).hint}
+          </p>
 
 
           <div className="mt-5 rounded-2xl bg-secondary/50 p-3 text-sm text-muted-foreground">

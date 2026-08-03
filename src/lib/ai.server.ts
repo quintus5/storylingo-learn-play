@@ -87,7 +87,4 @@ export async function generateIllustration(prompt: string): Promise<Uint8Array> 
   return bytes;
 }
 
-export const ART_STYLE =
-  "Soft children's watercolor storybook illustration, warm desert night palette: deep navy sky, " +
-  "golden stars, warm sand dunes, gentle glowing lantern light. Hand-painted texture, rounded friendly " +
-  "shapes, no text, no letters, no words, no borders, gentle and kind mood suitable for young children.";
+export { artStylePrompt as ART_STYLE_PROMPT } from "./art-styles";

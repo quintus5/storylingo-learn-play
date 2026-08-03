@@ -1,5 +1,7 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { ART_STYLE, chatJson, generateIllustration } from "./ai.server";
+import { chatJson, generateIllustration } from "./ai.server";
+import { ART_STYLE_MENU, DEFAULT_ART_STYLE, artStylePrompt, isArtStyleId } from "./art-styles";
+import type { ArtStyleId } from "./art-styles";
 import type { Page, Word } from "./types";
 import { StoryValidationError, parseChapterContent, parseOutline } from "./story-schema";
 import type { Outline } from "./story-schema";
@@ -166,12 +168,13 @@ export async function illustratePages(
   chapterIdx: number,
   chapterTitle: string,
   pages: Page[],
+  styleId?: string | null,
 ): Promise<Page[]> {
   return Promise.all(
     pages.map(async (page, i) => {
       const scene = page.scene?.trim() || `${chapterTitle}: ${page.sentences[0]?.native ?? ""}`;
       try {
-        const url = await makeArt(bookId, `chapter-${chapterIdx}-page-${i + 1}`, scene);
+        const url = await makeArt(bookId, `chapter-${chapterIdx}-page-${i + 1}`, scene, styleId);
         return { ...page, image_url: url };
       } catch (err) {
         console.error(`Page ${i + 1} illustration failed`, err);
@@ -182,8 +185,13 @@ export async function illustratePages(
 }
 
 /** Generate an illustration, store it, and return its public app URL. */
-export async function makeArt(bookId: string, name: string, scene: string): Promise<string> {
-  const bytes = await generateIllustration(`${scene}\n\nStyle: ${ART_STYLE}`);
+export async function makeArt(
+  bookId: string,
+  name: string,
+  scene: string,
+  styleId?: string | null,
+): Promise<string> {
+  const bytes = await generateIllustration(`${scene}\n\nStyle: ${artStylePrompt(styleId)}`);
   const path = `${bookId}/${name}.png`;
   const { error } = await supabaseAdmin.storage
     .from(BUCKET)
@@ -199,21 +207,28 @@ export type StoryPreview = {
   reason: string;
   chapterTitles: string[];
   wordCount: number;
+  artStyle: ArtStyleId;
+  artStyleReason: string;
 };
 
 /** Read a source link and suggest how many chapters the picture book should have. */
 export async function previewStory(url: string, fallbackTitle: string): Promise<StoryPreview> {
   const storyText = await fetchStoryText(url);
-  const raw = await chatJson<Partial<StoryPreview>>(
+  const raw = await chatJson<Partial<StoryPreview> & { artStyle?: string }>(
     "You are a children's book editor planning beginner Mandarin picture books for Thai-speaking children aged 6-10. " +
       "You never copy source wording — you plan an original retelling. Reply with JSON only.",
     `Source material (understand the plot only):\n"""${storyText.slice(0, 12000)}"""\n\n` +
       `Working title: ${fallbackTitle || "(none given)"}\n` +
       `Decide how many short chapters this retelling should have (between 1 and 10). ` +
       `Short simple stories need 1-3; longer or multi-episode material needs more.\n` +
+      `Also choose the illustration style whose culture and historical period best matches the story's ` +
+      `origin and setting. Choose exactly one id from: ${ART_STYLE_MENU}. ` +
+      `Use "${DEFAULT_ART_STYLE}" only for modern stories or when the origin is unclear.\n` +
       `Return JSON: {"title": string (friendly English title), "blurb": string (one short English sentence), ` +
       `"suggestedChapters": number (1-10), "reason": string (one short English sentence explaining the number), ` +
-      `"chapterTitles": [string] (one short English title per suggested chapter)}`,
+      `"chapterTitles": [string] (one short English title per suggested chapter), ` +
+      `"artStyle": string (one id from the list), ` +
+      `"artStyleReason": string (one short English sentence, e.g. "Classical Chinese fable set in the Tang dynasty")}`,
   );
 
   const suggested = Math.min(10, Math.max(1, Math.round(Number(raw.suggestedChapters) || 3)));
@@ -228,5 +243,8 @@ export async function previewStory(url: string, fallbackTitle: string): Promise<
     reason: (raw.reason ?? "").trim(),
     chapterTitles: titles,
     wordCount: storyText.split(/\s+/).filter(Boolean).length,
+    artStyle: isArtStyleId(raw.artStyle) ? raw.artStyle : DEFAULT_ART_STYLE,
+    artStyleReason: (raw.artStyleReason ?? "").trim(),
   };
 }
+
