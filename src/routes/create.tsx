@@ -16,7 +16,10 @@ type StoryPreview = {
   wordCount: number;
   artStyle: ArtStyleId;
   artStyleReason: string;
+  characters: string[];
+  keyEvents: string[];
 };
+
 
 
 
