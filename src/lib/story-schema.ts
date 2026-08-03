@@ -42,6 +42,8 @@ export const ChapterContentSchema = z.object({
 export const OutlineChapterSchema = z.object({
   title: nonEmpty(120),
   summary: nonEmpty(1200),
+  /** 3-5 short beats from the real story that this chapter must cover, in order. */
+  keyEvents: z.array(nonEmpty(300)).max(12).default([]),
   illustration: z.string().trim().max(1200).optional(),
   mood: z.string().trim().max(40).optional(),
 });
@@ -49,8 +51,10 @@ export const OutlineChapterSchema = z.object({
 export const OutlineSchema = z.object({
   title: nonEmpty(160),
   blurb: z.string().trim().max(600).optional(),
+  characters: z.array(nonEmpty(120)).max(20).default([]),
   chapters: z.array(OutlineChapterSchema).min(1),
 });
+
 
 export type ChapterContent = z.infer<typeof ChapterContentSchema>;
 export type Outline = z.infer<typeof OutlineSchema>;
@@ -114,16 +118,33 @@ export function parseChapterContent(raw: unknown): { pages: Page[]; words: Word[
   return { pages: result.data.pages, words: result.data.words };
 }
 
+/** Keep only usable short strings from a possibly-malformed list. */
+function stringList(value: unknown, max = 300): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((v): v is string => typeof v === "string" && v.trim().length > 0)
+    .map((v) => v.trim().slice(0, max));
+}
+
 /** Repair-then-validate the book outline. */
 export function parseOutline(raw: unknown, expectedCount?: number): Outline {
   const obj = asRecord(raw);
-  const chapters = keepValid(OutlineChapterSchema, obj.chapters);
+  // Repair each chapter's keyEvents first so one bad beat never drops a chapter.
+  const rawChapters = Array.isArray(obj.chapters) ? obj.chapters : [];
+  const cleaned = rawChapters.map((c) =>
+    c && typeof c === "object" && !Array.isArray(c)
+      ? { ...(c as object), keyEvents: stringList((c as { keyEvents?: unknown }).keyEvents) }
+      : c,
+  );
+  const chapters = keepValid(OutlineChapterSchema, cleaned);
 
   const result = OutlineSchema.safeParse({
     title: obj.title,
     blurb: typeof obj.blurb === "string" ? obj.blurb : undefined,
+    characters: stringList(obj.characters, 120),
     chapters,
   });
+
   if (!result.success) {
     throw new StoryValidationError(
       "The story generator returned an unusable outline.",

@@ -15,10 +15,11 @@ export const createBook = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => CreateBookInput.parse(input))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { fetchStoryText, buildOutline } = await import("./story.server");
+    const { getSourceText, buildOutline } = await import("./story.server");
 
-    const storyText = await fetchStoryText(data.url);
+    const storyText = await getSourceText(data.url);
     const outline = await buildOutline(storyText, data.title, data.chapterCount);
+
     const chapters = (outline.chapters ?? []).slice(0, data.chapterCount);
     if (chapters.length < 1) throw new Error("Could not split that story into chapters.");
 
@@ -40,8 +41,14 @@ export const createBook = createServerFn({ method: "POST" })
       book_id: book.id,
       idx: i + 1,
       title: c.title || `Chapter ${i + 1}`,
-      summary: [c.summary, `SCENE: ${c.illustration ?? c.summary}`].join("\n"),
+      // Key beats are kept with the chapter so regeneration stays faithful.
+      summary: [
+        c.summary,
+        `KEY: ${(c.keyEvents ?? []).join(" | ")}`,
+        `SCENE: ${c.illustration ?? c.summary}`,
+      ].join("\n"),
     }));
+
     const { error: chErr } = await supabaseAdmin.from("chapters").insert(rows);
     if (chErr) throw new Error(chErr.message);
 
@@ -57,11 +64,13 @@ export const generateChapter = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => ChapterInput.parse(input))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { buildChapterContent, illustratePages, makeArt } = await import("./story.server");
+    const { buildChapterContent, illustratePages, makeArt, getSourceText } = await import(
+      "./story.server"
+    );
 
     const { data: book } = await supabaseAdmin
       .from("books")
-      .select("id, title, chapter_count, art_style")
+      .select("id, title, chapter_count, art_style, source_url")
       .eq("id", data.bookId)
       .single();
     if (!book) throw new Error("Book not found");
@@ -82,8 +91,28 @@ export const generateChapter = createServerFn({ method: "POST" })
       .filter(Boolean);
 
     const summary = chapter.summary ?? "";
-    const [plot, scenePart] = summary.split("SCENE:");
-    const scene = (scenePart ?? plot ?? chapter.title).trim();
+    const [beforeScene, scenePart] = summary.split("SCENE:");
+    const scene = (scenePart ?? beforeScene ?? chapter.title).trim();
+    const [plot, keyPart] = (beforeScene ?? "").split("KEY:");
+    const keyEvents = (keyPart ?? "")
+      .split("|")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    // The original text keeps the retelling honest; it is cached per source link.
+    let sourceExcerpt = "";
+    if (book.source_url) {
+      try {
+        const full = await getSourceText(book.source_url);
+        const total = book.chapter_count || 1;
+        const size = Math.ceil(full.length / total);
+        // Give this chapter its slice of the source, with a little overlap.
+        const start = Math.max(0, (data.idx - 1) * size - 400);
+        sourceExcerpt = full.slice(start, start + size + 800);
+      } catch (err) {
+        console.warn("Could not re-read source for fidelity", err);
+      }
+    }
 
     const content = await buildChapterContent(
       book.title,
@@ -91,7 +120,10 @@ export const generateChapter = createServerFn({ method: "POST" })
       chapter.title,
       (plot ?? "").trim() || chapter.title,
       known,
+      keyEvents,
+      sourceExcerpt,
     );
+
 
     // Paint every page (and the book cover on chapter 1) at the same time.
     const [pages, cover] = await Promise.all([

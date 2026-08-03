@@ -16,7 +16,10 @@ type StoryPreview = {
   wordCount: number;
   artStyle: ArtStyleId;
   artStyleReason: string;
+  characters: string[];
+  keyEvents: string[];
 };
+
 
 
 
@@ -239,6 +242,46 @@ function CreatePage() {
                 ))}
               </ol>
             )}
+
+            {plan.characters.length > 0 && (
+              <div className="mt-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                  Characters kept from the original
+                </p>
+                <ul className="mt-2 flex flex-wrap gap-2">
+                  {plan.characters.map((c, i) => (
+                    <li
+                      key={i}
+                      className="rounded-full bg-secondary/60 px-3 py-1 text-xs text-secondary-foreground"
+                    >
+                      {c}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {plan.keyEvents.length > 0 && (
+              <details className="mt-4 rounded-2xl bg-secondary/40 p-3">
+                <summary className="cursor-pointer text-sm font-bold">
+                  Real story beats we'll keep ({plan.keyEvents.length})
+                </summary>
+                <ol className="mt-2 space-y-1 text-sm text-muted-foreground">
+                  {plan.keyEvents.map((e, i) => (
+                    <li key={i} className="flex gap-2">
+                      <span className="font-bold text-primary">{i + 1}.</span>
+                      <span>{e}</span>
+                    </li>
+                  ))}
+                </ol>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  StoryLingo retells the story in its own simple words but keeps these events,
+                  the characters and the real ending.
+                </p>
+              </details>
+            )}
+
+
 
             {chapterCount !== plan.suggestedChapters && (
               <button
