@@ -42,6 +42,8 @@ export const ChapterContentSchema = z.object({
 export const OutlineChapterSchema = z.object({
   title: nonEmpty(120),
   summary: nonEmpty(1200),
+  /** 3-5 short beats from the real story that this chapter must cover, in order. */
+  keyEvents: z.array(nonEmpty(300)).max(12).default([]),
   illustration: z.string().trim().max(1200).optional(),
   mood: z.string().trim().max(40).optional(),
 });
@@ -49,8 +51,10 @@ export const OutlineChapterSchema = z.object({
 export const OutlineSchema = z.object({
   title: nonEmpty(160),
   blurb: z.string().trim().max(600).optional(),
+  characters: z.array(nonEmpty(120)).max(20).default([]),
   chapters: z.array(OutlineChapterSchema).min(1),
 });
+
 
 export type ChapterContent = z.infer<typeof ChapterContentSchema>;
 export type Outline = z.infer<typeof OutlineSchema>;
