@@ -103,23 +103,73 @@ export async function fetchStoryText(url: string): Promise<string> {
 }
 
 
+/** Cache source text per URL for the lifetime of the worker instance. */
+const sourceCache = new Map<string, string>();
+
+export async function getSourceText(url: string): Promise<string> {
+  const hit = sourceCache.get(url);
+  if (hit) return hit;
+  const text = await fetchStoryText(url);
+  sourceCache.set(url, text);
+  return text;
+}
+
+export type PlotSpine = { characters: string[]; events: string[] };
+
+const FIDELITY_RULES =
+  `FAITHFULNESS RULES (very important):\n` +
+  `- Keep the real story. Use the original character names and their real roles.\n` +
+  `- Keep every major event, in the original order, including confrontations, fights and setbacks.\n` +
+  `- Keep the original ending. Never invent a different ending or a new plot.\n` +
+  `- Never add characters or events that are not in the source, and never drop a key event.\n` +
+  `- You may only simplify: shorter sentences, simpler words, and gore or cruelty described gently ` +
+  `(the event still happens, it is just told kindly for ages 6-10).\n` +
+  `- Use your own wording (do not copy sentences from the source), but never change what happens.`;
+
+/** Pull the real characters and ordered events out of the source before planning. */
+export async function extractPlotSpine(storyText: string): Promise<PlotSpine> {
+  const raw = await chatJson<{ characters?: unknown; events?: unknown }>(
+    "You are a careful story analyst. You extract facts from a story exactly as written, never inventing. Reply with JSON only.",
+    `Story source:\n"""${storyText}"""\n\n` +
+      `List the real characters (with their real names) and every important event in the order it happens. ` +
+      `Do not soften, skip or invent anything — include fights, deaths, tricks and the ending.\n` +
+      `Return JSON: {"characters": [string (name — one short role description)], "events": [string (one short English sentence per event, in order, 10-40 events)]}`,
+  );
+  const list = (v: unknown, max: number) =>
+    Array.isArray(v)
+      ? v.filter((x): x is string => typeof x === "string" && x.trim().length > 0).map((x) => x.trim()).slice(0, max)
+      : [];
+  return { characters: list(raw.characters, 20), events: list(raw.events, 40) };
+}
+
 export async function buildOutline(
   storyText: string,
   fallbackTitle: string,
   chapterCount: number,
+  spine?: PlotSpine,
 ): Promise<Outline> {
+  const plotSpine = spine ?? (await extractPlotSpine(storyText).catch(() => null));
+  const spineText = plotSpine
+    ? `Characters in the real story: ${plotSpine.characters.join("; ") || "(none found)"}\n` +
+      `Real events in order:\n${plotSpine.events.map((e, i) => `${i + 1}. ${e}`).join("\n")}\n\n`
+    : "";
+
   const raw = await chatJson<unknown>(
     "You are a children's story editor building beginner Mandarin learning material for Thai-speaking children aged 6-10. " +
-      "You must RETELL stories in your own original words — never reproduce, quote or closely paraphrase the source wording. " +
+      "You retell stories in your own words but you NEVER change what happens — the plot, characters and ending stay true to the source. " +
       "Reply with JSON only.",
-    `Source material (for understanding the plot only, never copy its wording):\n"""${storyText}"""\n\n` +
+    `Source material:\n"""${storyText}"""\n\n` +
+      spineText +
       `Working title: ${fallbackTitle}\n` +
-      `Write an ORIGINAL retelling plan with exactly ${chapterCount} short chapters.\n` +
-      `Return JSON: {"title": string (a friendly retold title in English), "blurb": string (one short English sentence), ` +
-      `"chapters": [{"title": string (short, English), "summary": string (2-3 sentences describing what happens, in English), ` +
+      `${FIDELITY_RULES}\n\n` +
+      `Plan a faithful retelling with exactly ${chapterCount} short chapters that together cover ALL of the real events above, in order.\n` +
+      `Return JSON: {"title": string (a friendly title in English, close to the real story's title), "blurb": string (one short English sentence), ` +
+      `"characters": [string (the real character names used in this book)], ` +
+      `"chapters": [{"title": string (short, English), "summary": string (2-3 sentences describing what really happens, in English), ` +
+      `"keyEvents": [string (3-5 short beats from the real story that this chapter must cover, in order)], ` +
       `"illustration": string (a vivid English description of one scene to paint, no text in image)}]}` +
       (chapterCount === 1
-        ? `\nThis is a ONE-chapter book, so that single chapter must be a complete little story with a beginning, middle and happy ending.`
+        ? `\nThis is a ONE-chapter book, so that single chapter must cover the whole real story from beginning to its real ending.`
         : ``),
   );
   return parseOutline(raw, chapterCount);
@@ -133,15 +183,31 @@ export async function buildChapterContent(
   chapterTitle: string,
   chapterSummary: string,
   knownWords: string[],
+  keyEvents: string[] = [],
+  sourceExcerpt = "",
 ): Promise<ChapterContent> {
+  const beats = keyEvents.length
+    ? `Beats from the real story this chapter MUST cover, in order:\n${keyEvents
+        .map((e, i) => `${i + 1}. ${e}`)
+        .join("\n")}\n`
+    : "";
+  const source = sourceExcerpt.trim()
+    ? `Original source (for facts only — do not copy its wording):\n"""${sourceExcerpt.trim().slice(0, 6000)}"""\n\n`
+    : "";
+
   const ask = () =>
     chatJson<unknown>(
     "You write beginner Mandarin Chinese reading material for Thai-speaking children. " +
-      "Everything must be your own original simple writing (HSK1-HSK2 level), never copied text. " +
+      "Everything must be your own original simple writing (HSK1-HSK2 level), never copied text, " +
+      "but the events, characters and ending must stay true to the source story. " +
       "Pinyin must include tone marks. Thai translations must be natural Thai. Reply with JSON only.",
-    `Book: ${bookTitle}\nChapter ${chapterIdx}: ${chapterTitle}\nWhat happens: ${chapterSummary}\n` +
+    source +
+      `Book: ${bookTitle}\nChapter ${chapterIdx}: ${chapterTitle}\nWhat happens: ${chapterSummary}\n` +
+      beats +
       `Words already taught (reuse some of these): ${knownWords.slice(0, 60).join(", ") || "none yet"}\n\n` +
-      `Write this chapter as 2 or 3 pages. Each page has 5 to 8 very short sentences (4-10 characters each).\n` +
+      `${FIDELITY_RULES}\n\n` +
+      `Write this chapter as 2 or 3 pages. Each page has 5 to 8 very short sentences (4-10 characters each). ` +
+      `Every listed beat must actually appear in the sentences.\n` +
       `Return JSON:\n` +
       `{"pages":[{"scene":"a vivid English description of one picture to paint for this page (no text in image)","sentences":[{"hanzi":"简体中文句子","pinyin":"jiǎn tǐ zhōng wén jù zi","native":"ประโยคภาษาไทย",` +
       `"words":[{"hanzi":"词","pinyin":"cí","dict":"ความหมายทั่วไปในพจนานุกรม (Thai)","context":"ความหมายในประโยคนี้ (Thai)"}]}]}],` +
@@ -161,6 +227,7 @@ export async function buildChapterContent(
     return parseChapterContent(await ask());
   }
 }
+
 
 /** Paint one illustration per page, all in parallel. */
 export async function illustratePages(
