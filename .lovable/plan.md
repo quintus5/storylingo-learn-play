@@ -57,7 +57,7 @@ Write this chapter as 2 or 3 pages. Each page has 5 to 8 very short sentences...
 
 **3. Extract a plot spine before outlining.** One extra analysis step that pulls characters (with names) and the ordered event list out of the source, then feeds that into the outline. This keeps long sources from losing their second half to truncation.
 
-**4. Surface fidelity in the UI.** On the create screen's preview card, show the detected characters and planned beats so you can see, before generating, whether the plan matches the real story. Add a "Stay strictly faithful" vs "Gentle for young children" toggle — strict keeps confrontations (the oni fight) intact; gentle softens violence, which is what happens implicitly today.
+**4. Surface fidelity in the UI.** On the create screen's preview card, show the detected characters and planned beats so you can see, before generating, whether the plan matches the real story. No toggle — faithfulness is always on: the retelling keeps the real plot (including the oni fight and the original ending), and only the wording, sentence length, and gore-level detail are simplified for young readers.
 
 ## Technical notes
 
