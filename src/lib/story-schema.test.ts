@@ -196,4 +196,37 @@ describe("parseOutline", () => {
   it("throws on non-object model output", () => {
     expect(() => parseOutline("not json")).toThrow(StoryValidationError);
   });
+
+  it("keeps key events and characters from the plot spine", () => {
+    const raw = outline(2) as Record<string, unknown> & { chapters: Record<string, unknown>[] };
+    raw.characters = ["Momotaro — the peach boy", "Red demon — the villain"];
+    raw.chapters[0].keyEvents = ["Momotaro is born from a peach", "He sets off for Demon Island"];
+    const parsed = parseOutline(raw);
+    expect(parsed.characters).toHaveLength(2);
+    expect(parsed.chapters[0].keyEvents).toEqual([
+      "Momotaro is born from a peach",
+      "He sets off for Demon Island",
+    ]);
+  });
+
+  it("defaults key events to an empty list when absent", () => {
+    expect(parseOutline(outline(2)).chapters[0].keyEvents).toEqual([]);
+  });
+
+  it("keeps the chapter when key events are malformed", () => {
+    const raw = outline(2) as { chapters: Record<string, unknown>[] };
+    raw.chapters[0].keyEvents = "the demon fights Momotaro";
+    raw.chapters[1].keyEvents = [null, 42, "  The demon is defeated  ", ""];
+    const parsed = parseOutline(raw);
+    expect(parsed.chapters).toHaveLength(2);
+    expect(parsed.chapters[0].keyEvents).toEqual([]);
+    expect(parsed.chapters[1].keyEvents).toEqual(["The demon is defeated"]);
+  });
+
+  it("ignores a malformed characters field", () => {
+    const raw = outline(1) as Record<string, unknown>;
+    raw.characters = "Momotaro";
+    expect(parseOutline(raw).characters).toEqual([]);
+  });
 });
+
