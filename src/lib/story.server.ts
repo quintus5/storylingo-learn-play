@@ -1,5 +1,7 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { ART_STYLE, chatJson, generateIllustration } from "./ai.server";
+import { chatJson, generateIllustration } from "./ai.server";
+import { ART_STYLE_MENU, DEFAULT_ART_STYLE, artStylePrompt, isArtStyleId } from "./art-styles";
+import type { ArtStyleId } from "./art-styles";
 import type { Page, Word } from "./types";
 import { StoryValidationError, parseChapterContent, parseOutline } from "./story-schema";
 import type { Outline } from "./story-schema";
