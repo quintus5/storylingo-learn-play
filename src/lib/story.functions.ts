@@ -1,10 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { ART_STYLES, DEFAULT_ART_STYLE } from "./art-styles";
+
+const ART_STYLE_IDS = ART_STYLES.map((s) => s.id) as [string, ...string[]];
 
 const CreateBookInput = z.object({
   title: z.string().trim().min(1).max(120),
   url: z.string().trim().url().max(2000),
   chapterCount: z.number().int().min(1).max(10),
+  artStyle: z.enum(ART_STYLE_IDS).optional(),
 });
 
 export const createBook = createServerFn({ method: "POST" })
@@ -25,6 +29,7 @@ export const createBook = createServerFn({ method: "POST" })
         blurb: outline.blurb ?? null,
         source_url: data.url,
         chapter_count: chapters.length,
+        art_style: data.artStyle ?? DEFAULT_ART_STYLE,
         status: "generating",
       })
       .select("id")
