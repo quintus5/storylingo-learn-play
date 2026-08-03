@@ -118,16 +118,33 @@ export function parseChapterContent(raw: unknown): { pages: Page[]; words: Word[
   return { pages: result.data.pages, words: result.data.words };
 }
 
+/** Keep only usable short strings from a possibly-malformed list. */
+function stringList(value: unknown, max = 300): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((v): v is string => typeof v === "string" && v.trim().length > 0)
+    .map((v) => v.trim().slice(0, max));
+}
+
 /** Repair-then-validate the book outline. */
 export function parseOutline(raw: unknown, expectedCount?: number): Outline {
   const obj = asRecord(raw);
-  const chapters = keepValid(OutlineChapterSchema, obj.chapters);
+  // Repair each chapter's keyEvents first so one bad beat never drops a chapter.
+  const rawChapters = Array.isArray(obj.chapters) ? obj.chapters : [];
+  const cleaned = rawChapters.map((c) =>
+    c && typeof c === "object" && !Array.isArray(c)
+      ? { ...(c as object), keyEvents: stringList((c as { keyEvents?: unknown }).keyEvents) }
+      : c,
+  );
+  const chapters = keepValid(OutlineChapterSchema, cleaned);
 
   const result = OutlineSchema.safeParse({
     title: obj.title,
     blurb: typeof obj.blurb === "string" ? obj.blurb : undefined,
+    characters: stringList(obj.characters, 120),
     chapters,
   });
+
   if (!result.success) {
     throw new StoryValidationError(
       "The story generator returned an unusable outline.",
