@@ -276,27 +276,32 @@ export type StoryPreview = {
   wordCount: number;
   artStyle: ArtStyleId;
   artStyleReason: string;
+  characters: string[];
+  keyEvents: string[];
 };
 
 /** Read a source link and suggest how many chapters the picture book should have. */
 export async function previewStory(url: string, fallbackTitle: string): Promise<StoryPreview> {
-  const storyText = await fetchStoryText(url);
-  const raw = await chatJson<Partial<StoryPreview> & { artStyle?: string }>(
-    "You are a children's book editor planning beginner Mandarin picture books for Thai-speaking children aged 6-10. " +
-      "You never copy source wording — you plan an original retelling. Reply with JSON only.",
-    `Source material (understand the plot only):\n"""${storyText.slice(0, 12000)}"""\n\n` +
-      `Working title: ${fallbackTitle || "(none given)"}\n` +
-      `Decide how many short chapters this retelling should have (between 1 and 10). ` +
-      `Short simple stories need 1-3; longer or multi-episode material needs more.\n` +
-      `Also choose the illustration style whose culture and historical period best matches the story's ` +
-      `origin and setting. Choose exactly one id from: ${ART_STYLE_MENU}. ` +
-      `Use "${DEFAULT_ART_STYLE}" only for modern stories or when the origin is unclear.\n` +
-      `Return JSON: {"title": string (friendly English title), "blurb": string (one short English sentence), ` +
-      `"suggestedChapters": number (1-10), "reason": string (one short English sentence explaining the number), ` +
-      `"chapterTitles": [string] (one short English title per suggested chapter), ` +
-      `"artStyle": string (one id from the list), ` +
-      `"artStyleReason": string (one short English sentence, e.g. "Classical Chinese fable set in the Tang dynasty")}`,
-  );
+  const storyText = await getSourceText(url);
+  const [raw, spine] = await Promise.all([
+    chatJson<Partial<StoryPreview> & { artStyle?: string }>(
+      "You are a children's book editor planning beginner Mandarin picture books for Thai-speaking children aged 6-10. " +
+        "You retell in your own words but never change the real plot. Reply with JSON only.",
+      `Source material (understand the plot only):\n"""${storyText.slice(0, 12000)}"""\n\n` +
+        `Working title: ${fallbackTitle || "(none given)"}\n` +
+        `Decide how many short chapters this retelling should have (between 1 and 10). ` +
+        `Short simple stories need 1-3; longer or multi-episode material needs more.\n` +
+        `Also choose the illustration style whose culture and historical period best matches the story's ` +
+        `origin and setting. Choose exactly one id from: ${ART_STYLE_MENU}. ` +
+        `Use "${DEFAULT_ART_STYLE}" only for modern stories or when the origin is unclear.\n` +
+        `Return JSON: {"title": string (friendly English title, close to the real story's title), "blurb": string (one short English sentence), ` +
+        `"suggestedChapters": number (1-10), "reason": string (one short English sentence explaining the number), ` +
+        `"chapterTitles": [string] (one short English title per suggested chapter), ` +
+        `"artStyle": string (one id from the list), ` +
+        `"artStyleReason": string (one short English sentence, e.g. "Classical Chinese fable set in the Tang dynasty")}`,
+    ),
+    extractPlotSpine(storyText).catch(() => ({ characters: [], events: [] }) as PlotSpine),
+  ]);
 
   const suggested = Math.min(10, Math.max(1, Math.round(Number(raw.suggestedChapters) || 3)));
   const titles = (Array.isArray(raw.chapterTitles) ? raw.chapterTitles : [])
@@ -312,6 +317,9 @@ export async function previewStory(url: string, fallbackTitle: string): Promise<
     wordCount: storyText.split(/\s+/).filter(Boolean).length,
     artStyle: isArtStyleId(raw.artStyle) ? raw.artStyle : DEFAULT_ART_STYLE,
     artStyleReason: (raw.artStyleReason ?? "").trim(),
+    characters: spine.characters,
+    keyEvents: spine.events,
   };
 }
+
 
