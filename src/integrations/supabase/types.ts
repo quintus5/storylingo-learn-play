@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       books: {
         Row: {
+          art_style: string
           blurb: string | null
           chapter_count: number
           cover_url: string | null
@@ -28,6 +29,7 @@ export type Database = {
           title: string
         }
         Insert: {
+          art_style?: string
           blurb?: string | null
           chapter_count?: number
           cover_url?: string | null
@@ -40,6 +42,7 @@ export type Database = {
           title: string
         }
         Update: {
+          art_style?: string
           blurb?: string | null
           chapter_count?: number
           cover_url?: string | null

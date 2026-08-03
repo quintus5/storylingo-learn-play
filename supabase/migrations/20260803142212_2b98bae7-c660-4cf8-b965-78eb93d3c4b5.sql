@@ -1,0 +1,1 @@
+ALTER TABLE public.books ADD COLUMN IF NOT EXISTS art_style text NOT NULL DEFAULT 'modern-watercolor';
