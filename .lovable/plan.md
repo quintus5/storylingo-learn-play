@@ -61,9 +61,10 @@ Write this chapter as 2 or 3 pages. Each page has 5 to 8 very short sentences...
 
 ## Technical notes
 
-- `src/lib/story.server.ts`: new `extractPlotSpine()`; rewrite `buildOutline` prompt with fidelity rules and per-chapter `keyEvents`; extend `buildChapterContent` signature with `keyEvents` + `sourceExcerpt`; add a `fidelity` mode flag threaded through both.
+- `src/lib/story.server.ts`: new `extractPlotSpine()`; rewrite `buildOutline` prompt with fidelity rules and per-chapter `keyEvents`; extend `buildChapterContent` signature with `keyEvents` + `sourceExcerpt`. Fidelity rules are fixed constants in the prompts, not a user option.
 - `src/lib/story-schema.ts`: add `keyEvents: string[]` to the outline chapter schema (tolerant repair — missing array falls back to empty).
 - `src/lib/story-schema.test.ts`: fixtures for outlines with missing/malformed `keyEvents`.
-- `src/lib/story.functions.ts`: persist key events with each chapter row so re-generation stays consistent; pass fidelity mode from the create form.
-- `src/routes/create.tsx`: show characters + beats in the preview card, add the fidelity toggle.
+- `src/lib/story.functions.ts`: persist key events with each chapter row so re-generation stays consistent.
+- `src/routes/create.tsx`: show characters + beats in the preview card.
+
 - Existing books keep working; the new fields are optional.
