@@ -54,6 +54,7 @@ function Reader() {
   const [word, setWord] = useState<Word | null>(null);
   const [playing, setPlaying] = useState(false);
   const [music, setMusic] = useState(false);
+  const [dir, setDir] = useState(1);
 
   const current = pages[page];
   const isLast = page >= pages.length - 1;
@@ -125,11 +126,11 @@ function Reader() {
   function go(delta: number) {
     stopAudio();
     setPlaying(false);
-    setPage((p) => Math.min(Math.max(p + delta, 0), pages.length - 1));
-    if (typeof window !== "undefined") {
-      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      window.scrollTo({ top: 0, behavior: reduced ? "auto" : "instant" as ScrollBehavior });
-    }
+    setPage((p) => {
+      const next = Math.min(Math.max(p + delta, 0), pages.length - 1);
+      if (next !== p) setDir(delta > 0 ? 1 : -1);
+      return next;
+    });
   }
 
 
