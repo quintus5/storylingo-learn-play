@@ -10,18 +10,8 @@ const BUCKET = "story-art";
 
 export type { Outline };
 
-/** Reject text that is mostly binary junk rather than real prose. */
-function assertReadable(text: string): void {
-  if (text.length < 200) {
-    throw new Error("That page didn't contain enough story text to work with.");
-  }
-  const readable = (text.match(/[\p{Letter}\p{Mark}\s.,!?'"—-]/gu) ?? []).length;
-  if (readable / text.length < 0.8) {
-    throw new Error(
-      "That link didn't give back readable text — it looks like a file StoryLingo can't read.",
-    );
-  }
-}
+export { assertReadable, estimateWordCount, junkRatio } from "./readable";
+import { assertReadable, estimateWordCount } from "./readable";
 
 async function extractPdfText(buffer: ArrayBuffer): Promise<string> {
   const { extractText, getDocumentProxy } = await import("unpdf");
@@ -314,7 +304,7 @@ export async function previewStory(url: string, fallbackTitle: string): Promise<
     suggestedChapters: suggested,
     reason: (raw.reason ?? "").trim(),
     chapterTitles: titles,
-    wordCount: storyText.split(/\s+/).filter(Boolean).length,
+    wordCount: estimateWordCount(storyText),
     artStyle: isArtStyleId(raw.artStyle) ? raw.artStyle : DEFAULT_ART_STYLE,
     artStyleReason: (raw.artStyleReason ?? "").trim(),
     characters: spine.characters,
