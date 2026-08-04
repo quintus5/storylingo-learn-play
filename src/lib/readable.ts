@@ -3,7 +3,8 @@
 /** Count characters that indicate a broken decode or binary payload. */
 export function junkRatio(text: string): number {
   if (!text.length) return 1;
-  const junk = (text.match(/[\p{C}\uFFFD]/gu) ?? []).length;
+  // \p{C} includes newlines/tabs, so ignore whitespace before counting.
+  const junk = (text.match(/[\uFFFD]|(?!\s)\p{C}/gu) ?? []).length;
   return junk / text.length;
 }
 

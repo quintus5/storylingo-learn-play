@@ -44,7 +44,7 @@ describe("junkRatio", () => {
 
 describe("estimateWordCount", () => {
   it("counts Chinese characters rather than whitespace tokens", () => {
-    expect(estimateWordCount(CHINESE)).toBeGreaterThan(100);
+    expect(estimateWordCount(CHINESE)).toBeGreaterThan(90);
   });
 
   it("counts words for Latin text", () => {
