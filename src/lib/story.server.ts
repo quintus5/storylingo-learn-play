@@ -329,7 +329,7 @@ export async function previewStory(url: string, fallbackTitle: string): Promise<
     suggestedChapters: suggested,
     reason: (raw.reason ?? "").trim(),
     chapterTitles: titles,
-    wordCount: storyText.split(/\s+/).filter(Boolean).length,
+    wordCount: estimateWordCount(storyText),
     artStyle: isArtStyleId(raw.artStyle) ? raw.artStyle : DEFAULT_ART_STYLE,
     artStyleReason: (raw.artStyleReason ?? "").trim(),
     characters: spine.characters,
