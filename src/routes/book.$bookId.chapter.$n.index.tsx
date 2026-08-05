@@ -231,39 +231,47 @@ function Reader() {
         </div>
       </header>
 
-      {/* Reading panel */}
+      {/* Reading panel — subtitle by default, opens to a full page */}
       <section
-        className={`glass-panel absolute inset-x-0 bottom-0 z-10 flex flex-col rounded-t-[2rem] border-t border-border/60 transition-[max-height] duration-500 ease-out ${
-          expanded ? "max-h-[82vh]" : playing ? "max-h-[34vh]" : "max-h-[46vh]"
+        className={`absolute z-10 flex flex-col overflow-hidden border transition-all duration-500 ease-out motion-reduce:transition-none ${
+          panel === "full"
+            ? "glass-full inset-x-0 bottom-0 max-h-[100dvh] rounded-t-[2rem] border-border/60 h-[100dvh]"
+            : panel === "peek"
+              ? "glass-subtitle inset-x-2 bottom-3 max-h-[34vh] rounded-[1.75rem] border-border/40 sm:inset-x-6"
+              : "glass-subtitle inset-x-2 bottom-3 max-h-[24vh] rounded-[1.75rem] border-border/40 sm:inset-x-6"
         }`}
       >
         <button
           type="button"
-          onClick={() => setExpanded((v) => !v)}
-          aria-label={expanded ? "Collapse the text" : "Expand the text"}
-          className="mx-auto flex h-8 w-full max-w-5xl items-center justify-center text-muted-foreground"
+          onClick={() => setPanel(panel === "full" ? "subtitle" : "full")}
+          aria-label={panel === "full" ? "Collapse the text" : "Show the whole page"}
+          className="mx-auto flex h-7 w-full max-w-5xl shrink-0 items-center justify-center text-muted-foreground"
         >
-          {expanded ? <ChevronDown className="h-5 w-5" /> : <ChevronUp className="h-5 w-5" />}
+          {panel === "full" ? (
+            <ChevronDown className="h-5 w-5" />
+          ) : (
+            <ChevronUp className="h-5 w-5" />
+          )}
         </button>
 
         <div
           ref={panelRef}
           onScroll={(e) => {
-            if (e.currentTarget.scrollTop > 8) setExpanded(true);
+            if (e.currentTarget.scrollTop > 8) setPanel("full");
           }}
-          className="mx-auto w-full max-w-5xl flex-1 overflow-y-auto px-4 pb-2"
+          className={`mx-auto w-full max-w-5xl flex-1 overflow-y-auto ${
+            panel === "full" ? "px-4 pb-2" : "px-3 pb-1"
+          }`}
         >
           <div
-            key={`${page}-${playing ? "play" : "read"}`}
+            key={`${page}-${panel === "full" ? "all" : "one"}`}
             className={`space-y-3 ${
               dir > 0
                 ? "animate-[page-in-next_.4s_cubic-bezier(.22,.8,.3,1)_both]"
                 : "animate-[page-in-prev_.4s_cubic-bezier(.22,.8,.3,1)_both]"
             }`}
           >
-            {playing && spoken ? (
-              <SentenceCard sentence={spoken} speaking onWord={setWord} />
-            ) : (
+            {panel === "full" ? (
               current.sentences.map((sentence, i) => (
                 <SentenceCard
                   key={i}
@@ -272,43 +280,86 @@ function Reader() {
                   onWord={setWord}
                 />
               ))
+            ) : (
+              <SentenceCard
+                sentence={subtitle}
+                speaking={Boolean(playing && spoken)}
+                compact
+                onWord={setWord}
+              />
             )}
           </div>
         </div>
 
-        <nav className="mx-auto flex w-full max-w-5xl items-center justify-between gap-3 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2">
-          <button
-            onClick={() => go(-1)}
-            disabled={page === 0}
-            aria-label="Previous page"
-            className="press inline-flex items-center gap-1 rounded-2xl bg-secondary px-4 py-2.5 font-bold text-secondary-foreground disabled:opacity-40"
-          >
-            <ChevronLeft className="h-5 w-5" />
-            <span className="hidden sm:inline">Back</span>
-          </button>
-          <p className="text-xs text-muted-foreground sm:text-sm">
-            Page {page + 1} of {pages.length}
-          </p>
-          {isLast ? (
-            <Link
-              to="/book/$bookId/chapter/$n/quiz"
-              params={{ bookId, n }}
-              onClick={() => stopAudio()}
-              className="press inline-flex items-center gap-1 rounded-2xl bg-primary px-4 py-2.5 font-bold text-primary-foreground"
-            >
-              Quiz <ChevronRight className="h-5 w-5" />
-            </Link>
-          ) : (
+        {panel === "full" ? (
+          <nav className="mx-auto flex w-full max-w-5xl shrink-0 items-center justify-between gap-3 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2">
             <button
-              onClick={() => go(1)}
-              className="press inline-flex items-center gap-1 rounded-2xl bg-primary px-4 py-2.5 font-bold text-primary-foreground"
+              onClick={() => go(-1)}
+              disabled={page === 0}
+              aria-label="Previous page"
+              className="press inline-flex items-center gap-1 rounded-2xl bg-secondary px-4 py-2.5 font-bold text-secondary-foreground disabled:opacity-40"
             >
-              <span className="hidden sm:inline">Next</span>
-              <ChevronRight className="h-5 w-5" />
+              <ChevronLeft className="h-5 w-5" />
+              <span className="hidden sm:inline">Back</span>
             </button>
-          )}
-        </nav>
+            <p className="text-xs text-muted-foreground sm:text-sm">
+              Page {page + 1} of {pages.length}
+            </p>
+            {isLast ? (
+              <Link
+                to="/book/$bookId/chapter/$n/quiz"
+                params={{ bookId, n }}
+                onClick={() => stopAudio()}
+                className="press inline-flex items-center gap-1 rounded-2xl bg-primary px-4 py-2.5 font-bold text-primary-foreground"
+              >
+                Quiz <ChevronRight className="h-5 w-5" />
+              </Link>
+            ) : (
+              <button
+                onClick={() => go(1)}
+                className="press inline-flex items-center gap-1 rounded-2xl bg-primary px-4 py-2.5 font-bold text-primary-foreground"
+              >
+                <span className="hidden sm:inline">Next</span>
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            )}
+          </nav>
+        ) : (
+          <nav className="mx-auto flex w-full max-w-5xl shrink-0 items-center justify-between gap-2 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1">
+            <button
+              onClick={() => go(-1)}
+              disabled={page === 0}
+              aria-label="Previous page"
+              className="press inline-flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-secondary-foreground disabled:opacity-40"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <p className="text-[11px] text-muted-foreground">
+              {page + 1} / {pages.length}
+            </p>
+            {isLast ? (
+              <Link
+                to="/book/$bookId/chapter/$n/quiz"
+                params={{ bookId, n }}
+                onClick={() => stopAudio()}
+                aria-label="Go to the quiz"
+                className="press inline-flex h-9 items-center gap-1 rounded-full bg-primary px-3 text-sm font-bold text-primary-foreground"
+              >
+                Quiz <ChevronRight className="h-4 w-4" />
+              </Link>
+            ) : (
+              <button
+                onClick={() => go(1)}
+                aria-label="Next page"
+                className="press inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            )}
+          </nav>
+        )}
       </section>
+
 
       {word && <WordPopup word={word} onClose={() => setWord(null)} />}
     </div>
