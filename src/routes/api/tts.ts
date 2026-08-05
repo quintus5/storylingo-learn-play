@@ -4,7 +4,9 @@ import { z } from "zod";
 const Body = z.object({
   text: z.string().trim().min(1).max(400),
   slow: z.boolean().optional(),
+  voice: z.enum(["male", "female"]).optional(),
 });
+
 
 const INSTRUCTIONS =
   "You are reading a Mandarin Chinese children's picture book aloud. Speak the given text exactly, " +
