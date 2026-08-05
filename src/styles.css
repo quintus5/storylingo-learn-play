@@ -256,6 +256,26 @@
   }
 }
 
+@keyframes ken-burns {
+  from {
+    transform: scale(1.08) translate3d(0, 1.5%, 0);
+  }
+  to {
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+}
+
+@keyframes art-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+
+
 @layer base {
   * {
     border-color: var(--color-border);
@@ -299,6 +319,30 @@
 @utility han {
   font-family: var(--font-han);
 }
+
+/* Readability scrim over full-bleed illustrations. */
+@utility art-scrim {
+  background: linear-gradient(
+    to top,
+    color-mix(in oklab, var(--color-background) 96%, transparent) 0%,
+    color-mix(in oklab, var(--color-background) 78%, transparent) 28%,
+    color-mix(in oklab, var(--color-background) 20%, transparent) 62%,
+    color-mix(in oklab, var(--color-background) 55%, transparent) 100%
+  );
+}
+
+/* Frosted reading panel that floats over the artwork. */
+@utility glass-panel {
+  background: color-mix(in oklab, var(--color-background) 76%, transparent);
+  backdrop-filter: blur(18px) saturate(140%);
+}
+
+@utility glass-pill {
+  background: color-mix(in oklab, var(--color-background) 62%, transparent);
+  backdrop-filter: blur(14px) saturate(140%);
+}
+
+
 
 @media (prefers-reduced-motion: reduce) {
   *,

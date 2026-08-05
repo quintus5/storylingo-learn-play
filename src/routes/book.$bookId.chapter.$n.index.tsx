@@ -1,7 +1,16 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Music, Pause, Play, VolumeX } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  Music,
+  Pause,
+  Play,
+  VolumeX,
+} from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { WordPopup } from "@/components/WordPopup";
 import { bookQuery } from "@/lib/books";
@@ -11,7 +20,6 @@ import { moodFor, setMusicDucked, startMusic, stopMusic } from "@/lib/music";
 import { useSpeakingText } from "@/hooks/use-speaking";
 import { useVoice } from "@/hooks/use-voice";
 import type { Sentence, Word } from "@/lib/types";
-
 
 export const Route = createFileRoute("/book/$bookId/chapter/$n/")({
   loader: ({ context, params }) => context.queryClient.ensureQueryData(bookQuery(params.bookId)),
@@ -51,7 +59,6 @@ function Reader() {
   const speaking = useSpeakingText();
   const [voice, chooseVoice] = useVoice();
 
-
   const chapter = data.chapters.find((c) => c.idx === idx);
   const pages = chapter?.pages ?? [];
   const [page, setPage] = useState(0);
@@ -59,6 +66,8 @@ function Reader() {
   const [playing, setPlaying] = useState(false);
   const [music, setMusic] = useState(false);
   const [dir, setDir] = useState(1);
+  const [expanded, setExpanded] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   const current = pages[page];
   const isLast = page >= pages.length - 1;
@@ -108,6 +117,12 @@ function Reader() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLast, page, chapter?.id]);
 
+  // Every new page starts art-first, scrolled back to the top.
+  useEffect(() => {
+    setExpanded(false);
+    panelRef.current?.scrollTo({ top: 0 });
+  }, [page]);
+
   if (!chapter || pages.length === 0) {
     return (
       <AppShell back={{ to: "/book/$bookId", params: { bookId } }}>
@@ -120,11 +135,14 @@ function Reader() {
     if (playing) {
       stopAudio();
       setPlaying(false);
+      setExpanded(true);
       return;
     }
     setPlaying(true);
+    setExpanded(false);
     await speakSequence(sentenceTexts);
     setPlaying(false);
+    setExpanded(true);
   }
 
   function go(delta: number) {
@@ -137,115 +155,163 @@ function Reader() {
     });
   }
 
+  const art = current.image_url ?? (page === 0 ? chapter.image_url : null) ?? chapter.image_url;
+  const spoken = current.sentences.find((s) => s.hanzi === speaking);
 
   return (
-    <AppShell
-      title={`Ch. ${idx} · ${chapter.title}`}
-      back={{ to: "/book/$bookId", params: { bookId } }}
-      right={
-        <div className="flex items-center gap-2">
-        <button
-          onClick={() => {
-            chooseVoice(voice === "female" ? "male" : "female");
-            setPlaying(false);
-          }}
-          aria-label={`Narrator: ${voice === "female" ? "female" : "male"}. Tap to switch.`}
-          title="Switch narrator"
-          className="press inline-flex items-center gap-2 rounded-full bg-secondary px-3 py-2 text-sm font-bold text-secondary-foreground"
-        >
-          <span aria-hidden>{voice === "female" ? "👩" : "👨"}</span>
-          <span className="hidden sm:inline">{voice === "female" ? "Female" : "Male"}</span>
-        </button>
-        <button
-
-          onClick={() => {
-            if (music) {
-              stopMusic();
-              setMusic(false);
-            } else {
-              setMusic(true);
-            }
-          }}
-          aria-label={music ? "Turn off background music" : "Turn on background music"}
-          className="press inline-flex items-center gap-2 rounded-full bg-secondary px-3 py-2 text-sm font-bold text-secondary-foreground"
-        >
-          {music ? <Music className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-          <span className="hidden sm:inline">Music</span>
-        </button>
-        <button
-          onClick={() => void playPage()}
-          className="press inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"
-        >
-          {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-          {playing ? "Stop" : "Read to me"}
-        </button>
-        </div>
-      }
-    >
-      {(current.image_url || (page === 0 && chapter.image_url)) && (
-        <div className="sticky top-[3.75rem] z-10 -mx-4 mb-5 bg-background px-4 pb-4 pt-3 sm:top-[4rem]">
+    <div className="fixed inset-0 overflow-hidden bg-background">
+      {/* Artwork layer */}
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        aria-label={expanded ? "Show the picture" : "Show the whole page"}
+        className="absolute inset-0 h-full w-full cursor-pointer"
+      >
+        {art ? (
           <img
-            key={current.image_url ?? chapter.image_url ?? "cover"}
-            src={current.image_url ?? chapter.image_url ?? undefined}
+            key={art}
+            src={art}
             alt={`Illustration for ${chapter.title}, page ${page + 1}`}
-            className={`h-40 w-full rounded-3xl object-cover shadow-lg sm:h-64 md:h-80 ${
-              dir > 0 ? "animate-[page-in-next_.42s_cubic-bezier(.22,.8,.3,1)_both]" : "animate-[page-in-prev_.42s_cubic-bezier(.22,.8,.3,1)_both]"
-            }`}
+            className="h-full w-full object-cover animate-[art-fade_.5s_ease-out_both,ken-burns_14s_ease-out_both]"
           />
+        ) : (
+          <div className="h-full w-full bg-secondary" />
+        )}
+        <span className="art-scrim pointer-events-none absolute inset-0" />
+      </button>
+
+      {/* Floating controls */}
+      <header className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start gap-2 p-3">
+        <Link
+          to="/book/$bookId"
+          params={{ bookId }}
+          onClick={() => stopAudio()}
+          aria-label="Go back"
+          className="press glass-pill pointer-events-auto inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border/50 text-foreground"
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </Link>
+        <p className="glass-pill pointer-events-none min-w-0 flex-1 truncate rounded-full border border-border/40 px-4 py-2 text-sm font-bold text-foreground">
+          Ch. {idx} · {chapter.title}
+        </p>
+        <div className="pointer-events-auto flex shrink-0 items-center gap-2">
+          <button
+            onClick={() => {
+              chooseVoice(voice === "female" ? "male" : "female");
+              stopAudio();
+              setPlaying(false);
+            }}
+            aria-label={`Narrator: ${voice === "female" ? "female" : "male"}. Tap to switch.`}
+            title="Switch narrator"
+            className="press glass-pill inline-flex h-10 items-center gap-2 rounded-full border border-border/50 px-3 text-sm font-bold text-foreground"
+          >
+            <span aria-hidden>{voice === "female" ? "👩" : "👨"}</span>
+          </button>
+          <button
+            onClick={() => {
+              if (music) {
+                stopMusic();
+                setMusic(false);
+              } else {
+                setMusic(true);
+              }
+            }}
+            aria-label={music ? "Turn off background music" : "Turn on background music"}
+            className="press glass-pill inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/50 text-foreground"
+          >
+            {music ? <Music className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+          </button>
+          <button
+            onClick={() => void playPage()}
+            className="press inline-flex h-10 items-center gap-2 rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground shadow-lg"
+          >
+            {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+            <span className="hidden sm:inline">{playing ? "Stop" : "Read to me"}</span>
+          </button>
         </div>
-      )}
+      </header>
 
-
-      <div
-        key={page}
-        className={`space-y-4 ${
-          dir > 0
-            ? "animate-[page-in-next_.4s_cubic-bezier(.22,.8,.3,1)_both]"
-            : "animate-[page-in-prev_.4s_cubic-bezier(.22,.8,.3,1)_both]"
+      {/* Reading panel */}
+      <section
+        className={`glass-panel absolute inset-x-0 bottom-0 z-10 flex flex-col rounded-t-[2rem] border-t border-border/60 transition-[max-height] duration-500 ease-out ${
+          expanded ? "max-h-[82vh]" : playing ? "max-h-[34vh]" : "max-h-[46vh]"
         }`}
       >
-        {current.sentences.map((sentence, i) => (
-          <SentenceCard
-            key={i}
-            sentence={sentence}
-            speaking={speaking === sentence.hanzi}
-            onWord={setWord}
-          />
-        ))}
-      </div>
-
-      <nav className="mt-8 flex items-center justify-between gap-3">
         <button
-          onClick={() => go(-1)}
-          disabled={page === 0}
-          className="press inline-flex items-center gap-1 rounded-2xl bg-secondary px-4 py-3 font-bold text-secondary-foreground disabled:opacity-40"
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          aria-label={expanded ? "Collapse the text" : "Expand the text"}
+          className="mx-auto flex h-8 w-full max-w-5xl items-center justify-center text-muted-foreground"
         >
-          <ChevronLeft className="h-5 w-5" /> Back
+          {expanded ? <ChevronDown className="h-5 w-5" /> : <ChevronUp className="h-5 w-5" />}
         </button>
-        <p className="text-sm text-muted-foreground">
-          Page {page + 1} of {pages.length}
-        </p>
-        {isLast ? (
-          <Link
-            to="/book/$bookId/chapter/$n/quiz"
-            params={{ bookId, n }}
-            onClick={() => stopAudio()}
-            className="press inline-flex items-center gap-1 rounded-2xl bg-primary px-4 py-3 font-bold text-primary-foreground"
+
+        <div
+          ref={panelRef}
+          onScroll={(e) => {
+            if (e.currentTarget.scrollTop > 8) setExpanded(true);
+          }}
+          className="mx-auto w-full max-w-5xl flex-1 overflow-y-auto px-4 pb-2"
+        >
+          <div
+            key={`${page}-${playing ? "play" : "read"}`}
+            className={`space-y-3 ${
+              dir > 0
+                ? "animate-[page-in-next_.4s_cubic-bezier(.22,.8,.3,1)_both]"
+                : "animate-[page-in-prev_.4s_cubic-bezier(.22,.8,.3,1)_both]"
+            }`}
           >
-            Play the quiz <ChevronRight className="h-5 w-5" />
-          </Link>
-        ) : (
+            {playing && spoken ? (
+              <SentenceCard sentence={spoken} speaking onWord={setWord} />
+            ) : (
+              current.sentences.map((sentence, i) => (
+                <SentenceCard
+                  key={i}
+                  sentence={sentence}
+                  speaking={speaking === sentence.hanzi}
+                  onWord={setWord}
+                />
+              ))
+            )}
+          </div>
+        </div>
+
+        <nav className="mx-auto flex w-full max-w-5xl items-center justify-between gap-3 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2">
           <button
-            onClick={() => go(1)}
-            className="press inline-flex items-center gap-1 rounded-2xl bg-primary px-4 py-3 font-bold text-primary-foreground"
+            onClick={() => go(-1)}
+            disabled={page === 0}
+            aria-label="Previous page"
+            className="press inline-flex items-center gap-1 rounded-2xl bg-secondary px-4 py-2.5 font-bold text-secondary-foreground disabled:opacity-40"
           >
-            Next <ChevronRight className="h-5 w-5" />
+            <ChevronLeft className="h-5 w-5" />
+            <span className="hidden sm:inline">Back</span>
           </button>
-        )}
-      </nav>
+          <p className="text-xs text-muted-foreground sm:text-sm">
+            Page {page + 1} of {pages.length}
+          </p>
+          {isLast ? (
+            <Link
+              to="/book/$bookId/chapter/$n/quiz"
+              params={{ bookId, n }}
+              onClick={() => stopAudio()}
+              className="press inline-flex items-center gap-1 rounded-2xl bg-primary px-4 py-2.5 font-bold text-primary-foreground"
+            >
+              Quiz <ChevronRight className="h-5 w-5" />
+            </Link>
+          ) : (
+            <button
+              onClick={() => go(1)}
+              className="press inline-flex items-center gap-1 rounded-2xl bg-primary px-4 py-2.5 font-bold text-primary-foreground"
+            >
+              <span className="hidden sm:inline">Next</span>
+              <ChevronRight className="h-5 w-5" />
+            </button>
+          )}
+        </nav>
+      </section>
 
       {word && <WordPopup word={word} onClose={() => setWord(null)} />}
-    </AppShell>
+    </div>
   );
 }
 
@@ -261,7 +327,9 @@ function SentenceCard({
   return (
     <article
       className={`rounded-3xl border p-4 transition-colors ${
-        speaking ? "border-gold/70 bg-card animate-[speak_1.2s_ease-in-out_infinite]" : "border-border bg-card/80"
+        speaking
+          ? "border-gold/70 bg-card animate-[speak_1.2s_ease-in-out_infinite]"
+          : "border-border/70 bg-card/70"
       }`}
     >
       <div className="flex flex-wrap items-end gap-x-1 gap-y-2">
