@@ -82,7 +82,8 @@ export const Route = createFileRoute("/api/tts")({
         // recording (a sign the model spoke more than the requested text).
         const maxBytes = 6000 + text.length * 9000;
         if (bytes.byteLength < 600 || bytes.byteLength > maxBytes) {
-          res = await synthesize(text, slow, apiKey);
+          res = await run();
+
           if (res.ok) {
             const retry = new Uint8Array(await res.arrayBuffer());
             if (retry.byteLength >= 600) bytes = retry;
