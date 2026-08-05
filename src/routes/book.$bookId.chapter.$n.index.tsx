@@ -17,7 +17,7 @@ import { bookQuery } from "@/lib/books";
 import { useProgress } from "@/lib/progress";
 import { preload, speak, speakSequence, stopAudio } from "@/lib/audio";
 import { moodFor, setMusicDucked, startMusic, stopMusic } from "@/lib/music";
-import { useSpeakingText } from "@/hooks/use-speaking";
+import { useSpeakingProgress, useSpeakingText } from "@/hooks/use-speaking";
 import { useVoice } from "@/hooks/use-voice";
 import type { Sentence, Word } from "@/lib/types";
 
@@ -57,6 +57,7 @@ function Reader() {
   const { data } = useSuspenseQuery(bookQuery(bookId));
   const { markRead, seeWords } = useProgress();
   const speaking = useSpeakingText();
+  const progress = useSpeakingProgress();
   const [voice, chooseVoice] = useVoice();
 
   const chapter = data.chapters.find((c) => c.idx === idx);
@@ -286,6 +287,7 @@ function Reader() {
                   key={i}
                   sentence={sentence}
                   speaking={speaking === sentence.hanzi}
+                  progress={speaking === sentence.hanzi ? progress : -1}
                   onWord={setWord}
                 />
               ))
@@ -293,6 +295,7 @@ function Reader() {
               <SentenceCard
                 sentence={subtitle}
                 speaking={Boolean(playing && spoken)}
+                progress={spoken ? progress : -1}
                 compact
                 onWord={setWord}
               />
@@ -375,17 +378,36 @@ function Reader() {
   );
 }
 
+/**
+ * Which word is being said right now, estimated from clip progress weighted
+ * by how many characters each word has. -1 when nothing is playing.
+ */
+function activeWordIndex(sentence: Sentence, progress: number) {
+  if (progress < 0 || sentence.words.length === 0) return -1;
+  const weights = sentence.words.map((w) => Math.max(w.hanzi.length, 1));
+  const total = weights.reduce((a, b) => a + b, 0);
+  let acc = 0;
+  for (let i = 0; i < weights.length; i++) {
+    acc += weights[i];
+    if (progress <= acc / total) return i;
+  }
+  return weights.length - 1;
+}
+
 function SentenceCard({
   sentence,
   speaking,
+  progress = -1,
   compact = false,
   onWord,
 }: {
   sentence: Sentence;
   speaking: boolean;
+  progress?: number;
   compact?: boolean;
   onWord: (word: Word) => void;
 }) {
+  const active = speaking ? activeWordIndex(sentence, progress) : -1;
   return (
     <article
       className={
@@ -406,13 +428,19 @@ function SentenceCard({
               <button
                 key={`${w.hanzi}-${i}`}
                 onClick={() => onWord(w)}
-                className="press rounded-xl px-1 py-0.5 text-left hover:bg-secondary"
+                className={`press rounded-xl px-1 py-0.5 text-left transition-colors duration-150 motion-reduce:transition-none hover:bg-secondary ${
+                  i === active ? "bg-gold/25 ring-1 ring-gold/60" : ""
+                }`}
               >
-                <span className="block text-[10px] text-primary">{w.pinyin}</span>
                 <span
-                  className={`han block font-bold leading-tight text-sand ${
-                    compact ? "text-2xl" : "text-3xl"
-                  }`}
+                  className={`block text-[10px] ${i === active ? "text-gold" : "text-primary"}`}
+                >
+                  {w.pinyin}
+                </span>
+                <span
+                  className={`han block font-bold leading-tight transition-transform duration-150 motion-reduce:transform-none ${
+                    i === active ? "scale-105 text-gold" : "text-sand"
+                  } ${compact ? "text-2xl" : "text-3xl"}`}
                 >
                   {w.hanzi}
                 </span>

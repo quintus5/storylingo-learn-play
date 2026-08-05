@@ -154,10 +154,36 @@ let token = 0;
 const listeners = new Set<(text: string | null) => void>();
 let speakingText: string | null = null;
 
+/** 0..1 position inside the clip currently playing, for word highlighting. */
+const progressListeners = new Set<(p: number) => void>();
+let speakingProgress = 0;
+
+function setProgress(p: number) {
+  speakingProgress = p;
+  progressListeners.forEach((l) => l(p));
+}
+
+export function onSpeakingProgress(listener: (p: number) => void): () => void {
+  progressListeners.add(listener);
+  listener(speakingProgress);
+  return () => progressListeners.delete(listener);
+}
+
+/** Report playback position while a clip runs. */
+function trackProgress(audio: HTMLAudioElement, mine: number) {
+  audio.ontimeupdate = () => {
+    if (mine !== token) return;
+    const d = audio.duration;
+    if (Number.isFinite(d) && d > 0) setProgress(Math.min(audio.currentTime / d, 1));
+  };
+}
+
 function setSpeaking(text: string | null) {
   speakingText = text;
+  setProgress(0);
   listeners.forEach((l) => l(text));
 }
+
 
 export function onSpeakingChange(listener: (text: string | null) => void): () => void {
   listeners.add(listener);
@@ -191,6 +217,8 @@ export async function speak(text: string, slow = false): Promise<void> {
   current = audio;
   currentUrl = url;
   setSpeaking(text);
+  trackProgress(audio, mine);
+
 
   await new Promise<void>((resolve) => {
     const done = () => {
@@ -222,6 +250,8 @@ export async function speakSequence(texts: string[], slow = false): Promise<void
     current = audio;
     currentUrl = url;
     setSpeaking(text);
+    trackProgress(audio, mine);
+
 
     const finished = await new Promise<boolean>((resolve) => {
       const done = () => resolve(mine === token);
