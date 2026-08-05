@@ -119,9 +119,10 @@ function Reader() {
 
   // Every new page starts art-first, scrolled back to the top.
   useEffect(() => {
-    setExpanded(false);
+    setPanel("subtitle");
     panelRef.current?.scrollTo({ top: 0 });
   }, [page]);
+
 
   if (!chapter || pages.length === 0) {
     return (
