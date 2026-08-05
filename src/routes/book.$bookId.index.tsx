@@ -92,55 +92,81 @@ function BookPage() {
           const empty = !chapter.pages?.length;
 
           return (
-            <button
+            <div
               key={chapter.id}
-              onClick={() => {
-                if (unlocked && !empty) {
-                  void navigate({
-                    to: "/book/$bookId/chapter/$n",
-                    params: { bookId, n: String(chapter.idx) },
-                  });
-                } else {
-                  setWiggling(chapter.idx);
-                  setTimeout(() => setWiggling(null), 520);
-                }
-              }}
-              className={`press overflow-hidden rounded-3xl border text-left ${
+              className={`overflow-hidden rounded-3xl border text-left ${
                 unlocked && !empty
                   ? "border-border bg-card"
                   : "border-border/50 bg-card/50 opacity-70"
               } ${wiggling === chapter.idx ? "animate-[wiggle_0.5s_ease-in-out]" : ""}`}
             >
-              <div className="relative aspect-[4/3] w-full bg-secondary">
-                {chapter.image_url ? (
-                  <img
-                    src={chapter.image_url}
-                    alt={`Illustration for ${chapter.title}`}
-                    className="h-full w-full object-cover"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                    <BookOpen className="h-7 w-7" />
-                  </div>
-                )}
-                {(!unlocked || empty) && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-background/65">
-                    <Lock className="h-7 w-7 text-primary" />
-                  </div>
-                )}
-              </div>
-              <div className="p-3">
-                <p className="text-xs font-bold uppercase tracking-wide text-primary">
-                  Chapter {chapter.idx}
-                </p>
-                <p className="line-clamp-2 font-bold leading-snug">{chapter.title}</p>
-                <div className="mt-2">
-                  <StarRow count={stars} size={15} />
+              <button
+                type="button"
+                className="press block w-full text-left"
+                onClick={() => {
+                  if (unlocked && !empty) {
+                    void navigate({
+                      to: "/book/$bookId/chapter/$n",
+                      params: { bookId, n: String(chapter.idx) },
+                    });
+                  } else {
+                    setWiggling(chapter.idx);
+                    setTimeout(() => setWiggling(null), 520);
+                  }
+                }}
+              >
+                <div className="relative aspect-[4/3] w-full bg-secondary">
+                  {chapter.image_url ? (
+                    <img
+                      src={chapter.image_url}
+                      alt={`Illustration for ${chapter.title}`}
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                      <BookOpen className="h-7 w-7" />
+                    </div>
+                  )}
+                  {(!unlocked || empty) && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-background/65">
+                      <Lock className="h-7 w-7 text-primary" />
+                    </div>
+                  )}
                 </div>
-              </div>
-            </button>
+                <div className="p-3">
+                  <p className="text-xs font-bold uppercase tracking-wide text-primary">
+                    Chapter {chapter.idx}
+                  </p>
+                  <p className="line-clamp-2 font-bold leading-snug">{chapter.title}</p>
+                  <div className="mt-2">
+                    <StarRow count={stars} size={15} />
+                  </div>
+                </div>
+              </button>
+
+              {!unlocked && !empty && (
+                <div className="px-3 pb-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!buyChapter(bookId, chapter.idx)) {
+                        setWiggling(chapter.idx);
+                        setTimeout(() => setWiggling(null), 520);
+                      }
+                    }}
+                    className="press w-full rounded-2xl bg-primary px-3 py-2 text-sm font-bold text-primary-foreground"
+                  >
+                    Open now · 🪙 {PRICES.chapter}
+                  </button>
+                  <p className="mt-1 text-center text-[11px] text-muted-foreground">
+                    or earn a star in chapter {chapter.idx - 1}
+                  </p>
+                </div>
+              )}
+            </div>
           );
+
         })}
       </div>
     </AppShell>
