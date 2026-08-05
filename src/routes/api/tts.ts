@@ -4,7 +4,9 @@ import { z } from "zod";
 const Body = z.object({
   text: z.string().trim().min(1).max(400),
   slow: z.boolean().optional(),
+  voice: z.enum(["male", "female"]).optional(),
 });
+
 
 const INSTRUCTIONS =
   "You are reading a Mandarin Chinese children's picture book aloud. Speak the given text exactly, " +
@@ -26,11 +28,16 @@ async function synthesize(text: string, slow: boolean, apiKey: string) {
   });
 }
 
-/** Fish Audio TTS. Voice defaults to the chosen model, override with FISH_AUDIO_VOICE_ID. */
-const DEFAULT_FISH_VOICE = "a3bda742ba5c4f89ae2403efa3b94f08";
+/** Fish Audio narrator voices (reference ids). */
+const FISH_VOICES = {
+  male: "2926cb350f1a426d800bf8c360c3cb94",
+  female: "be404a1ef6704fdb86d02ea05ad0bcc2",
+} as const;
 
-async function synthesizeFish(text: string, slow: boolean, apiKey: string) {
-  const referenceId = process.env.FISH_AUDIO_VOICE_ID || DEFAULT_FISH_VOICE;
+type VoiceId = keyof typeof FISH_VOICES;
+
+async function synthesizeFish(text: string, slow: boolean, apiKey: string, voice: VoiceId) {
+  const referenceId = process.env.FISH_AUDIO_VOICE_ID || FISH_VOICES[voice];
 
   return fetch("https://api.fish.audio/v1/tts", {
     method: "POST",
@@ -51,6 +58,7 @@ async function synthesizeFish(text: string, slow: boolean, apiKey: string) {
   });
 }
 
+
 export const Route = createFileRoute("/api/tts")({
   server: {
     handlers: {
@@ -61,10 +69,11 @@ export const Route = createFileRoute("/api/tts")({
 
         const parsed = Body.safeParse(await request.json().catch(() => null));
         if (!parsed.success) return new Response("Invalid request", { status: 400 });
-        const { text, slow = false } = parsed.data;
+        const { text, slow = false, voice = "female" } = parsed.data;
 
         const run = async () =>
-          fishKey ? synthesizeFish(text, slow, fishKey) : synthesize(text, slow, apiKey!);
+          fishKey ? synthesizeFish(text, slow, fishKey, voice) : synthesize(text, slow, apiKey!);
+
 
         let res = await run();
         if (!res.ok && fishKey && apiKey) {

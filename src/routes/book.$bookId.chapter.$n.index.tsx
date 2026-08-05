@@ -9,7 +9,9 @@ import { useProgress } from "@/lib/progress";
 import { preload, speak, speakSequence, stopAudio } from "@/lib/audio";
 import { moodFor, setMusicDucked, startMusic, stopMusic } from "@/lib/music";
 import { useSpeakingText } from "@/hooks/use-speaking";
+import { useVoice } from "@/hooks/use-voice";
 import type { Sentence, Word } from "@/lib/types";
+
 
 export const Route = createFileRoute("/book/$bookId/chapter/$n/")({
   loader: ({ context, params }) => context.queryClient.ensureQueryData(bookQuery(params.bookId)),
@@ -47,6 +49,8 @@ function Reader() {
   const { data } = useSuspenseQuery(bookQuery(bookId));
   const { markRead, seeWords } = useProgress();
   const speaking = useSpeakingText();
+  const [voice, chooseVoice] = useVoice();
+
 
   const chapter = data.chapters.find((c) => c.idx === idx);
   const pages = chapter?.pages ?? [];
@@ -141,6 +145,19 @@ function Reader() {
       right={
         <div className="flex items-center gap-2">
         <button
+          onClick={() => {
+            chooseVoice(voice === "female" ? "male" : "female");
+            setPlaying(false);
+          }}
+          aria-label={`Narrator: ${voice === "female" ? "female" : "male"}. Tap to switch.`}
+          title="Switch narrator"
+          className="press inline-flex items-center gap-2 rounded-full bg-secondary px-3 py-2 text-sm font-bold text-secondary-foreground"
+        >
+          <span aria-hidden>{voice === "female" ? "👩" : "👨"}</span>
+          <span className="hidden sm:inline">{voice === "female" ? "Female" : "Male"}</span>
+        </button>
+        <button
+
           onClick={() => {
             if (music) {
               stopMusic();
