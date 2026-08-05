@@ -4,6 +4,8 @@ import { BookOpen, Plus, Sparkles } from "lucide-react";
 import { booksQuery } from "@/lib/books";
 import { AppShell } from "@/components/AppShell";
 import { useProgress } from "@/lib/progress";
+import { CoinPurse } from "@/components/CoinPurse";
+import { CharacterSprite } from "@/components/CharacterSprite";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -38,12 +40,15 @@ function Bookshelf() {
     <AppShell
       title="StoryLingo"
       right={
-        <Link
-          to="/create"
-          className="press inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"
-        >
-          <Plus className="h-4 w-4" /> New story
-        </Link>
+        <div className="flex items-center gap-2">
+          <CoinPurse coins={progress.coins} />
+          <Link
+            to="/create"
+            className="press inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"
+          >
+            <Plus className="h-4 w-4" /> New story
+          </Link>
+        </div>
       }
     >
       <section className="mb-8 rounded-3xl border border-primary/20 bg-card/70 p-6">
@@ -57,6 +62,42 @@ function Bookshelf() {
           Paste a story link and StoryLingo retells it in beginner Mandarin, paints watercolor
           scenes, reads every word aloud and quizzes you chapter by chapter.
         </p>
+      </section>
+
+      <section className="mb-8 flex items-center gap-4 rounded-3xl border border-border bg-card/70 p-4">
+        {progress.character ? (
+          <CharacterSprite look={progress.character} size={72} />
+        ) : (
+          <span className="text-4xl" aria-hidden>
+            🧒
+          </span>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="font-extrabold">
+            {progress.character
+              ? progress.character.name || "Your story buddy"
+              : "Make your story buddy"}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {progress.character
+              ? "They join the pictures in every new book you make."
+              : "Design a character who appears inside your picture books."}
+          </p>
+        </div>
+        <div className="flex shrink-0 flex-col gap-2">
+          <Link
+            to="/character"
+            className="press rounded-2xl bg-secondary px-4 py-2 text-center text-sm font-bold text-secondary-foreground"
+          >
+            {progress.character ? "Edit" : "Create"}
+          </Link>
+          <Link
+            to="/shop"
+            className="press rounded-2xl bg-secondary px-4 py-2 text-center text-sm font-bold text-secondary-foreground"
+          >
+            Shop
+          </Link>
+        </div>
       </section>
 
       {books.length === 0 ? (
