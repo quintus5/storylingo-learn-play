@@ -378,21 +378,29 @@ function Reader() {
 function SentenceCard({
   sentence,
   speaking,
+  compact = false,
   onWord,
 }: {
   sentence: Sentence;
   speaking: boolean;
+  compact?: boolean;
   onWord: (word: Word) => void;
 }) {
   return (
     <article
-      className={`rounded-3xl border p-4 transition-colors ${
-        speaking
-          ? "border-gold/70 bg-card animate-[speak_1.2s_ease-in-out_infinite]"
-          : "border-border/70 bg-card/70"
-      }`}
+      className={
+        compact
+          ? "rounded-2xl px-1 py-1 text-center"
+          : `rounded-3xl border p-4 transition-colors ${
+              speaking
+                ? "border-gold/70 bg-card animate-[speak_1.2s_ease-in-out_infinite]"
+                : "border-border/70 bg-card/70"
+            }`
+      }
     >
-      <div className="flex flex-wrap items-end gap-x-1 gap-y-2">
+      <div
+        className={`flex flex-wrap items-end gap-x-1 gap-y-1 ${compact ? "justify-center" : ""}`}
+      >
         {sentence.words.length > 0
           ? sentence.words.map((w, i) => (
               <button
@@ -400,27 +408,42 @@ function SentenceCard({
                 onClick={() => onWord(w)}
                 className="press rounded-xl px-1 py-0.5 text-left hover:bg-secondary"
               >
-                <span className="block text-xs text-primary">{w.pinyin}</span>
-                <span className="han block text-3xl font-bold leading-tight text-sand">
+                <span className="block text-[10px] text-primary">{w.pinyin}</span>
+                <span
+                  className={`han block font-bold leading-tight text-sand ${
+                    compact ? "text-2xl" : "text-3xl"
+                  }`}
+                >
                   {w.hanzi}
                 </span>
               </button>
             ))
           : (
               <div>
-                <span className="block text-xs text-primary">{sentence.pinyin}</span>
-                <span className="han block text-3xl font-bold text-sand">{sentence.hanzi}</span>
+                <span className="block text-[10px] text-primary">{sentence.pinyin}</span>
+                <span
+                  className={`han block font-bold text-sand ${compact ? "text-2xl" : "text-3xl"}`}
+                >
+                  {sentence.hanzi}
+                </span>
               </div>
             )}
       </div>
-      <p className="mt-2 text-sm text-primary/90">{sentence.pinyin}</p>
-      <p className="mt-1 text-base text-muted-foreground">{sentence.native}</p>
-      <button
-        onClick={() => void speak(sentence.hanzi)}
-        className="press mt-3 inline-flex items-center gap-2 rounded-xl bg-secondary px-3 py-2 text-sm font-bold text-secondary-foreground"
+      {!compact && <p className="mt-2 text-sm text-primary/90">{sentence.pinyin}</p>}
+      <p
+        className={`text-muted-foreground ${compact ? "mt-1 text-sm" : "mt-1 text-base"}`}
       >
-        <Play className="h-4 w-4" /> Hear this line
-      </button>
+        {sentence.native}
+      </p>
+      {!compact && (
+        <button
+          onClick={() => void speak(sentence.hanzi)}
+          className="press mt-3 inline-flex items-center gap-2 rounded-xl bg-secondary px-3 py-2 text-sm font-bold text-secondary-foreground"
+        >
+          <Play className="h-4 w-4" /> Hear this line
+        </button>
+      )}
     </article>
   );
+
 }
