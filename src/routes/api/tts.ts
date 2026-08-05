@@ -37,7 +37,7 @@ const FISH_VOICES = {
 type VoiceId = keyof typeof FISH_VOICES;
 
 async function synthesizeFish(text: string, slow: boolean, apiKey: string, voice: VoiceId) {
-  const referenceId = process.env.FISH_AUDIO_VOICE_ID || FISH_VOICES[voice];
+  const referenceId = FISH_VOICES[voice];
 
   return fetch("https://api.fish.audio/v1/tts", {
     method: "POST",
