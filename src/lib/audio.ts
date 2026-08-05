@@ -47,8 +47,46 @@ async function writeCache(key: string, blob: Blob): Promise<void> {
 const memory = new Map<string, Blob>();
 const inflight = new Map<string, Promise<Blob | null>>();
 
+/** Narrator voices (Fish Audio reference ids). */
+export type VoiceId = "male" | "female";
+export const VOICE_IDS: Record<VoiceId, string> = {
+  male: "2926cb350f1a426d800bf8c360c3cb94",
+  female: "be404a1ef6704fdb86d02ea05ad0bcc2",
+};
+
+const VOICE_KEY = "storylingo-voice";
+let voice: VoiceId = "female";
+const voiceListeners = new Set<(v: VoiceId) => void>();
+
+if (typeof localStorage !== "undefined") {
+  const saved = localStorage.getItem(VOICE_KEY);
+  if (saved === "male" || saved === "female") voice = saved;
+}
+
+export function getVoice(): VoiceId {
+  return voice;
+}
+
+export function setVoice(next: VoiceId) {
+  if (next === voice) return;
+  voice = next;
+  try {
+    localStorage.setItem(VOICE_KEY, next);
+  } catch {
+    /* storage unavailable */
+  }
+  stopAudio();
+  voiceListeners.forEach((l) => l(next));
+}
+
+export function onVoiceChange(listener: (v: VoiceId) => void): () => void {
+  voiceListeners.add(listener);
+  listener(voice);
+  return () => voiceListeners.delete(listener);
+}
+
 function cacheKey(text: string, slow: boolean) {
-  return `${slow ? "slow" : "normal"}:${text}`;
+  return `fish-${VOICE_IDS[voice]}:${slow ? "slow" : "normal"}:${text}`;
 }
 
 export async function getClip(text: string, slow: boolean): Promise<Blob | null> {
@@ -59,6 +97,7 @@ export async function getClip(text: string, slow: boolean): Promise<Blob | null>
   const existing = inflight.get(key);
   if (existing) return existing;
 
+  const requestVoice = voice;
   const task = (async () => {
     const cached = await readCache(key);
     if (cached) {
@@ -69,7 +108,7 @@ export async function getClip(text: string, slow: boolean): Promise<Blob | null>
       const res = await fetch("/api/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, slow }),
+        body: JSON.stringify({ text, slow, voice: requestVoice }),
       });
       if (!res.ok) return null;
       const blob = await res.blob();
@@ -87,6 +126,7 @@ export async function getClip(text: string, slow: boolean): Promise<Blob | null>
   inflight.set(key, task);
   return task;
 }
+
 
 let current: HTMLAudioElement | null = null;
 let currentUrl: string | null = null;
