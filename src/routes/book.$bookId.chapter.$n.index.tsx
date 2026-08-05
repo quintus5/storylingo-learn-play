@@ -244,7 +244,7 @@ function Reader() {
       <section
         className={`absolute z-10 flex flex-col overflow-hidden border transition-all duration-500 ease-out motion-reduce:transition-none ${
           panel === "full"
-            ? "glass-full inset-x-0 bottom-0 max-h-[100dvh] rounded-t-[2rem] border-border/60 h-[100dvh]"
+            ? "glass-full inset-x-0 bottom-0 h-[100dvh] max-h-[100dvh] rounded-t-[2rem] border-border/60 pt-14"
             : panel === "peek"
               ? "glass-subtitle inset-x-2 bottom-3 max-h-[34vh] rounded-[1.75rem] border-border/40 sm:inset-x-6"
               : "glass-subtitle inset-x-2 bottom-3 max-h-[24vh] rounded-[1.75rem] border-border/40 sm:inset-x-6"
