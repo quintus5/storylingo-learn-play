@@ -7,7 +7,6 @@ const Body = z.object({
   voice: z.enum(["male", "female"]).optional(),
 });
 
-
 const INSTRUCTIONS =
   "You are reading a Mandarin Chinese children's picture book aloud. Speak the given text exactly, " +
   "warmly and clearly, with correct Mandarin tones. Do not add, translate, explain or repeat anything.";
@@ -44,7 +43,7 @@ async function synthesizeFish(text: string, slow: boolean, apiKey: string, voice
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
-      model: process.env.FISH_AUDIO_MODEL || "s1",
+      model: process.env.FISH_AUDIO_MODEL || "s2.1-pro-free",
     },
     body: JSON.stringify({
       text,
@@ -57,7 +56,6 @@ async function synthesizeFish(text: string, slow: boolean, apiKey: string, voice
     }),
   });
 }
-
 
 export const Route = createFileRoute("/api/tts")({
   server: {
@@ -74,7 +72,6 @@ export const Route = createFileRoute("/api/tts")({
         const run = async () =>
           fishKey ? synthesizeFish(text, slow, fishKey, voice) : synthesize(text, slow, apiKey!);
 
-
         let provider = fishKey ? "fish" : "openai";
         let res = await run();
         if (!res.ok && fishKey && apiKey) {
@@ -88,7 +85,6 @@ export const Route = createFileRoute("/api/tts")({
           console.error(`TTS failed [${res.status}]: ${body.slice(0, 300)}`);
           return new Response(body || "TTS failed", { status: res.status });
         }
-
 
         let bytes = new Uint8Array(await res.arrayBuffer());
 
