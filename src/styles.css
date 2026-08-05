@@ -342,6 +342,18 @@
   backdrop-filter: blur(14px) saturate(140%);
 }
 
+@utility glass-subtitle {
+  background: color-mix(in oklab, var(--color-background) 52%, transparent);
+  backdrop-filter: blur(20px) saturate(150%);
+  box-shadow: 0 18px 50px -20px color-mix(in oklab, var(--color-background) 90%, transparent);
+}
+
+@utility glass-full {
+  background: color-mix(in oklab, var(--color-background) 90%, transparent);
+  backdrop-filter: blur(28px) saturate(140%);
+}
+
+
 
 
 @media (prefers-reduced-motion: reduce) {
