@@ -256,6 +256,26 @@
   }
 }
 
+@keyframes ken-burns {
+  from {
+    transform: scale(1.08) translate3d(0, 1.5%, 0);
+  }
+  to {
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+}
+
+@keyframes art-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+
+
 @layer base {
   * {
     border-color: var(--color-border);
