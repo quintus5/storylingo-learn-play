@@ -66,7 +66,7 @@ function Reader() {
   const [playing, setPlaying] = useState(false);
   const [music, setMusic] = useState(false);
   const [dir, setDir] = useState(1);
-  const [expanded, setExpanded] = useState(false);
+  const [panel, setPanel] = useState<"subtitle" | "peek" | "full">("subtitle");
   const panelRef = useRef<HTMLDivElement>(null);
 
   const current = pages[page];
