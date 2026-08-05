@@ -181,7 +181,12 @@ function Reader() {
         ) : (
           <div className="h-full w-full bg-secondary" />
         )}
-        <span className="art-scrim pointer-events-none absolute inset-0" />
+        <span
+          className={`art-scrim pointer-events-none absolute inset-0 transition-opacity duration-500 motion-reduce:transition-none ${
+            panel === "subtitle" ? "opacity-40" : "opacity-100"
+          }`}
+        />
+
       </button>
 
       {/* Floating controls */}
