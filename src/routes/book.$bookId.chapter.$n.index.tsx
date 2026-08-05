@@ -136,15 +136,16 @@ function Reader() {
     if (playing) {
       stopAudio();
       setPlaying(false);
-      setExpanded(true);
+      setPanel("full");
       return;
     }
     setPlaying(true);
-    setExpanded(false);
+    setPanel("subtitle");
     await speakSequence(sentenceTexts);
     setPlaying(false);
-    setExpanded(true);
+    setPanel("full");
   }
+
 
   function go(delta: number) {
     stopAudio();
