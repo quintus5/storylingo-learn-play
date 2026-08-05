@@ -9,7 +9,9 @@ import { useProgress } from "@/lib/progress";
 import { preload, speak, speakSequence, stopAudio } from "@/lib/audio";
 import { moodFor, setMusicDucked, startMusic, stopMusic } from "@/lib/music";
 import { useSpeakingText } from "@/hooks/use-speaking";
+import { useVoice } from "@/hooks/use-voice";
 import type { Sentence, Word } from "@/lib/types";
+
 
 export const Route = createFileRoute("/book/$bookId/chapter/$n/")({
   loader: ({ context, params }) => context.queryClient.ensureQueryData(bookQuery(params.bookId)),
