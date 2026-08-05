@@ -26,9 +26,12 @@ async function synthesize(text: string, slow: boolean, apiKey: string) {
   });
 }
 
-/** Fish Audio TTS. Voice can be overridden with FISH_AUDIO_VOICE_ID. */
+/** Fish Audio TTS. Voice defaults to the chosen model, override with FISH_AUDIO_VOICE_ID. */
+const DEFAULT_FISH_VOICE = "a3bda742ba5c4f89ae2403efa3b94f08";
+
 async function synthesizeFish(text: string, slow: boolean, apiKey: string) {
-  const referenceId = process.env.FISH_AUDIO_VOICE_ID;
+  const referenceId = process.env.FISH_AUDIO_VOICE_ID || DEFAULT_FISH_VOICE;
+
   return fetch("https://api.fish.audio/v1/tts", {
     method: "POST",
     headers: {
