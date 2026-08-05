@@ -9,6 +9,8 @@ const CreateBookInput = z.object({
   url: z.string().trim().url().max(2000),
   chapterCount: z.number().int().min(1).max(10),
   artStyle: z.enum(ART_STYLE_IDS).optional(),
+  /** Description of the reader's own character, painted into every picture. */
+  characterPrompt: z.string().trim().max(600).optional(),
 });
 
 export const createBook = createServerFn({ method: "POST" })
@@ -31,6 +33,7 @@ export const createBook = createServerFn({ method: "POST" })
         source_url: data.url,
         chapter_count: chapters.length,
         art_style: data.artStyle ?? DEFAULT_ART_STYLE,
+        character_prompt: data.characterPrompt || null,
         status: "generating",
       })
       .select("id")
@@ -70,12 +73,13 @@ export const generateChapter = createServerFn({ method: "POST" })
 
     const { data: book } = await supabaseAdmin
       .from("books")
-      .select("id, title, chapter_count, art_style, source_url")
+      .select("id, title, chapter_count, art_style, source_url, character_prompt")
       .eq("id", data.bookId)
       .single();
     if (!book) throw new Error("Book not found");
 
     const styleId = book.art_style ?? null;
+    const characterPrompt = book.character_prompt ?? null;
 
     const { data: chapters } = await supabaseAdmin
       .from("chapters")
@@ -127,13 +131,21 @@ export const generateChapter = createServerFn({ method: "POST" })
 
     // Paint every page (and the book cover on chapter 1) at the same time.
     const [pages, cover] = await Promise.all([
-      illustratePages(data.bookId, data.idx, chapter.title, content.pages, styleId),
+      illustratePages(
+        data.bookId,
+        data.idx,
+        chapter.title,
+        content.pages,
+        styleId,
+        characterPrompt,
+      ),
       data.idx === 1
         ? makeArt(
             data.bookId,
             "cover",
             `Book cover scene for the children's story "${book.title}". ${scene}`,
             styleId,
+            characterPrompt,
           ).catch((err) => {
             console.error("Cover failed", err);
             return null;

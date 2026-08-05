@@ -9,7 +9,9 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ShopRouteImport } from './routes/shop'
 import { Route as CreateRouteImport } from './routes/create'
+import { Route as CharacterRouteImport } from './routes/character'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiTtsRouteImport } from './routes/api/tts'
 import { Route as BookBookIdIndexRouteImport } from './routes/book.$bookId.index'
@@ -19,9 +21,19 @@ import { Route as ApiPublicArtSplatRouteImport } from './routes/api/public/art/$
 import { Route as BookBookIdChapterNIndexRouteImport } from './routes/book.$bookId.chapter.$n.index'
 import { Route as BookBookIdChapterNQuizRouteImport } from './routes/book.$bookId.chapter.$n.quiz'
 
+const ShopRoute = ShopRouteImport.update({
+  id: '/shop',
+  path: '/shop',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CreateRoute = CreateRouteImport.update({
   id: '/create',
   path: '/create',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CharacterRoute = CharacterRouteImport.update({
+  id: '/character',
+  path: '/character',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -67,7 +79,9 @@ const BookBookIdChapterNQuizRoute = BookBookIdChapterNQuizRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/character': typeof CharacterRoute
   '/create': typeof CreateRoute
+  '/shop': typeof ShopRoute
   '/api/tts': typeof ApiTtsRoute
   '/book/$bookId/progress': typeof BookBookIdProgressRoute
   '/book/$bookId/vocab': typeof BookBookIdVocabRoute
@@ -78,7 +92,9 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/character': typeof CharacterRoute
   '/create': typeof CreateRoute
+  '/shop': typeof ShopRoute
   '/api/tts': typeof ApiTtsRoute
   '/book/$bookId/progress': typeof BookBookIdProgressRoute
   '/book/$bookId/vocab': typeof BookBookIdVocabRoute
@@ -90,7 +106,9 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/character': typeof CharacterRoute
   '/create': typeof CreateRoute
+  '/shop': typeof ShopRoute
   '/api/tts': typeof ApiTtsRoute
   '/book/$bookId/progress': typeof BookBookIdProgressRoute
   '/book/$bookId/vocab': typeof BookBookIdVocabRoute
@@ -103,7 +121,9 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/character'
     | '/create'
+    | '/shop'
     | '/api/tts'
     | '/book/$bookId/progress'
     | '/book/$bookId/vocab'
@@ -114,7 +134,9 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/character'
     | '/create'
+    | '/shop'
     | '/api/tts'
     | '/book/$bookId/progress'
     | '/book/$bookId/vocab'
@@ -125,7 +147,9 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/character'
     | '/create'
+    | '/shop'
     | '/api/tts'
     | '/book/$bookId/progress'
     | '/book/$bookId/vocab'
@@ -137,7 +161,9 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CharacterRoute: typeof CharacterRoute
   CreateRoute: typeof CreateRoute
+  ShopRoute: typeof ShopRoute
   ApiTtsRoute: typeof ApiTtsRoute
   BookBookIdProgressRoute: typeof BookBookIdProgressRoute
   BookBookIdVocabRoute: typeof BookBookIdVocabRoute
@@ -149,11 +175,25 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/shop': {
+      id: '/shop'
+      path: '/shop'
+      fullPath: '/shop'
+      preLoaderRoute: typeof ShopRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/create': {
       id: '/create'
       path: '/create'
       fullPath: '/create'
       preLoaderRoute: typeof CreateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/character': {
+      id: '/character'
+      path: '/character'
+      fullPath: '/character'
+      preLoaderRoute: typeof CharacterRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -217,7 +257,9 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CharacterRoute: CharacterRoute,
   CreateRoute: CreateRoute,
+  ShopRoute: ShopRoute,
   ApiTtsRoute: ApiTtsRoute,
   BookBookIdProgressRoute: BookBookIdProgressRoute,
   BookBookIdVocabRoute: BookBookIdVocabRoute,
@@ -229,13 +271,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

@@ -226,12 +226,19 @@ export async function illustratePages(
   chapterTitle: string,
   pages: Page[],
   styleId?: string | null,
+  characterPrompt?: string | null,
 ): Promise<Page[]> {
   return Promise.all(
     pages.map(async (page, i) => {
       const scene = page.scene?.trim() || `${chapterTitle}: ${page.sentences[0]?.native ?? ""}`;
       try {
-        const url = await makeArt(bookId, `chapter-${chapterIdx}-page-${i + 1}`, scene, styleId);
+        const url = await makeArt(
+          bookId,
+          `chapter-${chapterIdx}-page-${i + 1}`,
+          scene,
+          styleId,
+          characterPrompt,
+        );
         return { ...page, image_url: url };
       } catch (err) {
         console.error(`Page ${i + 1} illustration failed`, err);
@@ -247,8 +254,12 @@ export async function makeArt(
   name: string,
   scene: string,
   styleId?: string | null,
+  characterPrompt?: string | null,
 ): Promise<string> {
-  const bytes = await generateIllustration(`${scene}\n\nStyle: ${artStylePrompt(styleId)}`);
+  const buddy = characterPrompt?.trim() ? `\n\n${characterPrompt.trim()}` : "";
+  const bytes = await generateIllustration(
+    `${scene}${buddy}\n\nStyle: ${artStylePrompt(styleId)}`,
+  );
   const path = `${bookId}/${name}.png`;
   const { error } = await supabaseAdmin.storage
     .from(BUCKET)

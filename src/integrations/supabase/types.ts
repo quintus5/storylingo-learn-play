@@ -19,6 +19,7 @@ export type Database = {
           art_style: string
           blurb: string | null
           chapter_count: number
+          character_prompt: string | null
           cover_url: string | null
           created_at: string
           id: string
@@ -32,6 +33,7 @@ export type Database = {
           art_style?: string
           blurb?: string | null
           chapter_count?: number
+          character_prompt?: string | null
           cover_url?: string | null
           created_at?: string
           id?: string
@@ -45,6 +47,7 @@ export type Database = {
           art_style?: string
           blurb?: string | null
           chapter_count?: number
+          character_prompt?: string | null
           cover_url?: string | null
           created_at?: string
           id?: string
