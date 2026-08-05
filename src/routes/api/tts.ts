@@ -26,23 +26,55 @@ async function synthesize(text: string, slow: boolean, apiKey: string) {
   });
 }
 
+/** Fish Audio TTS. Voice can be overridden with FISH_AUDIO_VOICE_ID. */
+async function synthesizeFish(text: string, slow: boolean, apiKey: string) {
+  const referenceId = process.env.FISH_AUDIO_VOICE_ID;
+  return fetch("https://api.fish.audio/v1/tts", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      model: process.env.FISH_AUDIO_MODEL || "s1",
+    },
+    body: JSON.stringify({
+      text,
+      format: "mp3",
+      mp3_bitrate: 128,
+      normalize: true,
+      latency: "normal",
+      ...(referenceId ? { reference_id: referenceId } : {}),
+      prosody: { speed: slow ? 0.6 : 1, volume: 0 },
+    }),
+  });
+}
+
 export const Route = createFileRoute("/api/tts")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        const fishKey = process.env.FISH_AUDIO_API_KEY;
         const apiKey = process.env.LOVABLE_API_KEY;
-        if (!apiKey) return new Response("Missing LOVABLE_API_KEY", { status: 500 });
+        if (!fishKey && !apiKey) return new Response("Missing TTS credentials", { status: 500 });
 
         const parsed = Body.safeParse(await request.json().catch(() => null));
         if (!parsed.success) return new Response("Invalid request", { status: 400 });
         const { text, slow = false } = parsed.data;
 
-        let res = await synthesize(text, slow, apiKey);
+        const run = async () =>
+          fishKey ? synthesizeFish(text, slow, fishKey) : synthesize(text, slow, apiKey!);
+
+        let res = await run();
+        if (!res.ok && fishKey && apiKey) {
+          const body = await res.text().catch(() => "");
+          console.error(`Fish Audio TTS failed [${res.status}]: ${body.slice(0, 300)}`);
+          res = await synthesize(text, slow, apiKey);
+        }
         if (!res.ok) {
           const body = await res.text().catch(() => "");
           console.error(`TTS failed [${res.status}]: ${body.slice(0, 300)}`);
           return new Response(body || "TTS failed", { status: res.status });
         }
+
 
         let bytes = new Uint8Array(await res.arrayBuffer());
 
@@ -50,7 +82,8 @@ export const Route = createFileRoute("/api/tts")({
         // recording (a sign the model spoke more than the requested text).
         const maxBytes = 6000 + text.length * 9000;
         if (bytes.byteLength < 600 || bytes.byteLength > maxBytes) {
-          res = await synthesize(text, slow, apiKey);
+          res = await run();
+
           if (res.ok) {
             const retry = new Uint8Array(await res.arrayBuffer());
             if (retry.byteLength >= 600) bytes = retry;
