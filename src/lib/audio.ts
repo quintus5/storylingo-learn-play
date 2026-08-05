@@ -217,6 +217,8 @@ export async function speak(text: string, slow = false): Promise<void> {
   current = audio;
   currentUrl = url;
   setSpeaking(text);
+  trackProgress(audio, mine);
+
 
   await new Promise<void>((resolve) => {
     const done = () => {
