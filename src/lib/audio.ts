@@ -250,6 +250,8 @@ export async function speakSequence(texts: string[], slow = false): Promise<void
     current = audio;
     currentUrl = url;
     setSpeaking(text);
+    trackProgress(audio, mine);
+
 
     const finished = await new Promise<boolean>((resolve) => {
       const done = () => resolve(mine === token);
