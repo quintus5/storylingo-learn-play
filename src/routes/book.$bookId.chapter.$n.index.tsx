@@ -159,14 +159,16 @@ function Reader() {
 
   const art = current.image_url ?? (page === 0 ? chapter.image_url : null) ?? chapter.image_url;
   const spoken = current.sentences.find((s) => s.hanzi === speaking);
+  const subtitle = spoken ?? current.sentences[0];
 
   return (
     <div className="fixed inset-0 overflow-hidden bg-background">
       {/* Artwork layer */}
       <button
         type="button"
-        onClick={() => setExpanded((v) => !v)}
-        aria-label={expanded ? "Show the picture" : "Show the whole page"}
+        onClick={() => setPanel(panel === "full" ? "subtitle" : "full")}
+        aria-label={panel === "full" ? "Show the picture" : "Show the whole page"}
+
         className="absolute inset-0 h-full w-full cursor-pointer"
       >
         {art ? (
