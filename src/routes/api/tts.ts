@@ -75,8 +75,10 @@ export const Route = createFileRoute("/api/tts")({
           fishKey ? synthesizeFish(text, slow, fishKey, voice) : synthesize(text, slow, apiKey!);
 
 
+        let provider = fishKey ? "fish" : "openai";
         let res = await run();
         if (!res.ok && fishKey && apiKey) {
+          provider = "openai-fallback";
           const body = await res.text().catch(() => "");
           console.error(`Fish Audio TTS failed [${res.status}]: ${body.slice(0, 300)}`);
           res = await synthesize(text, slow, apiKey);
@@ -108,6 +110,7 @@ export const Route = createFileRoute("/api/tts")({
           headers: {
             "Content-Type": "audio/mpeg",
             "Cache-Control": "public, max-age=31536000, immutable",
+            "X-TTS-Provider": provider,
           },
         });
       },
