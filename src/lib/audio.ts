@@ -85,9 +85,27 @@ export function onVoiceChange(listener: (v: VoiceId) => void): () => void {
   return () => voiceListeners.delete(listener);
 }
 
+/** Bump when the TTS backend or voices change, so stale clips are ignored. */
+const CACHE_VERSION = "v2";
+
 function cacheKey(text: string, slow: boolean) {
-  return `fish-${VOICE_IDS[voice]}:${slow ? "slow" : "normal"}:${text}`;
+  return `${CACHE_VERSION}:fish-${VOICE_IDS[voice]}:${slow ? "slow" : "normal"}:${text}`;
 }
+
+/** Drop clips cached by an older narrator/model so nothing plays the old voice. */
+async function purgeStaleCache() {
+  const db = await openDb();
+  if (!db) return;
+  const store = db.transaction(STORE, "readwrite").objectStore(STORE);
+  const req = store.getAllKeys();
+  req.onsuccess = () => {
+    for (const k of req.result) {
+      if (typeof k === "string" && !k.startsWith(`${CACHE_VERSION}:`)) store.delete(k);
+    }
+  };
+}
+
+if (typeof indexedDB !== "undefined") void purgeStaleCache();
 
 export async function getClip(text: string, slow: boolean): Promise<Blob | null> {
   const key = cacheKey(text, slow);
