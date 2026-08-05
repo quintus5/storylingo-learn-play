@@ -69,10 +69,11 @@ export const Route = createFileRoute("/api/tts")({
 
         const parsed = Body.safeParse(await request.json().catch(() => null));
         if (!parsed.success) return new Response("Invalid request", { status: 400 });
-        const { text, slow = false } = parsed.data;
+        const { text, slow = false, voice = "female" } = parsed.data;
 
         const run = async () =>
-          fishKey ? synthesizeFish(text, slow, fishKey) : synthesize(text, slow, apiKey!);
+          fishKey ? synthesizeFish(text, slow, fishKey, voice) : synthesize(text, slow, apiKey!);
+
 
         let res = await run();
         if (!res.ok && fishKey && apiKey) {
