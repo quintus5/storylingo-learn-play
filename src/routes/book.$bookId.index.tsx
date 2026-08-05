@@ -6,6 +6,8 @@ import { AppShell } from "@/components/AppShell";
 import { StarRow } from "@/components/StarRow";
 import { bookQuery } from "@/lib/books";
 import { isUnlocked, useProgress } from "@/lib/progress";
+import { PRICES } from "@/lib/economy";
+import { CoinPurse } from "@/components/CoinPurse";
 
 export const Route = createFileRoute("/book/$bookId/")({
   loader: ({ context, params }) => context.queryClient.ensureQueryData(bookQuery(params.bookId)),
@@ -38,7 +40,7 @@ export const Route = createFileRoute("/book/$bookId/")({
 function BookPage() {
   const { bookId } = Route.useParams();
   const { data } = useSuspenseQuery(bookQuery(bookId));
-  const { progress } = useProgress();
+  const { progress, buyChapter } = useProgress();
   const navigate = useNavigate();
   const [wiggling, setWiggling] = useState<number | null>(null);
 
@@ -49,6 +51,8 @@ function BookPage() {
       title={book.title}
       back={{ to: "/" }}
       right={
+        <div className="flex items-center gap-2">
+        <CoinPurse coins={progress.coins} />
         <Link
           to="/book/$bookId/progress"
           params={{ bookId }}
@@ -56,6 +60,7 @@ function BookPage() {
         >
           <ListChecks className="h-4 w-4" /> Parents
         </Link>
+        </div>
       }
     >
       <section className="mb-7 flex flex-col gap-4 rounded-3xl border border-primary/20 bg-card/70 p-4 sm:flex-row">
