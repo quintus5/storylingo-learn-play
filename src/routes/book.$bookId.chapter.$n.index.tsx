@@ -66,7 +66,7 @@ function Reader() {
   const [playing, setPlaying] = useState(false);
   const [music, setMusic] = useState(false);
   const [dir, setDir] = useState(1);
-  const [expanded, setExpanded] = useState(false);
+  const [panel, setPanel] = useState<"subtitle" | "peek" | "full">("subtitle");
   const panelRef = useRef<HTMLDivElement>(null);
 
   const current = pages[page];
@@ -119,9 +119,10 @@ function Reader() {
 
   // Every new page starts art-first, scrolled back to the top.
   useEffect(() => {
-    setExpanded(false);
+    setPanel("subtitle");
     panelRef.current?.scrollTo({ top: 0 });
   }, [page]);
+
 
   if (!chapter || pages.length === 0) {
     return (
@@ -135,15 +136,16 @@ function Reader() {
     if (playing) {
       stopAudio();
       setPlaying(false);
-      setExpanded(true);
+      setPanel("full");
       return;
     }
     setPlaying(true);
-    setExpanded(false);
+    setPanel("subtitle");
     await speakSequence(sentenceTexts);
     setPlaying(false);
-    setExpanded(true);
+    setPanel("full");
   }
+
 
   function go(delta: number) {
     stopAudio();
@@ -157,14 +159,16 @@ function Reader() {
 
   const art = current.image_url ?? (page === 0 ? chapter.image_url : null) ?? chapter.image_url;
   const spoken = current.sentences.find((s) => s.hanzi === speaking);
+  const subtitle = spoken ?? current.sentences[0];
 
   return (
     <div className="fixed inset-0 overflow-hidden bg-background">
       {/* Artwork layer */}
       <button
         type="button"
-        onClick={() => setExpanded((v) => !v)}
-        aria-label={expanded ? "Show the picture" : "Show the whole page"}
+        onClick={() => setPanel(panel === "full" ? "subtitle" : "full")}
+        aria-label={panel === "full" ? "Show the picture" : "Show the whole page"}
+
         className="absolute inset-0 h-full w-full cursor-pointer"
       >
         {art ? (
@@ -177,7 +181,12 @@ function Reader() {
         ) : (
           <div className="h-full w-full bg-secondary" />
         )}
-        <span className="art-scrim pointer-events-none absolute inset-0" />
+        <span
+          className={`art-scrim pointer-events-none absolute inset-0 transition-opacity duration-500 motion-reduce:transition-none ${
+            panel === "subtitle" ? "opacity-40" : "opacity-100"
+          }`}
+        />
+
       </button>
 
       {/* Floating controls */}
@@ -231,39 +240,47 @@ function Reader() {
         </div>
       </header>
 
-      {/* Reading panel */}
+      {/* Reading panel — subtitle by default, opens to a full page */}
       <section
-        className={`glass-panel absolute inset-x-0 bottom-0 z-10 flex flex-col rounded-t-[2rem] border-t border-border/60 transition-[max-height] duration-500 ease-out ${
-          expanded ? "max-h-[82vh]" : playing ? "max-h-[34vh]" : "max-h-[46vh]"
+        className={`absolute z-10 flex flex-col overflow-hidden border transition-all duration-500 ease-out motion-reduce:transition-none ${
+          panel === "full"
+            ? "glass-full inset-x-0 bottom-0 h-[100dvh] max-h-[100dvh] rounded-t-[2rem] border-border/60 pt-14"
+            : panel === "peek"
+              ? "glass-subtitle inset-x-2 bottom-3 max-h-[34vh] rounded-[1.75rem] border-border/40 sm:inset-x-6"
+              : "glass-subtitle inset-x-2 bottom-3 max-h-[24vh] rounded-[1.75rem] border-border/40 sm:inset-x-6"
         }`}
       >
         <button
           type="button"
-          onClick={() => setExpanded((v) => !v)}
-          aria-label={expanded ? "Collapse the text" : "Expand the text"}
-          className="mx-auto flex h-8 w-full max-w-5xl items-center justify-center text-muted-foreground"
+          onClick={() => setPanel(panel === "full" ? "subtitle" : "full")}
+          aria-label={panel === "full" ? "Collapse the text" : "Show the whole page"}
+          className="mx-auto flex h-7 w-full max-w-5xl shrink-0 items-center justify-center text-muted-foreground"
         >
-          {expanded ? <ChevronDown className="h-5 w-5" /> : <ChevronUp className="h-5 w-5" />}
+          {panel === "full" ? (
+            <ChevronDown className="h-5 w-5" />
+          ) : (
+            <ChevronUp className="h-5 w-5" />
+          )}
         </button>
 
         <div
           ref={panelRef}
           onScroll={(e) => {
-            if (e.currentTarget.scrollTop > 8) setExpanded(true);
+            if (e.currentTarget.scrollTop > 8) setPanel("full");
           }}
-          className="mx-auto w-full max-w-5xl flex-1 overflow-y-auto px-4 pb-2"
+          className={`mx-auto w-full max-w-5xl flex-1 overflow-y-auto ${
+            panel === "full" ? "px-4 pb-2" : "px-3 pb-1"
+          }`}
         >
           <div
-            key={`${page}-${playing ? "play" : "read"}`}
+            key={`${page}-${panel === "full" ? "all" : "one"}`}
             className={`space-y-3 ${
               dir > 0
                 ? "animate-[page-in-next_.4s_cubic-bezier(.22,.8,.3,1)_both]"
                 : "animate-[page-in-prev_.4s_cubic-bezier(.22,.8,.3,1)_both]"
             }`}
           >
-            {playing && spoken ? (
-              <SentenceCard sentence={spoken} speaking onWord={setWord} />
-            ) : (
+            {panel === "full" ? (
               current.sentences.map((sentence, i) => (
                 <SentenceCard
                   key={i}
@@ -272,43 +289,86 @@ function Reader() {
                   onWord={setWord}
                 />
               ))
+            ) : (
+              <SentenceCard
+                sentence={subtitle}
+                speaking={Boolean(playing && spoken)}
+                compact
+                onWord={setWord}
+              />
             )}
           </div>
         </div>
 
-        <nav className="mx-auto flex w-full max-w-5xl items-center justify-between gap-3 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2">
-          <button
-            onClick={() => go(-1)}
-            disabled={page === 0}
-            aria-label="Previous page"
-            className="press inline-flex items-center gap-1 rounded-2xl bg-secondary px-4 py-2.5 font-bold text-secondary-foreground disabled:opacity-40"
-          >
-            <ChevronLeft className="h-5 w-5" />
-            <span className="hidden sm:inline">Back</span>
-          </button>
-          <p className="text-xs text-muted-foreground sm:text-sm">
-            Page {page + 1} of {pages.length}
-          </p>
-          {isLast ? (
-            <Link
-              to="/book/$bookId/chapter/$n/quiz"
-              params={{ bookId, n }}
-              onClick={() => stopAudio()}
-              className="press inline-flex items-center gap-1 rounded-2xl bg-primary px-4 py-2.5 font-bold text-primary-foreground"
-            >
-              Quiz <ChevronRight className="h-5 w-5" />
-            </Link>
-          ) : (
+        {panel === "full" ? (
+          <nav className="mx-auto flex w-full max-w-5xl shrink-0 items-center justify-between gap-3 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2">
             <button
-              onClick={() => go(1)}
-              className="press inline-flex items-center gap-1 rounded-2xl bg-primary px-4 py-2.5 font-bold text-primary-foreground"
+              onClick={() => go(-1)}
+              disabled={page === 0}
+              aria-label="Previous page"
+              className="press inline-flex items-center gap-1 rounded-2xl bg-secondary px-4 py-2.5 font-bold text-secondary-foreground disabled:opacity-40"
             >
-              <span className="hidden sm:inline">Next</span>
-              <ChevronRight className="h-5 w-5" />
+              <ChevronLeft className="h-5 w-5" />
+              <span className="hidden sm:inline">Back</span>
             </button>
-          )}
-        </nav>
+            <p className="text-xs text-muted-foreground sm:text-sm">
+              Page {page + 1} of {pages.length}
+            </p>
+            {isLast ? (
+              <Link
+                to="/book/$bookId/chapter/$n/quiz"
+                params={{ bookId, n }}
+                onClick={() => stopAudio()}
+                className="press inline-flex items-center gap-1 rounded-2xl bg-primary px-4 py-2.5 font-bold text-primary-foreground"
+              >
+                Quiz <ChevronRight className="h-5 w-5" />
+              </Link>
+            ) : (
+              <button
+                onClick={() => go(1)}
+                className="press inline-flex items-center gap-1 rounded-2xl bg-primary px-4 py-2.5 font-bold text-primary-foreground"
+              >
+                <span className="hidden sm:inline">Next</span>
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            )}
+          </nav>
+        ) : (
+          <nav className="mx-auto flex w-full max-w-5xl shrink-0 items-center justify-between gap-2 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1">
+            <button
+              onClick={() => go(-1)}
+              disabled={page === 0}
+              aria-label="Previous page"
+              className="press inline-flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-secondary-foreground disabled:opacity-40"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <p className="text-[11px] text-muted-foreground">
+              {page + 1} / {pages.length}
+            </p>
+            {isLast ? (
+              <Link
+                to="/book/$bookId/chapter/$n/quiz"
+                params={{ bookId, n }}
+                onClick={() => stopAudio()}
+                aria-label="Go to the quiz"
+                className="press inline-flex h-9 items-center gap-1 rounded-full bg-primary px-3 text-sm font-bold text-primary-foreground"
+              >
+                Quiz <ChevronRight className="h-4 w-4" />
+              </Link>
+            ) : (
+              <button
+                onClick={() => go(1)}
+                aria-label="Next page"
+                className="press inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            )}
+          </nav>
+        )}
       </section>
+
 
       {word && <WordPopup word={word} onClose={() => setWord(null)} />}
     </div>
@@ -318,21 +378,29 @@ function Reader() {
 function SentenceCard({
   sentence,
   speaking,
+  compact = false,
   onWord,
 }: {
   sentence: Sentence;
   speaking: boolean;
+  compact?: boolean;
   onWord: (word: Word) => void;
 }) {
   return (
     <article
-      className={`rounded-3xl border p-4 transition-colors ${
-        speaking
-          ? "border-gold/70 bg-card animate-[speak_1.2s_ease-in-out_infinite]"
-          : "border-border/70 bg-card/70"
-      }`}
+      className={
+        compact
+          ? "rounded-2xl px-1 py-1 text-center"
+          : `rounded-3xl border p-4 transition-colors ${
+              speaking
+                ? "border-gold/70 bg-card animate-[speak_1.2s_ease-in-out_infinite]"
+                : "border-border/70 bg-card/70"
+            }`
+      }
     >
-      <div className="flex flex-wrap items-end gap-x-1 gap-y-2">
+      <div
+        className={`flex flex-wrap items-end gap-x-1 gap-y-1 ${compact ? "justify-center" : ""}`}
+      >
         {sentence.words.length > 0
           ? sentence.words.map((w, i) => (
               <button
@@ -340,27 +408,42 @@ function SentenceCard({
                 onClick={() => onWord(w)}
                 className="press rounded-xl px-1 py-0.5 text-left hover:bg-secondary"
               >
-                <span className="block text-xs text-primary">{w.pinyin}</span>
-                <span className="han block text-3xl font-bold leading-tight text-sand">
+                <span className="block text-[10px] text-primary">{w.pinyin}</span>
+                <span
+                  className={`han block font-bold leading-tight text-sand ${
+                    compact ? "text-2xl" : "text-3xl"
+                  }`}
+                >
                   {w.hanzi}
                 </span>
               </button>
             ))
           : (
               <div>
-                <span className="block text-xs text-primary">{sentence.pinyin}</span>
-                <span className="han block text-3xl font-bold text-sand">{sentence.hanzi}</span>
+                <span className="block text-[10px] text-primary">{sentence.pinyin}</span>
+                <span
+                  className={`han block font-bold text-sand ${compact ? "text-2xl" : "text-3xl"}`}
+                >
+                  {sentence.hanzi}
+                </span>
               </div>
             )}
       </div>
-      <p className="mt-2 text-sm text-primary/90">{sentence.pinyin}</p>
-      <p className="mt-1 text-base text-muted-foreground">{sentence.native}</p>
-      <button
-        onClick={() => void speak(sentence.hanzi)}
-        className="press mt-3 inline-flex items-center gap-2 rounded-xl bg-secondary px-3 py-2 text-sm font-bold text-secondary-foreground"
+      {!compact && <p className="mt-2 text-sm text-primary/90">{sentence.pinyin}</p>}
+      <p
+        className={`text-muted-foreground ${compact ? "mt-1 text-sm" : "mt-1 text-base"}`}
       >
-        <Play className="h-4 w-4" /> Hear this line
-      </button>
+        {sentence.native}
+      </p>
+      {!compact && (
+        <button
+          onClick={() => void speak(sentence.hanzi)}
+          className="press mt-3 inline-flex items-center gap-2 rounded-xl bg-secondary px-3 py-2 text-sm font-bold text-secondary-foreground"
+        >
+          <Play className="h-4 w-4" /> Hear this line
+        </button>
+      )}
     </article>
   );
+
 }
