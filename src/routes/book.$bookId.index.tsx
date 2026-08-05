@@ -6,6 +6,8 @@ import { AppShell } from "@/components/AppShell";
 import { StarRow } from "@/components/StarRow";
 import { bookQuery } from "@/lib/books";
 import { isUnlocked, useProgress } from "@/lib/progress";
+import { PRICES } from "@/lib/economy";
+import { CoinPurse } from "@/components/CoinPurse";
 
 export const Route = createFileRoute("/book/$bookId/")({
   loader: ({ context, params }) => context.queryClient.ensureQueryData(bookQuery(params.bookId)),
@@ -38,7 +40,7 @@ export const Route = createFileRoute("/book/$bookId/")({
 function BookPage() {
   const { bookId } = Route.useParams();
   const { data } = useSuspenseQuery(bookQuery(bookId));
-  const { progress } = useProgress();
+  const { progress, buyChapter } = useProgress();
   const navigate = useNavigate();
   const [wiggling, setWiggling] = useState<number | null>(null);
 
@@ -49,6 +51,8 @@ function BookPage() {
       title={book.title}
       back={{ to: "/" }}
       right={
+        <div className="flex items-center gap-2">
+        <CoinPurse coins={progress.coins} />
         <Link
           to="/book/$bookId/progress"
           params={{ bookId }}
@@ -56,6 +60,7 @@ function BookPage() {
         >
           <ListChecks className="h-4 w-4" /> Parents
         </Link>
+        </div>
       }
     >
       <section className="mb-7 flex flex-col gap-4 rounded-3xl border border-primary/20 bg-card/70 p-4 sm:flex-row">
@@ -92,55 +97,81 @@ function BookPage() {
           const empty = !chapter.pages?.length;
 
           return (
-            <button
+            <div
               key={chapter.id}
-              onClick={() => {
-                if (unlocked && !empty) {
-                  void navigate({
-                    to: "/book/$bookId/chapter/$n",
-                    params: { bookId, n: String(chapter.idx) },
-                  });
-                } else {
-                  setWiggling(chapter.idx);
-                  setTimeout(() => setWiggling(null), 520);
-                }
-              }}
-              className={`press overflow-hidden rounded-3xl border text-left ${
+              className={`overflow-hidden rounded-3xl border text-left ${
                 unlocked && !empty
                   ? "border-border bg-card"
                   : "border-border/50 bg-card/50 opacity-70"
               } ${wiggling === chapter.idx ? "animate-[wiggle_0.5s_ease-in-out]" : ""}`}
             >
-              <div className="relative aspect-[4/3] w-full bg-secondary">
-                {chapter.image_url ? (
-                  <img
-                    src={chapter.image_url}
-                    alt={`Illustration for ${chapter.title}`}
-                    className="h-full w-full object-cover"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                    <BookOpen className="h-7 w-7" />
-                  </div>
-                )}
-                {(!unlocked || empty) && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-background/65">
-                    <Lock className="h-7 w-7 text-primary" />
-                  </div>
-                )}
-              </div>
-              <div className="p-3">
-                <p className="text-xs font-bold uppercase tracking-wide text-primary">
-                  Chapter {chapter.idx}
-                </p>
-                <p className="line-clamp-2 font-bold leading-snug">{chapter.title}</p>
-                <div className="mt-2">
-                  <StarRow count={stars} size={15} />
+              <button
+                type="button"
+                className="press block w-full text-left"
+                onClick={() => {
+                  if (unlocked && !empty) {
+                    void navigate({
+                      to: "/book/$bookId/chapter/$n",
+                      params: { bookId, n: String(chapter.idx) },
+                    });
+                  } else {
+                    setWiggling(chapter.idx);
+                    setTimeout(() => setWiggling(null), 520);
+                  }
+                }}
+              >
+                <div className="relative aspect-[4/3] w-full bg-secondary">
+                  {chapter.image_url ? (
+                    <img
+                      src={chapter.image_url}
+                      alt={`Illustration for ${chapter.title}`}
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                      <BookOpen className="h-7 w-7" />
+                    </div>
+                  )}
+                  {(!unlocked || empty) && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-background/65">
+                      <Lock className="h-7 w-7 text-primary" />
+                    </div>
+                  )}
                 </div>
-              </div>
-            </button>
+                <div className="p-3">
+                  <p className="text-xs font-bold uppercase tracking-wide text-primary">
+                    Chapter {chapter.idx}
+                  </p>
+                  <p className="line-clamp-2 font-bold leading-snug">{chapter.title}</p>
+                  <div className="mt-2">
+                    <StarRow count={stars} size={15} />
+                  </div>
+                </div>
+              </button>
+
+              {!unlocked && !empty && (
+                <div className="px-3 pb-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!buyChapter(bookId, chapter.idx)) {
+                        setWiggling(chapter.idx);
+                        setTimeout(() => setWiggling(null), 520);
+                      }
+                    }}
+                    className="press w-full rounded-2xl bg-primary px-3 py-2 text-sm font-bold text-primary-foreground"
+                  >
+                    Open now · 🪙 {PRICES.chapter}
+                  </button>
+                  <p className="mt-1 text-center text-[11px] text-muted-foreground">
+                    or earn a star in chapter {chapter.idx - 1}
+                  </p>
+                </div>
+              )}
+            </div>
           );
+
         })}
       </div>
     </AppShell>

@@ -5,6 +5,11 @@ import { BookOpen, Loader2, Search, Wand2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { createBook, generateChapter, previewBook } from "@/lib/story.functions";
 import { ART_STYLES, DEFAULT_ART_STYLE, artStyle } from "@/lib/art-styles";
+import { CoinPurse } from "@/components/CoinPurse";
+import { CharacterSprite } from "@/components/CharacterSprite";
+import { characterPrompt } from "@/lib/character";
+import { PRICES } from "@/lib/economy";
+import { useProgress } from "@/lib/progress";
 import type { ArtStyleId } from "@/lib/art-styles";
 
 type StoryPreview = {
@@ -47,6 +52,9 @@ function CreatePage() {
   const create = useServerFn(createBook);
   const chapter = useServerFn(generateChapter);
   const preview = useServerFn(previewBook);
+  const { progress, spend } = useProgress();
+  const buddy = progress.character;
+  const canAfford = progress.coins >= PRICES.book;
 
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
@@ -81,6 +89,12 @@ function CreatePage() {
     e.preventDefault();
     setError(null);
     setLog([]);
+    if (!spend(PRICES.book)) {
+      setError(
+        `A new book costs ${PRICES.book} coins. You have ${progress.coins}. Read a chapter or play a quiz to earn more!`,
+      );
+      return;
+    }
     setBusy(true);
     try {
 
@@ -91,6 +105,7 @@ function CreatePage() {
           url: url.trim(),
           chapterCount,
           artStyle: style,
+          characterPrompt: characterPrompt(buddy),
         },
       });
       say(`Retelling it as ${count} chapters…`);
@@ -118,7 +133,7 @@ function CreatePage() {
   }
 
   return (
-    <AppShell title="New story" back={{ to: "/" }}>
+    <AppShell title="New story" back={{ to: "/" }} right={<CoinPurse />}>
       <form onSubmit={onSubmit} className="mx-auto max-w-xl space-y-5">
         <div className="rounded-3xl border border-border bg-card p-5">
           <label className="block text-sm font-semibold" htmlFor="title">
@@ -297,14 +312,47 @@ function CreatePage() {
 
 
 
+        <section className="flex items-center gap-4 rounded-3xl border border-border bg-card/70 p-4">
+          {buddy ? (
+            <CharacterSprite look={buddy} size={64} />
+          ) : (
+            <span className="text-4xl" aria-hidden>
+              🧒
+            </span>
+          )}
+          <div className="min-w-0 text-sm">
+            {buddy ? (
+              <p>
+                <span className="font-bold">{buddy.name || "Your buddy"}</span> will be painted into
+                every picture of this book.
+              </p>
+            ) : (
+              <p className="text-muted-foreground">
+                Make a story buddy and they'll appear inside your book's pictures.
+              </p>
+            )}
+            <a
+              href="/character"
+              className="mt-1 inline-block font-bold text-primary underline-offset-4 hover:underline"
+            >
+              {buddy ? "Change my buddy" : "Create my buddy"}
+            </a>
+          </div>
+        </section>
+
         <button
           type="submit"
-          disabled={busy}
+          disabled={busy || !canAfford}
           className="press inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-4 text-lg font-extrabold text-primary-foreground disabled:opacity-60"
         >
           {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <Wand2 className="h-5 w-5" />}
-          {busy ? "Building your book…" : "Make my picture book"}
+          {busy ? "Building your book…" : `Make my picture book · 🪙 ${PRICES.book}`}
         </button>
+        <p className="text-center text-xs text-muted-foreground">
+          {canAfford
+            ? `You have 🪙 ${progress.coins}. A new book costs 🪙 ${PRICES.book}.`
+            : `You need 🪙 ${PRICES.book - progress.coins} more coins. Read a chapter or play a quiz to earn some!`}
+        </p>
 
         {log.length > 0 && (
           <ul className="space-y-1 rounded-2xl border border-border bg-card/70 p-4 text-sm">

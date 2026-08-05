@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Play, Sparkles, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { StarRow } from "@/components/StarRow";
@@ -61,7 +61,8 @@ function Quiz() {
   const idx = Number(n);
   const { data } = useSuspenseQuery(bookQuery(bookId));
   const navigate = useNavigate();
-  const { awardStars, missWord, masterWord } = useProgress();
+  const { progress, awardStars, missWord, masterWord } = useProgress();
+  const coinsAtStart = useRef<number | null>(null);
 
   const chapter = data.chapters.find((c) => c.idx === idx);
   const learned = useMemo(
@@ -155,6 +156,13 @@ function Quiz() {
   }
 
   useEffect(() => {
+    if (coinsAtStart.current === null && started) coinsAtStart.current = progress.coins;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [started]);
+
+  const coinsWon = Math.max(0, progress.coins - (coinsAtStart.current ?? progress.coins));
+
+  useEffect(() => {
     if (done) awardStars(bookId, idx, Math.max(stars, 1) === 1 && stars === 0 ? 0 : stars);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [done]);
@@ -208,6 +216,11 @@ function Quiz() {
           <div className="mt-3 flex justify-center">
             <StarRow count={stars} animate />
           </div>
+          {coinsWon > 0 && (
+            <p className="mt-3 animate-[pop_0.5s_ease-out] text-lg font-extrabold text-gold">
+              🪙 +{coinsWon} coins
+            </p>
+          )}
           <p className="mt-3 text-muted-foreground">
             {stars > 0
               ? "The next chapter is unlocked!"
