@@ -132,7 +132,9 @@ export async function getClip(text: string, slow: boolean): Promise<Blob | null>
       const blob = await res.blob();
       if (blob.size < 600) return null;
       memory.set(key, blob);
-      void writeCache(key, blob);
+      // Only persist clips from the real narrator voice; fallback audio
+      // must not stick around once the narrator is available again.
+      if (res.headers.get("X-TTS-Provider") === "fish") void writeCache(key, blob);
       return blob;
     } catch {
       return null;
