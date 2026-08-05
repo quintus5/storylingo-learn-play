@@ -49,6 +49,8 @@ function Reader() {
   const { data } = useSuspenseQuery(bookQuery(bookId));
   const { markRead, seeWords } = useProgress();
   const speaking = useSpeakingText();
+  const [voice, chooseVoice] = useVoice();
+
 
   const chapter = data.chapters.find((c) => c.idx === idx);
   const pages = chapter?.pages ?? [];
