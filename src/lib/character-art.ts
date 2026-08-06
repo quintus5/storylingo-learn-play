@@ -132,9 +132,9 @@ export const OUTFIT_PIECES: Record<string, Piece> = {
 
 export const HAT_PIECES: Record<string, Piece> = {
   straw: piece(hatStraw, 218, -93, 380),
-  crown: piece(hatCrown, 273, -84, 270),
+  crown: piece(hatCrown, 273, -74, 270),
   wizard: piece(hatWizard, 238, -237, 340),
-  beanie: piece(hatBeanie, 248, -222, 320),
+  beanie: piece(hatBeanie, 248, -212, 320),
 };
 
 export const PET_PIECES: Record<string, Piece> = {
