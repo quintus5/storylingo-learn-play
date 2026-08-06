@@ -127,6 +127,8 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  // Applies ?unlockAll=1 on every page, not just the character screen.
+  useTestUnlock();
 
   return (
     <QueryClientProvider client={queryClient}>
