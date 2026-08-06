@@ -24,6 +24,15 @@ type StoryPreview = {
   artStyleReason: string;
   characters: string[];
   keyEvents: string[];
+  th?: {
+    title: string;
+    blurb: string;
+    reason: string;
+    chapterTitles: string[];
+    artStyleReason: string;
+    characters: string[];
+    keyEvents: string[];
+  };
 };
 
 
