@@ -38,14 +38,13 @@ const EMPTY: Progress = {
   wordsMastered: [],
   lastDay: null,
   streak: 0,
-  coins: 0,
+  coins: 1000,
   earned: 0,
   owned: [],
   awarded: {},
   bought: {},
   character: null,
 };
-
 
 function today() {
   return new Date().toISOString().slice(0, 10);
@@ -168,8 +167,7 @@ export function useProgress() {
   );
 
   const masterWord = useCallback(
-    (word: string) =>
-      update((p) => ({ ...p, wordsMastered: Array.from(new Set([...p.wordsMastered, word])) })),
+    (word: string) => update((p) => ({ ...p, wordsMastered: Array.from(new Set([...p.wordsMastered, word])) })),
     [update],
   );
 
@@ -203,10 +201,7 @@ export function useProgress() {
     [spend],
   );
 
-  const saveCharacter = useCallback(
-    (character: CharacterLook) => update((p) => ({ ...p, character })),
-    [update],
-  );
+  const saveCharacter = useCallback((character: CharacterLook) => update((p) => ({ ...p, character })), [update]);
 
   return {
     progress,
@@ -252,4 +247,3 @@ export function isUnlocked(p: Progress, bookId: string, idx: number) {
   if (p.bought[`${bookId}:${idx}`]) return true;
   return (p.books[bookId]?.stars[idx - 1] ?? 0) > 0;
 }
-
