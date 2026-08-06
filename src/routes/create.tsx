@@ -243,8 +243,8 @@ function CreatePage() {
             ))}
           </select>
           <p className="mt-2 text-xs text-muted-foreground">
-            {plan?.artStyleReason && style === plan.artStyle
-              ? plan.artStyleReason
+            {planText?.artStyleReason && style === plan?.artStyle
+              ? planText.artStyleReason
               : t(artStyle(style).hint, artStyle(style).hintTh ?? artStyle(style).hint)}
           </p>
 
