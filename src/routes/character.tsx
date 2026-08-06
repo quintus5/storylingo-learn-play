@@ -132,14 +132,14 @@ function CharacterPage() {
 
   return (
     <AppShell title={t("My character", "ตัวละครของฉัน")} back={{ to: "/" }} right={<CoinPurse />}>
-      <div className="mx-auto max-w-xl">
-        <div className="sticky top-0 z-30 -mx-4 mb-1 bg-background/80 px-4 py-2 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
-          <div className="flex items-center gap-4 rounded-3xl border border-primary/20 bg-card/80 p-4">
-            <div className="shrink-0 animate-[float-in_0.4s_ease-out] rounded-3xl bg-secondary/50 p-2">
+      <div className="mx-auto grid max-w-xl gap-5 lg:max-w-5xl lg:grid-cols-[minmax(0,20rem)_1fr] lg:items-start">
+        <div className="sticky top-[4.5rem] z-10 -mx-4 bg-background/80 px-4 py-2 backdrop-blur-md supports-[backdrop-filter]:bg-background/60 lg:mx-0 lg:px-0">
+          <div className="flex items-center gap-4 rounded-3xl border border-primary/20 bg-card/80 p-4 lg:flex-col lg:items-stretch lg:text-center">
+            <div className="shrink-0 animate-[float-in_0.4s_ease-out] rounded-3xl bg-secondary/50 p-2 lg:self-center">
               <CharacterSprite look={look} size={110} />
             </div>
 
-            <div className="min-w-0">
+            <div className="min-w-0 lg:text-left">
               <label className="text-sm font-semibold" htmlFor="buddy-name">
                 {t("Buddy name", "ชื่อเพื่อนคู่นิทาน")}
               </label>
@@ -151,7 +151,7 @@ function CharacterPage() {
                 placeholder={t("Nong Mali", "น้องมะลิ")}
                 className="mt-2 w-full rounded-2xl border border-input bg-background px-3 py-2 outline-none focus:ring-2 focus:ring-ring"
               />
-              <p className="mt-1.5 line-clamp-2 text-xs text-muted-foreground">
+              <p className="mt-1.5 line-clamp-2 text-xs text-muted-foreground lg:line-clamp-none">
                 {t(
                   "Your buddy is painted into the pictures of every new book you make.",
                   "เพื่อนคู่นิทานของคุณจะปรากฏในภาพของหนังสือทุกเล่มที่สร้างใหม่",
@@ -161,8 +161,9 @@ function CharacterPage() {
           </div>
         </div>
 
+        <div>
+        <div className="rounded-3xl border border-border bg-card p-5">
 
-        <div className="mt-5 rounded-3xl border border-border bg-card p-5">
           <Row t={t} label={t("Skin", "สีผิว")} options={SKINS} value={look.skin} onPick={(id) => set("skin", id!)} swatch />
           <Row t={t} label={t("Hair", "ทรงผม")} options={HAIRS} value={look.hair} onPick={(id) => set("hair", id!)} />
           <Row
