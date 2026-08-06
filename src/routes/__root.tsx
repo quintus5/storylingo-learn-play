@@ -12,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { LanguageProvider } from "../lib/i18n";
+import { useTestUnlock } from "../lib/progress";
 
 function NotFoundComponent() {
   return (
@@ -127,6 +128,8 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  // Applies ?unlockAll=1 on every page, not just the character screen.
+  useTestUnlock();
 
   return (
     <QueryClientProvider client={queryClient}>
