@@ -44,13 +44,13 @@ function Layer({ piece, alt }: { piece: Piece; alt: string }) {
 }
 
 /** Painted hair, tinted to the chosen colour while keeping its ink texture. */
-function Hair({ piece, color }: { piece: Piece; color: string }) {
+function Hair({ piece, color, clipPath }: { piece: Piece; color: string; clipPath?: string }) {
   const mask: CSSProperties = {
     ...box(piece),
     aspectRatio: "auto",
   };
   return (
-    <span style={{ ...box(piece), lineHeight: 0 }}>
+    <span style={{ ...box(piece), lineHeight: 0, clipPath }}>
       <img src={piece.src} alt="" style={{ width: "100%", visibility: "hidden" }} draggable={false} />
       <span
         aria-hidden
@@ -160,6 +160,9 @@ export function CharacterSprite({
         {look.hair === "long" && hair && <Hair piece={hair} color={hairColor(look)} />}
         {outfit && <Layer piece={fit(outfit, bodyFit)} alt="" />}
         <Face eyes={look.eyes} />
+        {look.hair === "long" && hair && (
+          <Hair piece={hair} color={hairColor(look)} clipPath="inset(0 0 55% 0)" />
+        )}
         {look.hair !== "long" && hair && <Hair piece={hair} color={hairColor(look)} />}
         {hat && <Layer piece={hat} alt="" />}
         {pet && variant === "full" && <Layer piece={pet} alt="" />}
