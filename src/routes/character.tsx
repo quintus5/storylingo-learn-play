@@ -139,26 +139,28 @@ function CharacterPage() {
               <CharacterSprite look={look} size={110} />
             </div>
 
-          <div className="min-w-0">
-            <label className="text-sm font-semibold" htmlFor="buddy-name">
-              {t("Buddy name", "ชื่อเพื่อนคู่นิทาน")}
-            </label>
-            <input
-              id="buddy-name"
-              value={look.name}
-              maxLength={24}
-              onChange={(e) => set("name", e.target.value)}
-              placeholder={t("Nong Mali", "น้องมะลิ")}
-              className="mt-2 w-full rounded-2xl border border-input bg-background px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
-            />
-            <p className="mt-2 text-xs text-muted-foreground">
-              {t(
-                "Your buddy is painted into the pictures of every new book you make.",
-                "เพื่อนคู่นิทานของคุณจะปรากฏในภาพของหนังสือทุกเล่มที่สร้างใหม่",
-              )}
-            </p>
+            <div className="min-w-0">
+              <label className="text-sm font-semibold" htmlFor="buddy-name">
+                {t("Buddy name", "ชื่อเพื่อนคู่นิทาน")}
+              </label>
+              <input
+                id="buddy-name"
+                value={look.name}
+                maxLength={24}
+                onChange={(e) => set("name", e.target.value)}
+                placeholder={t("Nong Mali", "น้องมะลิ")}
+                className="mt-2 w-full rounded-2xl border border-input bg-background px-3 py-2 outline-none focus:ring-2 focus:ring-ring"
+              />
+              <p className="mt-1.5 line-clamp-2 text-xs text-muted-foreground">
+                {t(
+                  "Your buddy is painted into the pictures of every new book you make.",
+                  "เพื่อนคู่นิทานของคุณจะปรากฏในภาพของหนังสือทุกเล่มที่สร้างใหม่",
+                )}
+              </p>
+            </div>
           </div>
         </div>
+
 
         <div className="mt-5 rounded-3xl border border-border bg-card p-5">
           <Row t={t} label={t("Skin", "สีผิว")} options={SKINS} value={look.skin} onPick={(id) => set("skin", id!)} swatch />
