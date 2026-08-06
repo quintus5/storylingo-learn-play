@@ -3,6 +3,7 @@ import type { CharacterLook } from "@/lib/character";
 import { hairColor } from "@/lib/character";
 import {
   BODIES,
+  BODY_FIT,
   CANVAS_HEIGHT,
   FRAME_HEIGHT_PCT,
   FRAME_TOP_PCT,
@@ -24,6 +25,17 @@ function box(piece: Piece): CSSProperties {
     top: `${piece.top}%`,
     width: `${piece.width}%`,
     height: "auto",
+  };
+}
+
+/** Widen or nudge a piece so it still fits a body painted at another size. */
+function fit(piece: Piece, fitting: { scale: number; dy: number }): Piece {
+  const width = piece.width * fitting.scale;
+  return {
+    src: piece.src,
+    width,
+    left: piece.left - (width - piece.width) / 2,
+    top: piece.top + (fitting.dy / 816) * 100,
   };
 }
 
