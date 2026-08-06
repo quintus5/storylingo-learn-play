@@ -40,6 +40,40 @@ function SpriteGridPage() {
           )),
         )}
       </div>
+      <h1 style={{ fontSize: 14, margin: "16px 0 12px" }}>Hats</h1>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        {SKINS.map((skin) =>
+          HATS.map((hat) => (
+            <div
+              key={`${skin.id}-${hat.id}`}
+              data-combo={`hat-${skin.id}-${hat.id}`}
+              style={{ width: 200, height: 260, background: "#ffffff", display: "flex", justifyContent: "center" }}
+            >
+              <CharacterSprite
+                look={{ ...DEFAULT_LOOK, name: "", skin: skin.id, hat: hat.id, pet: null }}
+                size={200}
+              />
+            </div>
+          )),
+        )}
+      </div>
+      <h1 style={{ fontSize: 14, margin: "16px 0 12px" }}>Outfits</h1>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        {SKINS.map((skin) =>
+          OUTFITS.map((outfit) => (
+            <div
+              key={`${skin.id}-${outfit.id}`}
+              data-combo={`outfit-${skin.id}-${outfit.id}`}
+              style={{ width: 200, height: 260, background: "#ffffff", display: "flex", justifyContent: "center" }}
+            >
+              <CharacterSprite
+                look={{ ...DEFAULT_LOOK, name: "", skin: skin.id, outfit: outfit.id, hat: null, pet: null }}
+                size={200}
+              />
+            </div>
+          )),
+        )}
+      </div>
     </main>
   );
 }
