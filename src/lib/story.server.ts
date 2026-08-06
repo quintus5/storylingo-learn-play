@@ -104,7 +104,13 @@ export async function getSourceText(url: string): Promise<string> {
   return text;
 }
 
-export type PlotSpine = { characters: string[]; events: string[] };
+export type PlotSpine = {
+  characters: string[];
+  events: string[];
+  /** Same lists in Thai, for the Thai UI. */
+  charactersTh?: string[];
+  eventsTh?: string[];
+};
 
 const FIDELITY_RULES =
   `FAITHFULNESS RULES (very important):\n` +
