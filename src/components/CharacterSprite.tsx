@@ -132,6 +132,7 @@ export function CharacterSprite({
   className?: string;
 }) {
   const body = BODIES[look.skin] ?? BODIES["honey"]!;
+  const bodyFit = BODY_FIT[look.skin] ?? BODY_FIT["honey"]!;
   const hair = HAIR_PIECES[look.hair];
   const outfit = OUTFIT_PIECES[look.outfit];
   const hat = look.hat ? HAT_PIECES[look.hat] : null;
