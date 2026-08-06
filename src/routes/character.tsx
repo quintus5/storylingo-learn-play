@@ -16,6 +16,7 @@ import {
 } from "@/lib/character";
 import type { CharacterLook, Option } from "@/lib/character";
 import { owns, useProgress } from "@/lib/progress";
+import { useT } from "@/lib/i18n";
 
 export const Route = createFileRoute("/character")({
   head: () => ({
@@ -44,6 +45,7 @@ function Row({
   swatch,
   lockedIds,
   clearable,
+  t,
 }: {
   label: string;
   options: Option[];
@@ -52,6 +54,7 @@ function Row({
   swatch?: boolean;
   lockedIds?: string[];
   clearable?: boolean;
+  t: (en: string, th: string) => string;
 }) {
   return (
     <div className="mt-5">
@@ -65,7 +68,7 @@ function Row({
               value === null ? "border-primary bg-primary/15 font-bold" : "border-border bg-card"
             }`}
           >
-            None
+            {t("None", "ไม่มี")}
           </button>
         )}
         {options.map((o) => {
@@ -88,7 +91,7 @@ function Row({
                   aria-hidden
                 />
               )}
-              {o.label}
+              {t(o.label, o.labelTh ?? o.label)}
               {locked && <span aria-hidden>🔒</span>}
             </button>
           );
@@ -99,6 +102,7 @@ function Row({
 }
 
 function CharacterPage() {
+  const t = useT();
   const { progress, saveCharacter } = useProgress();
   const navigate = useNavigate();
   const [look, setLook] = useState<CharacterLook>(DEFAULT_LOOK);
@@ -120,7 +124,7 @@ function CharacterPage() {
   const lockedPets = PETS.filter((o) => !owns(progress, `pet:${o.id}`)).map((o) => o.id);
 
   return (
-    <AppShell title="My character" back={{ to: "/" }} right={<CoinPurse />}>
+    <AppShell title={t("My character", "ตัวละครของฉัน")} back={{ to: "/" }} right={<CoinPurse />}>
       <div className="mx-auto max-w-xl">
         <div className="flex items-center gap-4 rounded-3xl border border-primary/20 bg-card/70 p-5">
           <div className="animate-[float-in_0.4s_ease-out] rounded-3xl bg-secondary/50 p-2">
@@ -128,42 +132,48 @@ function CharacterPage() {
           </div>
           <div className="min-w-0">
             <label className="text-sm font-semibold" htmlFor="buddy-name">
-              Buddy name
+              {t("Buddy name", "ชื่อเพื่อนคู่นิทาน")}
             </label>
             <input
               id="buddy-name"
               value={look.name}
               maxLength={24}
               onChange={(e) => set("name", e.target.value)}
-              placeholder="Nong Mali"
+              placeholder={t("Nong Mali", "น้องมะลิ")}
               className="mt-2 w-full rounded-2xl border border-input bg-background px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
             />
             <p className="mt-2 text-xs text-muted-foreground">
-              Your buddy is painted into the pictures of every new book you make.
+              {t(
+                "Your buddy is painted into the pictures of every new book you make.",
+                "เพื่อนคู่นิทานของคุณจะปรากฏในภาพของหนังสือทุกเล่มที่สร้างใหม่",
+              )}
             </p>
           </div>
         </div>
 
         <div className="mt-5 rounded-3xl border border-border bg-card p-5">
-          <Row label="Skin" options={SKINS} value={look.skin} onPick={(id) => set("skin", id!)} swatch />
-          <Row label="Hair" options={HAIRS} value={look.hair} onPick={(id) => set("hair", id!)} />
+          <Row t={t} label={t("Skin", "สีผิว")} options={SKINS} value={look.skin} onPick={(id) => set("skin", id!)} swatch />
+          <Row t={t} label={t("Hair", "ทรงผม")} options={HAIRS} value={look.hair} onPick={(id) => set("hair", id!)} />
           <Row
-            label="Hair colour"
+            t={t}
+            label={t("Hair colour", "สีผม")}
             options={HAIR_COLORS}
             value={look.hairColor}
             onPick={(id) => set("hairColor", id!)}
             swatch
           />
-          <Row label="Eyes" options={EYES} value={look.eyes} onPick={(id) => set("eyes", id!)} />
+          <Row t={t} label={t("Eyes", "ดวงตา")} options={EYES} value={look.eyes} onPick={(id) => set("eyes", id!)} />
           <Row
-            label="Outfit"
+            t={t}
+            label={t("Outfit", "ชุด")}
             options={OUTFITS}
             value={look.outfit}
             onPick={(id) => set("outfit", id!)}
             lockedIds={lockedOutfits}
           />
           <Row
-            label="Hat"
+            t={t}
+            label={t("Hat", "หมวก")}
             options={HATS}
             value={look.hat}
             onPick={(id) => set("hat", id)}
@@ -171,7 +181,8 @@ function CharacterPage() {
             clearable
           />
           <Row
-            label="Pet friend"
+            t={t}
+            label={t("Pet friend", "สัตว์เลี้ยงคู่ใจ")}
             options={PETS}
             value={look.pet}
             onPick={(id) => set("pet", id)}
@@ -179,7 +190,10 @@ function CharacterPage() {
             clearable
           />
           <p className="mt-4 text-xs text-muted-foreground">
-            Locked items 🔒 can be bought in the shop with coins you earn from reading and quizzes.
+            {t(
+              "Locked items 🔒 can be bought in the shop with coins you earn from reading and quizzes.",
+              "ไอเทมที่ล็อก 🔒 ซื้อได้ที่ร้านค้าด้วยเหรียญที่สะสมจากการอ่านและเล่นแบบทดสอบ",
+            )}
           </p>
         </div>
 
@@ -194,10 +208,10 @@ function CharacterPage() {
           >
             {saved ? (
               <span className="inline-flex items-center gap-2">
-                <Check className="h-4 w-4" /> Saved!
+                <Check className="h-4 w-4" /> {t("Saved!", "บันทึกแล้ว!")}
               </span>
             ) : (
-              "Save my buddy"
+              t("Save my buddy", "บันทึกเพื่อนของฉัน")
             )}
           </button>
           <button
@@ -205,7 +219,7 @@ function CharacterPage() {
             onClick={() => void navigate({ to: "/shop" })}
             className="press rounded-2xl bg-secondary px-5 py-3 font-bold text-secondary-foreground"
           >
-            Shop
+            {t("Shop", "ร้านค้า")}
           </button>
         </div>
       </div>

@@ -10,6 +10,7 @@ import { CharacterSprite } from "@/components/CharacterSprite";
 import { characterPrompt } from "@/lib/character";
 import { PRICES } from "@/lib/economy";
 import { useProgress } from "@/lib/progress";
+import { useT } from "@/lib/i18n";
 import type { ArtStyleId } from "@/lib/art-styles";
 
 type StoryPreview = {
@@ -48,6 +49,7 @@ export const Route = createFileRoute("/create")({
 });
 
 function CreatePage() {
+  const t = useT();
   const navigate = useNavigate();
   const create = useServerFn(createBook);
   const chapter = useServerFn(generateChapter);
@@ -79,7 +81,7 @@ function CreatePage() {
       setStyle(result.artStyle);
       if (!title.trim()) setTitle(result.title);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not read that link.");
+      setError(err instanceof Error ? err.message : t("Could not read that link.", "อ่านลิงก์นี้ไม่ได้"));
     } finally {
       setFetching(false);
     }
@@ -91,14 +93,17 @@ function CreatePage() {
     setLog([]);
     if (!spend(PRICES.book)) {
       setError(
-        `A new book costs ${PRICES.book} coins. You have ${progress.coins}. Read a chapter or play a quiz to earn more!`,
+        t(
+          `A new book costs ${PRICES.book} coins. You have ${progress.coins}. Read a chapter or play a quiz to earn more!`,
+          `หนังสือเล่มใหม่ราคา ${PRICES.book} เหรียญ ตอนนี้คุณมี ${progress.coins} เหรียญ อ่านบทหรือเล่นแบบทดสอบเพื่อสะสมเหรียญเพิ่มนะ!`,
+        ),
       );
       return;
     }
     setBusy(true);
     try {
 
-      say("Reading the story…");
+      say(t("Reading the story…", "กำลังอ่านนิทาน…"));
       const { bookId, chapterCount: count } = await create({
         data: {
           title: title.trim() || "A new story",
@@ -108,7 +113,7 @@ function CreatePage() {
           characterPrompt: characterPrompt(buddy),
         },
       });
-      say(`Retelling it as ${count} chapters…`);
+      say(t(`Retelling it as ${count} chapters…`, `กำลังเล่าใหม่เป็น ${count} บท…`));
       // Chapters are built a few at a time so the whole book finishes much faster.
       const BATCH = 3;
       for (let start = 1; start <= count; start += BATCH) {
@@ -118,38 +123,44 @@ function CreatePage() {
         );
         say(
           batch.length === 1
-            ? `Writing chapter ${batch[0]} and painting its pictures…`
-            : `Writing chapters ${batch[0]}–${batch[batch.length - 1]} and painting their pictures…`,
+            ? t(
+                `Writing chapter ${batch[0]} and painting its pictures…`,
+                `กำลังเขียนบทที่ ${batch[0]} และวาดภาพประกอบ…`,
+              )
+            : t(
+                `Writing chapters ${batch[0]}–${batch[batch.length - 1]} and painting their pictures…`,
+                `กำลังเขียนบทที่ ${batch[0]}–${batch[batch.length - 1]} และวาดภาพประกอบ…`,
+              ),
         );
         await Promise.all(batch.map((i) => chapter({ data: { bookId, idx: i } })));
       }
-      say("Your book is ready!");
+      say(t("Your book is ready!", "หนังสือของคุณพร้อมแล้ว!"));
       await navigate({ to: "/book/$bookId", params: { bookId } });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
+      setError(err instanceof Error ? err.message : t("Something went wrong.", "เกิดข้อผิดพลาดบางอย่าง"));
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <AppShell title="New story" back={{ to: "/" }} right={<CoinPurse />}>
+    <AppShell title={t("New story", "สร้างนิทานใหม่")} back={{ to: "/" }} right={<CoinPurse />}>
       <form onSubmit={onSubmit} className="mx-auto max-w-xl space-y-5">
         <div className="rounded-3xl border border-border bg-card p-5">
           <label className="block text-sm font-semibold" htmlFor="title">
-            Story title
+            {t("Story title", "ชื่อนิทาน")}
           </label>
           <input
             id="title"
             value={title}
             maxLength={120}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="The Little Star Who Lost Her Light"
+            placeholder={t("The Little Star Who Lost Her Light", "ดาวน้อยที่แสงหาย")}
             className="mt-2 w-full rounded-2xl border border-input bg-background px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
           />
 
           <label className="mt-5 block text-sm font-semibold" htmlFor="url">
-            Story link
+            {t("Story link", "ลิงก์นิทาน")}
           </label>
           <input
             id="url"
@@ -158,11 +169,14 @@ function CreatePage() {
             value={url}
             maxLength={2000}
             onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://example.com/a-bedtime-story"
+            placeholder={t("https://example.com/a-bedtime-story", "https://example.com/a-bedtime-story")}
             className="mt-2 w-full rounded-2xl border border-input bg-background px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
           />
           <p className="mt-2 text-xs text-muted-foreground">
-            StoryLingo writes its own retelling of the story, so nothing is copied word for word.
+            {t(
+              "StoryLingo writes its own retelling of the story, so nothing is copied word for word.",
+              "StoryLingo จะเล่านิทานใหม่ด้วยตัวเอง จึงไม่มีการคัดลอกคำต่อคำ",
+            )}
           </p>
 
           <button
@@ -176,13 +190,15 @@ function CreatePage() {
             ) : (
               <Search className="h-4 w-4" />
             )}
-            {fetching ? "Reading the story…" : "Fetch book"}
+            {fetching ? t("Reading the story…", "กำลังอ่านนิทาน…") : t("Fetch book", "ดึงข้อมูลนิทาน")}
           </button>
 
           <label className="mt-5 block text-sm font-semibold" htmlFor="chapters">
-            {chapterCount === 1 ? "1 chapter (quick mini-book)" : `${chapterCount} chapters`}
+            {chapterCount === 1
+              ? t("1 chapter (quick mini-book)", "1 บท (หนังสือเล่มเล็ก)")
+              : t(`${chapterCount} chapters`, `${chapterCount} บท`)}
             {plan && chapterCount === plan.suggestedChapters && (
-              <span className="ml-2 font-normal text-primary">· suggested</span>
+              <span className="ml-2 font-normal text-primary">· {t("suggested", "แนะนำ")}</span>
             )}
           </label>
           <input
@@ -197,9 +213,9 @@ function CreatePage() {
           />
 
           <label className="mt-5 block text-sm font-semibold" htmlFor="art-style">
-            Illustration style
+            {t("Illustration style", "สไตล์ภาพประกอบ")}
             {plan && style === plan.artStyle && (
-              <span className="ml-2 font-normal text-primary">· detected</span>
+              <span className="ml-2 font-normal text-primary">· {t("detected", "ตรวจพบ")}</span>
             )}
           </label>
           <select
@@ -210,26 +226,29 @@ function CreatePage() {
           >
             {ART_STYLES.map((s) => (
               <option key={s.id} value={s.id}>
-                {s.label} — {s.hint}
+                {t(s.label, s.labelTh ?? s.label)} — {t(s.hint, s.hintTh ?? s.hint)}
               </option>
             ))}
           </select>
           <p className="mt-2 text-xs text-muted-foreground">
             {plan?.artStyleReason && style === plan.artStyle
               ? plan.artStyleReason
-              : artStyle(style).hint}
+              : t(artStyle(style).hint, artStyle(style).hintTh ?? artStyle(style).hint)}
           </p>
 
 
           <div className="mt-5 rounded-2xl bg-secondary/50 p-3 text-sm text-muted-foreground">
-            Learning Mandarin Chinese (with pinyin) · explained in Thai
+            {t(
+              "Learning Mandarin Chinese (with pinyin) · explained in Thai",
+              "เรียนภาษาจีนกลาง (พร้อมพินอิน) · อธิบายเป็นภาษาไทย",
+            )}
           </div>
         </div>
 
         {plan && (
           <section className="animate-[float-in_0.4s_ease-out] rounded-3xl border border-primary/25 bg-card/70 p-5">
             <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-primary">
-              <BookOpen className="h-4 w-4" /> Suggested plan
+              <BookOpen className="h-4 w-4" /> {t("Suggested plan", "แผนที่แนะนำ")}
             </p>
             <h3 className="mt-2 text-xl font-extrabold">{plan.title}</h3>
             {plan.blurb && <p className="mt-1 text-sm text-muted-foreground">{plan.blurb}</p>}
@@ -237,13 +256,15 @@ function CreatePage() {
             <div className="mt-4 rounded-2xl bg-secondary/50 p-3 text-sm">
               <p className="font-bold">
                 {plan.suggestedChapters === 1
-                  ? "1 chapter suggested"
-                  : `${plan.suggestedChapters} chapters suggested`}
+                  ? t("1 chapter suggested", "แนะนำ 1 บท")
+                  : t(`${plan.suggestedChapters} chapters suggested`, `แนะนำ ${plan.suggestedChapters} บท`)}
               </p>
               {plan.reason && <p className="mt-1 text-muted-foreground">{plan.reason}</p>}
               <p className="mt-1 text-xs text-muted-foreground">
-                About {plan.wordCount.toLocaleString()} words of source text. You can still move the
-                slider.
+                {t(
+                  `About ${plan.wordCount.toLocaleString()} words of source text. You can still move the slider.`,
+                  `เนื้อหาต้นฉบับประมาณ ${plan.wordCount.toLocaleString()} คำ คุณยังสามารถเลื่อนแถบเปลี่ยนได้`,
+                )}
               </p>
             </div>
 
@@ -261,7 +282,7 @@ function CreatePage() {
             {plan.characters.length > 0 && (
               <div className="mt-4">
                 <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                  Characters kept from the original
+                  {t("Characters kept from the original", "ตัวละครจากเรื่องต้นฉบับ")}
                 </p>
                 <ul className="mt-2 flex flex-wrap gap-2">
                   {plan.characters.map((c, i) => (
@@ -279,7 +300,10 @@ function CreatePage() {
             {plan.keyEvents.length > 0 && (
               <details className="mt-4 rounded-2xl bg-secondary/40 p-3">
                 <summary className="cursor-pointer text-sm font-bold">
-                  Real story beats we'll keep ({plan.keyEvents.length})
+                  {t(
+                    `Real story beats we'll keep (${plan.keyEvents.length})`,
+                    `เหตุการณ์สำคัญที่เราจะคงไว้ (${plan.keyEvents.length})`,
+                  )}
                 </summary>
                 <ol className="mt-2 space-y-1 text-sm text-muted-foreground">
                   {plan.keyEvents.map((e, i) => (
@@ -290,8 +314,10 @@ function CreatePage() {
                   ))}
                 </ol>
                 <p className="mt-2 text-xs text-muted-foreground">
-                  StoryLingo retells the story in its own simple words but keeps these events,
-                  the characters and the real ending.
+                  {t(
+                    "StoryLingo retells the story in its own simple words but keeps these events, the characters and the real ending.",
+                    "StoryLingo เล่านิทานใหม่ด้วยคำง่าย ๆ แต่ยังคงเหตุการณ์ ตัวละคร และตอนจบดั้งเดิมไว้",
+                  )}
                 </p>
               </details>
             )}
@@ -304,7 +330,7 @@ function CreatePage() {
                 onClick={() => setChapterCount(plan.suggestedChapters)}
                 className="press mt-4 rounded-2xl bg-secondary px-4 py-2 text-sm font-bold text-secondary-foreground"
               >
-                Use suggested ({plan.suggestedChapters})
+                {t(`Use suggested (${plan.suggestedChapters})`, `ใช้ค่าที่แนะนำ (${plan.suggestedChapters})`)}
               </button>
             )}
           </section>
@@ -323,19 +349,22 @@ function CreatePage() {
           <div className="min-w-0 text-sm">
             {buddy ? (
               <p>
-                <span className="font-bold">{buddy.name || "Your buddy"}</span> will be painted into
-                every picture of this book.
+                <span className="font-bold">{buddy.name || t("Your buddy", "เพื่อนของคุณ")}</span>{" "}
+                {t("will be painted into every picture of this book.", "จะปรากฏอยู่ในทุกภาพของหนังสือเล่มนี้")}
               </p>
             ) : (
               <p className="text-muted-foreground">
-                Make a story buddy and they'll appear inside your book's pictures.
+                {t(
+                  "Make a story buddy and they'll appear inside your book's pictures.",
+                  "สร้างเพื่อนคู่นิทานแล้วพวกเขาจะปรากฏในภาพหนังสือของคุณ",
+                )}
               </p>
             )}
             <a
               href="/character"
               className="mt-1 inline-block font-bold text-primary underline-offset-4 hover:underline"
             >
-              {buddy ? "Change my buddy" : "Create my buddy"}
+              {buddy ? t("Change my buddy", "เปลี่ยนเพื่อนของฉัน") : t("Create my buddy", "สร้างเพื่อนของฉัน")}
             </a>
           </div>
         </section>
@@ -346,12 +375,20 @@ function CreatePage() {
           className="press inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-4 text-lg font-extrabold text-primary-foreground disabled:opacity-60"
         >
           {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <Wand2 className="h-5 w-5" />}
-          {busy ? "Building your book…" : `Make my picture book · 🪙 ${PRICES.book}`}
+          {busy
+            ? t("Building your book…", "กำลังสร้างหนังสือของคุณ…")
+            : t(`Make my picture book · 🪙 ${PRICES.book}`, `สร้างหนังสือภาพของฉัน · 🪙 ${PRICES.book}`)}
         </button>
         <p className="text-center text-xs text-muted-foreground">
           {canAfford
-            ? `You have 🪙 ${progress.coins}. A new book costs 🪙 ${PRICES.book}.`
-            : `You need 🪙 ${PRICES.book - progress.coins} more coins. Read a chapter or play a quiz to earn some!`}
+            ? t(
+                `You have 🪙 ${progress.coins}. A new book costs 🪙 ${PRICES.book}.`,
+                `คุณมี 🪙 ${progress.coins} เหรียญ หนังสือเล่มใหม่ราคา 🪙 ${PRICES.book}`,
+              )
+            : t(
+                `You need 🪙 ${PRICES.book - progress.coins} more coins. Read a chapter or play a quiz to earn some!`,
+                `คุณต้องการเหรียญเพิ่มอีก 🪙 ${PRICES.book - progress.coins} เหรียญ อ่านบทหรือเล่นแบบทดสอบเพื่อสะสมเหรียญนะ!`,
+              )}
         </p>
 
         {log.length > 0 && (
