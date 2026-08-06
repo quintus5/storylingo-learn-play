@@ -80,13 +80,13 @@ export const BODY_FIT: Record<string, { scale: number; dy: number }> = {
 };
 
 export const HAIR_PIECES: Record<string, Piece> = {
-  short: piece(hairShort, 283, 2, 250),
-  bob: piece(hairBob, 276, 0, 264),
+  short: piece(hairShort, 273, -45, 270),
+  bob: piece(hairBob, 258, -45, 300),
   // The long hair is painted with a face opening: its width and top are set so
   // the opening centres on the face (x=408) and its fringe stops above the eyes.
   long: piece(hairLong, 243, -22, 330),
-  buns: piece(hairBuns, 253, -22, 310),
-  curly: piece(hairCurly, 258, -10, 300),
+  buns: piece(hairBuns, 248, -55, 320),
+  curly: piece(hairCurly, 238, -60, 340),
 };
 
 export const OUTFIT_PIECES: Record<string, Piece> = {
