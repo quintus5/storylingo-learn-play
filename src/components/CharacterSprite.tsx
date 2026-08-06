@@ -158,7 +158,7 @@ export function CharacterSprite({
       >
         <img src={body} alt="" style={{ position: "absolute", inset: 0, width: "100%" }} draggable={false} />
         {look.hair === "long" && hair && <Hair piece={hair} color={hairColor(look)} />}
-        {outfit && <Layer piece={outfit} alt="" />}
+        {outfit && <Layer piece={fit(outfit, bodyFit)} alt="" />}
         <Face eyes={look.eyes} />
         {look.hair !== "long" && hair && <Hair piece={hair} color={hairColor(look)} />}
         {hat && <Layer piece={hat} alt="" />}
