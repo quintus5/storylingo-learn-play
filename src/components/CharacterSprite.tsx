@@ -162,8 +162,9 @@ export function CharacterSprite({
           height: `${FRAME_HEIGHT_PCT}%`,
         }}
       >
-        <img src={resolve(body)} alt="" style={{ position: "absolute", inset: 0, width: "100%" }} draggable={false} />
+        {/* Back hair sits under the body so only the part outside the head shows. */}
         {hair && <Hair piece={hair} color={hairColor(look)} />}
+        <img src={resolve(body)} alt="" style={{ position: "absolute", inset: 0, width: "100%" }} draggable={false} />
         {outfit && <Layer piece={fit(outfit, bodyFit)} alt="" />}
         <Face eyes={look.eyes} />
         {hair && (
