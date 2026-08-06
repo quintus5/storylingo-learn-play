@@ -89,6 +89,20 @@ export const HAIR_PIECES: Record<string, Piece> = {
   curly: piece(hairCurly, 238, -60, 340),
 };
 
+/**
+ * Hair is painted as a solid shape with no face opening, so each style is drawn
+ * twice: once behind the face, and once on top clipped to its fringe. These are
+ * the percentages of the hair box to cut away from the bottom of that top copy,
+ * so the fringe stops just above the eyes.
+ */
+export const HAIR_FRINGE_CLIP: Record<string, number> = {
+  short: 34,
+  bob: 41,
+  long: 55,
+  buns: 29,
+  curly: 15,
+};
+
 export const OUTFIT_PIECES: Record<string, Piece> = {
   tunic: piece(outfitTunic, 243, 252, 330),
   explorer: piece(outfitExplorer, 238, 257, 340),
