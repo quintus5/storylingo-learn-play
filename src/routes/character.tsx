@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Check } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { CharacterSprite } from "@/components/CharacterSprite";
+import { preloadCharacterArt } from "@/lib/character-art";
 import { CoinPurse } from "@/components/CoinPurse";
 import {
   DEFAULT_LOOK,
@@ -107,6 +108,10 @@ function CharacterPage() {
   const navigate = useNavigate();
   const [look, setLook] = useState<CharacterLook>(DEFAULT_LOOK);
   const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    preloadCharacterArt();
+  }, []);
 
   useEffect(() => {
     if (progress.character) setLook(progress.character);
