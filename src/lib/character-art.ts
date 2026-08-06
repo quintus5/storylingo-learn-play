@@ -84,8 +84,8 @@ export const HAIR_PIECES: Record<string, Piece> = {
   bob: piece(hairBob, 276, 0, 264),
   // The long hair is painted with a face opening: its width and top are set so
   // the opening centres on the face (x=408) and its fringe stops above the eyes.
-  long: piece(hairLong, 255, -15, 300),
-  buns: piece(hairBuns, 271, -14, 274),
+  long: piece(hairLong, 243, -22, 330),
+  buns: piece(hairBuns, 253, -22, 310),
   curly: piece(hairCurly, 258, -10, 300),
 };
 
