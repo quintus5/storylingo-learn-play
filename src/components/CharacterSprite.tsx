@@ -1,6 +1,7 @@
-import type { CSSProperties } from "react";
+import { useEffect, type CSSProperties } from "react";
 import type { CharacterLook } from "@/lib/character";
 import { hairColor } from "@/lib/character";
+import { preloadCharacterArt } from "@/lib/character-art";
 import {
   BODIES,
   BODY_FIT,
@@ -127,6 +128,10 @@ export function CharacterSprite({
   variant?: "full" | "bust";
   className?: string;
 }) {
+  useEffect(() => {
+    preloadCharacterArt();
+  }, []);
+
   const body = BODIES[look.skin] ?? BODIES["honey"]!;
   const bodyFit = BODY_FIT[look.skin] ?? BODY_FIT["honey"]!;
   const hair = HAIR_PIECES[look.hair];
