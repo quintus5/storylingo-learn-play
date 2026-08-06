@@ -82,7 +82,7 @@ function Bookshelf() {
 
       <section className="mb-8 flex items-center gap-4 rounded-3xl border border-border bg-card/70 p-4">
         {progress.character ? (
-          <CharacterSprite look={progress.character} size={72} />
+          <CharacterSprite look={progress.character} size={64} variant="bust" />
         ) : (
           <span className="text-4xl" aria-hidden>
             🧒

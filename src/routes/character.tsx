@@ -128,7 +128,7 @@ function CharacterPage() {
       <div className="mx-auto max-w-xl">
         <div className="flex items-center gap-4 rounded-3xl border border-primary/20 bg-card/70 p-5">
           <div className="animate-[float-in_0.4s_ease-out] rounded-3xl bg-secondary/50 p-2">
-            <CharacterSprite look={look} size={110} />
+            <CharacterSprite look={look} size={140} />
           </div>
           <div className="min-w-0">
             <label className="text-sm font-semibold" htmlFor="buddy-name">
