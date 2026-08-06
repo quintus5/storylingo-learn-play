@@ -340,7 +340,7 @@ function CreatePage() {
 
         <section className="flex items-center gap-4 rounded-3xl border border-border bg-card/70 p-4">
           {buddy ? (
-            <CharacterSprite look={buddy} size={64} />
+            <CharacterSprite look={buddy} size={56} variant="bust" />
           ) : (
             <span className="text-4xl" aria-hidden>
               🧒

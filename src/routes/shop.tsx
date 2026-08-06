@@ -54,7 +54,7 @@ function ShopPage() {
     <AppShell title={t("Coin shop", "ร้านค้าเหรียญ")} back={{ to: "/" }} right={<CoinPurse />}>
       <div className="mx-auto max-w-3xl">
         <section className="flex items-center gap-4 rounded-3xl border border-primary/20 bg-card/70 p-5">
-          <CharacterSprite look={look} size={84} />
+          <CharacterSprite look={look} size={92} />
           <div>
             <h2 className="text-xl font-extrabold">
               {look.name
