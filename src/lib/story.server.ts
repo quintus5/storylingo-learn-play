@@ -124,18 +124,35 @@ const FIDELITY_RULES =
 
 /** Pull the real characters and ordered events out of the source before planning. */
 export async function extractPlotSpine(storyText: string): Promise<PlotSpine> {
-  const raw = await chatJson<{ characters?: unknown; events?: unknown }>(
+  const raw = await chatJson<{
+    characters?: unknown;
+    events?: unknown;
+    characters_th?: unknown;
+    events_th?: unknown;
+  }>(
     "You are a careful story analyst. You extract facts from a story exactly as written, never inventing. Reply with JSON only.",
     `Story source:\n"""${storyText}"""\n\n` +
       `List the real characters (with their real names) and every important event in the order it happens. ` +
       `Do not soften, skip or invent anything — include fights, deaths, tricks and the ending.\n` +
-      `Return JSON: {"characters": [string (name — one short role description)], "events": [string (one short English sentence per event, in order, 10-40 events)]}`,
+      `Return JSON: {"characters": [string (name — one short role description)], "events": [string (one short English sentence per event, in order, 10-40 events)], ` +
+      `"characters_th": [string (the SAME characters, same order, written in Thai)], ` +
+      `"events_th": [string (the SAME events, same order, written in Thai)]}`,
   );
   const list = (v: unknown, max: number) =>
     Array.isArray(v)
       ? v.filter((x): x is string => typeof x === "string" && x.trim().length > 0).map((x) => x.trim()).slice(0, max)
       : [];
-  return { characters: list(raw.characters, 20), events: list(raw.events, 40) };
+  const characters = list(raw.characters, 20);
+  const events = list(raw.events, 40);
+  const charactersTh = list(raw.characters_th, 20);
+  const eventsTh = list(raw.events_th, 40);
+  return {
+    characters,
+    events,
+    // Only trust the Thai lists when they line up one-to-one with the English ones.
+    charactersTh: charactersTh.length === characters.length ? charactersTh : undefined,
+    eventsTh: eventsTh.length === events.length ? eventsTh : undefined,
+  };
 }
 
 export async function buildOutline(
