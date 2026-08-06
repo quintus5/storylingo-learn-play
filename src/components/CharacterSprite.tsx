@@ -1,6 +1,7 @@
-import type { CSSProperties } from "react";
+import { useEffect, type CSSProperties } from "react";
 import type { CharacterLook } from "@/lib/character";
 import { hairColor } from "@/lib/character";
+import { preloadCharacterArt } from "@/lib/character-art";
 import {
   BODIES,
   BODY_FIT,
