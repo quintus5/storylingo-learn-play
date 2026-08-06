@@ -8,6 +8,7 @@ import { bookQuery } from "@/lib/books";
 import { isUnlocked, useProgress } from "@/lib/progress";
 import { PRICES } from "@/lib/economy";
 import { CoinPurse } from "@/components/CoinPurse";
+import { useT } from "@/lib/i18n";
 
 export const Route = createFileRoute("/book/$bookId/")({
   loader: ({ context, params }) => context.queryClient.ensureQueryData(bookQuery(params.bookId)),
@@ -27,17 +28,18 @@ export const Route = createFileRoute("/book/$bookId/")({
   component: BookPage,
   errorComponent: () => (
     <AppShell back={{ to: "/" }}>
-      <p className="text-muted-foreground">This book could not be opened.</p>
+      <p className="text-muted-foreground">{useT()("This book could not be opened.", "ไม่สามารถเปิดหนังสือเล่มนี้ได้")}</p>
     </AppShell>
   ),
   notFoundComponent: () => (
     <AppShell back={{ to: "/" }}>
-      <p className="text-muted-foreground">This book does not exist.</p>
+      <p className="text-muted-foreground">{useT()("This book does not exist.", "ไม่พบหนังสือเล่มนี้")}</p>
     </AppShell>
   ),
 });
 
 function BookPage() {
+  const t = useT();
   const { bookId } = Route.useParams();
   const { data } = useSuspenseQuery(bookQuery(bookId));
   const { progress, buyChapter } = useProgress();
@@ -58,7 +60,7 @@ function BookPage() {
           params={{ bookId }}
           className="press inline-flex items-center gap-2 rounded-full bg-secondary px-3 py-2 text-xs font-bold text-secondary-foreground"
         >
-          <ListChecks className="h-4 w-4" /> Parents
+          <ListChecks className="h-4 w-4" /> {t("Parents", "ผู้ปกครอง")}
         </Link>
         </div>
       }
@@ -68,7 +70,7 @@ function BookPage() {
           {book.cover_url ? (
             <img
               src={book.cover_url}
-              alt={`Cover illustration for ${book.title}`}
+              alt={t(`Cover illustration for ${book.title}`, `ภาพปกของ ${book.title}`)}
               className="h-full w-full object-cover"
             />
           ) : (
@@ -85,7 +87,7 @@ function BookPage() {
             params={{ bookId }}
             className="press mt-4 inline-flex items-center gap-2 rounded-2xl bg-secondary px-4 py-2 text-sm font-bold text-secondary-foreground"
           >
-            <Sparkles className="h-4 w-4" /> Word list
+            <Sparkles className="h-4 w-4" /> {t("Word list", "คลังคำศัพท์")}
           </Link>
         </div>
       </section>
@@ -124,7 +126,7 @@ function BookPage() {
                   {chapter.image_url ? (
                     <img
                       src={chapter.image_url}
-                      alt={`Illustration for ${chapter.title}`}
+                      alt={t(`Illustration for ${chapter.title}`, `ภาพประกอบของ ${chapter.title}`)}
                       className="h-full w-full object-cover"
                       loading="lazy"
                     />
@@ -141,7 +143,7 @@ function BookPage() {
                 </div>
                 <div className="p-3">
                   <p className="text-xs font-bold uppercase tracking-wide text-primary">
-                    Chapter {chapter.idx}
+                    {t(`Chapter ${chapter.idx}`, `บทที่ ${chapter.idx}`)}
                   </p>
                   <p className="line-clamp-2 font-bold leading-snug">{chapter.title}</p>
                   <div className="mt-2">
@@ -162,10 +164,10 @@ function BookPage() {
                     }}
                     className="press w-full rounded-2xl bg-primary px-3 py-2 text-sm font-bold text-primary-foreground"
                   >
-                    Open now · 🪙 {PRICES.chapter}
+                    {t("Open now", "เปิดเลย")} · 🪙 {PRICES.chapter}
                   </button>
                   <p className="mt-1 text-center text-[11px] text-muted-foreground">
-                    or earn a star in chapter {chapter.idx - 1}
+                    {t(`or earn a star in chapter ${chapter.idx - 1}`, `หรือรับดาวจากบทที่ ${chapter.idx - 1}`)}
                   </p>
                 </div>
               )}

@@ -6,6 +6,7 @@ import { AppShell } from "@/components/AppShell";
 import { useProgress } from "@/lib/progress";
 import { CoinPurse } from "@/components/CoinPurse";
 import { CharacterSprite } from "@/components/CharacterSprite";
+import { useT } from "@/lib/i18n";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -27,18 +28,28 @@ export const Route = createFileRoute("/")({
   component: Bookshelf,
   errorComponent: () => (
     <AppShell>
-      <p className="text-muted-foreground">The bookshelf could not be loaded. Please refresh.</p>
+      <ErrorMessage />
     </AppShell>
   ),
 });
 
+function ErrorMessage() {
+  const t = useT();
+  return (
+    <p className="text-muted-foreground">
+      {t("The bookshelf could not be loaded. Please refresh.", "ไม่สามารถโหลดชั้นหนังสือได้ กรุณาลองรีเฟรชอีกครั้ง")}
+    </p>
+  );
+}
+
 function Bookshelf() {
   const { data: books } = useSuspenseQuery(booksQuery);
   const { progress } = useProgress();
+  const t = useT();
 
   return (
     <AppShell
-      title="StoryLingo"
+      title={t("StoryLingo", "StoryLingo")}
       right={
         <div className="flex items-center gap-2">
           <CoinPurse coins={progress.coins} />
@@ -46,21 +57,26 @@ function Bookshelf() {
             to="/create"
             className="press inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"
           >
-            <Plus className="h-4 w-4" /> New story
+            <Plus className="h-4 w-4" /> {t("New story", "สร้างนิทานใหม่")}
           </Link>
         </div>
       }
     >
       <section className="mb-8 rounded-3xl border border-primary/20 bg-card/70 p-6">
         <p className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-primary">
-          <Sparkles className="h-4 w-4" /> Mandarin for Thai speakers
+          <Sparkles className="h-4 w-4" /> {t("Mandarin for Thai speakers", "ภาษาจีนกลางสำหรับเด็กไทย")}
         </p>
         <h2 className="mt-2 text-2xl font-extrabold sm:text-3xl">
-          Every story becomes a picture book you can read out loud.
+          {t(
+            "Every story becomes a picture book you can read out loud.",
+            "ทุกนิทานจะกลายเป็นหนังสือภาพที่อ่านออกเสียงได้",
+          )}
         </h2>
         <p className="mt-2 max-w-2xl text-muted-foreground">
-          Paste a story link and StoryLingo retells it in beginner Mandarin, paints watercolor
-          scenes, reads every word aloud and quizzes you chapter by chapter.
+          {t(
+            "Paste a story link and StoryLingo retells it in beginner Mandarin, paints watercolor scenes, reads every word aloud and quizzes you chapter by chapter.",
+            "แปะลิงก์นิทาน แล้ว StoryLingo จะแต่งใหม่เป็นภาษาจีนกลางระดับเริ่มต้น วาดภาพสีน้ำสวยๆ อ่านออกเสียงทุกคำ และมีแบบทดสอบทีละบท",
+          )}
         </p>
       </section>
 
@@ -75,13 +91,19 @@ function Bookshelf() {
         <div className="min-w-0 flex-1">
           <p className="font-extrabold">
             {progress.character
-              ? progress.character.name || "Your story buddy"
-              : "Make your story buddy"}
+              ? progress.character.name || t("Your story buddy", "เพื่อนคู่นิทานของเธอ")
+              : t("Make your story buddy", "สร้างเพื่อนคู่นิทานของเธอ")}
           </p>
           <p className="text-sm text-muted-foreground">
             {progress.character
-              ? "They join the pictures in every new book you make."
-              : "Design a character who appears inside your picture books."}
+              ? t(
+                  "They join the pictures in every new book you make.",
+                  "เพื่อนคนนี้จะไปโผล่ในภาพของทุกเล่มใหม่ที่เธอสร้าง",
+                )
+              : t(
+                  "Design a character who appears inside your picture books.",
+                  "ออกแบบตัวละครที่จะไปปรากฏในหนังสือภาพของเธอ",
+                )}
           </p>
         </div>
         <div className="flex shrink-0 flex-col gap-2">
@@ -89,26 +111,28 @@ function Bookshelf() {
             to="/character"
             className="press rounded-2xl bg-secondary px-4 py-2 text-center text-sm font-bold text-secondary-foreground"
           >
-            {progress.character ? "Edit" : "Create"}
+            {progress.character ? t("Edit", "แก้ไข") : t("Create", "สร้าง")}
           </Link>
           <Link
             to="/shop"
             className="press rounded-2xl bg-secondary px-4 py-2 text-center text-sm font-bold text-secondary-foreground"
           >
-            Shop
+            {t("Shop", "ร้านค้า")}
           </Link>
         </div>
       </section>
 
       {books.length === 0 ? (
         <div className="rounded-3xl border border-dashed border-border p-10 text-center">
-          <p className="text-lg font-bold">Your bookshelf is empty</p>
-          <p className="mt-1 text-muted-foreground">Add your first story to get started.</p>
+          <p className="text-lg font-bold">{t("Your bookshelf is empty", "ชั้นหนังสือของเธอยังว่างอยู่")}</p>
+          <p className="mt-1 text-muted-foreground">
+            {t("Add your first story to get started.", "เพิ่มนิทานเรื่องแรกเพื่อเริ่มต้นกันเลย")}
+          </p>
           <Link
             to="/create"
             className="press mt-5 inline-flex items-center gap-2 rounded-2xl bg-primary px-5 py-3 font-bold text-primary-foreground"
           >
-            <Plus className="h-5 w-5" /> Create a book
+            <Plus className="h-5 w-5" /> {t("Create a book", "สร้างหนังสือ")}
           </Link>
         </div>
       ) : (
@@ -126,7 +150,10 @@ function Bookshelf() {
                   {book.cover_url ? (
                     <img
                       src={book.cover_url}
-                      alt={`Cover illustration for ${book.title}`}
+                      alt={t(
+                        `Cover illustration for ${book.title}`,
+                        `ภาพปกของ ${book.title}`,
+                      )}
                       className="h-full w-full object-cover"
                       loading="lazy"
                     />
@@ -139,7 +166,7 @@ function Bookshelf() {
                 <div className="p-3">
                   <p className="line-clamp-2 font-bold leading-snug">{book.title}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {stars}/{book.chapter_count} chapters done
+                    {t(`${stars}/${book.chapter_count} chapters done`, `ทำแล้ว ${stars}/${book.chapter_count} บท`)}
                   </p>
                 </div>
               </Link>

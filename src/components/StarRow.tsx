@@ -1,5 +1,6 @@
 import { Star } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
 export function StarRow({
   count,
@@ -12,8 +13,12 @@ export function StarRow({
   size?: number;
   animate?: boolean;
 }) {
+  const t = useT();
   return (
-    <div className="flex items-center gap-1" aria-label={`${count} of ${total} stars`}>
+    <div
+      className="flex items-center gap-1"
+      aria-label={t(`${count} of ${total} stars`, `${count} จาก ${total} ดาว`)}
+    >
       {Array.from({ length: total }).map((_, i) => {
         const earned = i < count;
         return (
