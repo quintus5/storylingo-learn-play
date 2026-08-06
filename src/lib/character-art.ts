@@ -96,11 +96,11 @@ export const HAIR_PIECES: Record<string, Piece> = {
  * so the fringe stops just above the eyes.
  */
 export const HAIR_FRINGE_CLIP: Record<string, number> = {
-  short: 34,
-  bob: 41,
-  long: 55,
-  buns: 29,
-  curly: 15,
+  short: 41,
+  bob: 46,
+  long: 58,
+  buns: 36,
+  curly: 18,
 };
 
 export const OUTFIT_PIECES: Record<string, Piece> = {
