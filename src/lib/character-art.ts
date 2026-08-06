@@ -111,3 +111,24 @@ export const PET_PIECES: Record<string, Piece> = {
   bird: piece(petBird, 570, 626, 150),
   dragon: piece(petDragon, 560, 627, 170),
 };
+
+/** Every painted piece, used to warm the browser cache up front. */
+export const ALL_ART: string[] = [
+  ...Object.values(BODIES),
+  ...Object.values(HAIR_PIECES).map((p) => p.src),
+  ...Object.values(OUTFIT_PIECES).map((p) => p.src),
+  ...Object.values(HAT_PIECES).map((p) => p.src),
+  ...Object.values(PET_PIECES).map((p) => p.src),
+];
+
+let warmed = false;
+/** Fetch every sprite layer once so option switches paint instantly. */
+export function preloadCharacterArt() {
+  if (warmed || typeof window === "undefined") return;
+  warmed = true;
+  for (const src of ALL_ART) {
+    const img = new Image();
+    img.decoding = "async";
+    img.src = src;
+  }
+}
