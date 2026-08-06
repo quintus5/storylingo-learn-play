@@ -3,6 +3,7 @@ import type { CharacterLook } from "@/lib/character";
 import { hairColor } from "@/lib/character";
 import {
   BODIES,
+  BODY_FIT,
   CANVAS_HEIGHT,
   FRAME_HEIGHT_PCT,
   FRAME_TOP_PCT,
@@ -24,6 +25,17 @@ function box(piece: Piece): CSSProperties {
     top: `${piece.top}%`,
     width: `${piece.width}%`,
     height: "auto",
+  };
+}
+
+/** Widen or nudge a piece so it still fits a body painted at another size. */
+function fit(piece: Piece, fitting: { scale: number; dy: number }): Piece {
+  const width = piece.width * fitting.scale;
+  return {
+    src: piece.src,
+    width,
+    left: piece.left - (width - piece.width) / 2,
+    top: piece.top + (fitting.dy / 816) * 100,
   };
 }
 
@@ -120,6 +132,7 @@ export function CharacterSprite({
   className?: string;
 }) {
   const body = BODIES[look.skin] ?? BODIES["honey"]!;
+  const bodyFit = BODY_FIT[look.skin] ?? BODY_FIT["honey"]!;
   const hair = HAIR_PIECES[look.hair];
   const outfit = OUTFIT_PIECES[look.outfit];
   const hat = look.hat ? HAT_PIECES[look.hat] : null;
@@ -145,7 +158,7 @@ export function CharacterSprite({
       >
         <img src={body} alt="" style={{ position: "absolute", inset: 0, width: "100%" }} draggable={false} />
         {look.hair === "long" && hair && <Hair piece={hair} color={hairColor(look)} />}
-        {outfit && <Layer piece={outfit} alt="" />}
+        {outfit && <Layer piece={fit(outfit, bodyFit)} alt="" />}
         <Face eyes={look.eyes} />
         {look.hair !== "long" && hair && <Hair piece={hair} color={hairColor(look)} />}
         {hat && <Layer piece={hat} alt="" />}
