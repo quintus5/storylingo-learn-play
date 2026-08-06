@@ -2,6 +2,7 @@ import { useEffect, type CSSProperties } from "react";
 import type { CharacterLook } from "@/lib/character";
 import { hairColor } from "@/lib/character";
 import { preloadCharacterArt } from "@/lib/character-art";
+import { spriteUrl, useSpriteUrl } from "@/lib/sprite-cache";
 import {
   BODIES,
   BODY_FIT,
@@ -41,26 +42,27 @@ function fit(piece: Piece, fitting: { scale: number; dy: number }): Piece {
 }
 
 function Layer({ piece, alt }: { piece: Piece; alt: string }) {
-  return <img src={piece.src} alt={alt} style={box(piece)} draggable={false} />;
+  return <img src={spriteUrl(piece.src)} alt={alt} style={box(piece)} draggable={false} />;
 }
 
 /** Painted hair, tinted to the chosen colour while keeping its ink texture. */
 function Hair({ piece, color, clipPath }: { piece: Piece; color: string; clipPath?: string }) {
+  const src = spriteUrl(piece.src);
   const mask: CSSProperties = {
     ...box(piece),
     aspectRatio: "auto",
   };
   return (
     <span style={{ ...box(piece), lineHeight: 0, clipPath }}>
-      <img src={piece.src} alt="" style={{ width: "100%", visibility: "hidden" }} draggable={false} />
+      <img src={src} alt="" style={{ width: "100%", visibility: "hidden" }} draggable={false} />
       <span
         aria-hidden
         style={{
           position: "absolute",
           inset: 0,
           background: color,
-          WebkitMaskImage: `url(${piece.src})`,
-          maskImage: `url(${piece.src})`,
+          WebkitMaskImage: `url(${src})`,
+          maskImage: `url(${src})`,
           WebkitMaskSize: "100% 100%",
           maskSize: "100% 100%",
           WebkitMaskRepeat: "no-repeat",
@@ -68,7 +70,7 @@ function Hair({ piece, color, clipPath }: { piece: Piece; color: string; clipPat
         }}
       />
       <img
-        src={piece.src}
+        src={src}
         alt=""
         aria-hidden
         draggable={false}
@@ -128,6 +130,8 @@ export function CharacterSprite({
   variant?: "full" | "bust";
   className?: string;
 }) {
+  const resolve = useSpriteUrl();
+
   useEffect(() => {
     preloadCharacterArt();
   }, []);
@@ -157,7 +161,7 @@ export function CharacterSprite({
           height: `${FRAME_HEIGHT_PCT}%`,
         }}
       >
-        <img src={body} alt="" style={{ position: "absolute", inset: 0, width: "100%" }} draggable={false} />
+        <img src={resolve(body)} alt="" style={{ position: "absolute", inset: 0, width: "100%" }} draggable={false} />
         {look.hair === "long" && hair && <Hair piece={hair} color={hairColor(look)} />}
         {outfit && <Layer piece={fit(outfit, bodyFit)} alt="" />}
         <Face eyes={look.eyes} />
