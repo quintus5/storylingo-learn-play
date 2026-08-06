@@ -133,10 +133,12 @@ function CharacterPage() {
   return (
     <AppShell title={t("My character", "ตัวละครของฉัน")} back={{ to: "/" }} right={<CoinPurse />}>
       <div className="mx-auto max-w-xl">
-        <div className="flex items-center gap-4 rounded-3xl border border-primary/20 bg-card/70 p-5">
-          <div className="animate-[float-in_0.4s_ease-out] rounded-3xl bg-secondary/50 p-2">
-            <CharacterSprite look={look} size={140} />
-          </div>
+        <div className="sticky top-0 z-30 -mx-4 mb-1 bg-background/80 px-4 py-2 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
+          <div className="flex items-center gap-4 rounded-3xl border border-primary/20 bg-card/80 p-4">
+            <div className="shrink-0 animate-[float-in_0.4s_ease-out] rounded-3xl bg-secondary/50 p-2">
+              <CharacterSprite look={look} size={110} />
+            </div>
+
           <div className="min-w-0">
             <label className="text-sm font-semibold" htmlFor="buddy-name">
               {t("Buddy name", "ชื่อเพื่อนคู่นิทาน")}
