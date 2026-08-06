@@ -58,7 +58,7 @@ export const Route = createFileRoute("/create")({
 });
 
 function CreatePage() {
-  const t = useT();
+  const { t, lang } = useLang();
   const navigate = useNavigate();
   const create = useServerFn(createBook);
   const chapter = useServerFn(generateChapter);
