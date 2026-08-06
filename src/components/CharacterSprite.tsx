@@ -108,10 +108,6 @@ function Face({ eyes }: { eyes: string }) {
         </g>
       )}
       <path d="M388 194 q20 20 40 0" stroke={ink} strokeWidth="10" fill="none" strokeLinecap="round" />
-      <g fill="#e79a86" opacity="0.5">
-        <ellipse cx="326" cy="184" rx="20" ry="12" />
-        <ellipse cx="490" cy="184" rx="20" ry="12" />
-      </g>
     </svg>
   );
 }
