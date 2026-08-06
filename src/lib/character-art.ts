@@ -85,10 +85,10 @@ export const BODY_FIT: Record<string, { scale: number; dy: number }> = {
  */
 export const OUTFIT_FIT: Record<string, Record<string, { scale: number; dy: number }>> = {
   raincoat: {
-    sand: { scale: 1.16, dy: 2 },
+    sand: { scale: 1.2, dy: 0 },
     honey: { scale: 1, dy: 0 },
-    clay: { scale: 1.19, dy: 16 },
-    cocoa: { scale: 1.23, dy: 6 },
+    clay: { scale: 1.24, dy: 12 },
+    cocoa: { scale: 1.27, dy: 4 },
   },
 };
 
