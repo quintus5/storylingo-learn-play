@@ -98,8 +98,8 @@ export const OUTFIT_PIECES: Record<string, Piece> = {
 
 export const HAT_PIECES: Record<string, Piece> = {
   straw: piece(hatStraw, 218, -25, 380),
-  crown: piece(hatCrown, 288, -83, 240),
-  wizard: piece(hatWizard, 258, -184, 300),
+  crown: piece(hatCrown, 288, -70, 240),
+  wizard: piece(hatWizard, 258, -205, 300),
   beanie: piece(hatBeanie, 278, -162, 260),
 };
 
