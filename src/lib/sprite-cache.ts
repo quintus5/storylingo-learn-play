@@ -9,7 +9,7 @@ import { ALL_ART } from "@/lib/character-art";
  * round-trip and no re-warming, and every layer is handed to the DOM as a blob
  * URL that paints synchronously.
  */
-const CACHE_NAME = "storylingo-sprites-v2";
+const CACHE_NAME = "storylingo-sprites-v3";
 
 const objectUrls = new Map<string, string>();
 const listeners = new Set<() => void>();

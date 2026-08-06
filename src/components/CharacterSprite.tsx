@@ -9,6 +9,7 @@ import {
   CANVAS_HEIGHT,
   FRAME_HEIGHT_PCT,
   FRAME_TOP_PCT,
+  HAIR_FRINGE_CLIP,
   HAIR_PIECES,
   HAT_PIECES,
   HEAD_CENTER,
@@ -161,14 +162,18 @@ export function CharacterSprite({
           height: `${FRAME_HEIGHT_PCT}%`,
         }}
       >
+        {/* Back hair sits under the body so only the part outside the head shows. */}
+        {hair && <Hair piece={hair} color={hairColor(look)} />}
         <img src={resolve(body)} alt="" style={{ position: "absolute", inset: 0, width: "100%" }} draggable={false} />
-        {look.hair === "long" && hair && <Hair piece={hair} color={hairColor(look)} />}
         {outfit && <Layer piece={fit(outfit, bodyFit)} alt="" />}
         <Face eyes={look.eyes} />
-        {look.hair === "long" && hair && (
-          <Hair piece={hair} color={hairColor(look)} clipPath="inset(0 0 55% 0)" />
+        {hair && (
+          <Hair
+            piece={hair}
+            color={hairColor(look)}
+            clipPath={`inset(0 0 ${HAIR_FRINGE_CLIP[look.hair] ?? 40}% 0)`}
+          />
         )}
-        {look.hair !== "long" && hair && <Hair piece={hair} color={hairColor(look)} />}
         {hat && <Layer piece={hat} alt="" />}
         {pet && variant === "full" && <Layer piece={pet} alt="" />}
       </div>
