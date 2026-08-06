@@ -15,7 +15,7 @@ import {
   SKINS,
 } from "@/lib/character";
 import type { CharacterLook, Option } from "@/lib/character";
-import { owns, useProgress } from "@/lib/progress";
+import { owns, useProgress, useTestUnlock } from "@/lib/progress";
 import { useT } from "@/lib/i18n";
 
 export const Route = createFileRoute("/character")({
