@@ -234,7 +234,9 @@ function CharacterPage() {
             {t("Shop", "ร้านค้า")}
           </button>
         </div>
+        </div>
       </div>
+
     </AppShell>
   );
 }
