@@ -20,6 +20,7 @@ import { moodFor, setMusicDucked, startMusic, stopMusic } from "@/lib/music";
 import { useSpeakingProgress, useSpeakingText } from "@/hooks/use-speaking";
 import { useVoice } from "@/hooks/use-voice";
 import type { Sentence, Word } from "@/lib/types";
+import { useT } from "@/lib/i18n";
 
 export const Route = createFileRoute("/book/$bookId/chapter/$n/")({
   loader: ({ context, params }) => context.queryClient.ensureQueryData(bookQuery(params.bookId)),
@@ -41,17 +42,18 @@ export const Route = createFileRoute("/book/$bookId/chapter/$n/")({
   component: Reader,
   errorComponent: () => (
     <AppShell>
-      <p className="text-muted-foreground">This chapter could not be opened.</p>
+      <p className="text-muted-foreground">{useT()("This chapter could not be opened.", "ไม่สามารถเปิดบทนี้ได้")}</p>
     </AppShell>
   ),
   notFoundComponent: () => (
     <AppShell>
-      <p className="text-muted-foreground">Chapter not found.</p>
+      <p className="text-muted-foreground">{useT()("Chapter not found.", "ไม่พบบทนี้")}</p>
     </AppShell>
   ),
 });
 
 function Reader() {
+  const t = useT();
   const { bookId, n } = Route.useParams();
   const idx = Number(n);
   const { data } = useSuspenseQuery(bookQuery(bookId));
@@ -128,7 +130,7 @@ function Reader() {
   if (!chapter || pages.length === 0) {
     return (
       <AppShell back={{ to: "/book/$bookId", params: { bookId } }}>
-        <p className="text-muted-foreground">This chapter is still being written.</p>
+        <p className="text-muted-foreground">{t("This chapter is still being written.", "บทนี้กำลังถูกเขียนอยู่")}</p>
       </AppShell>
     );
   }
@@ -168,7 +170,7 @@ function Reader() {
       <button
         type="button"
         onClick={() => setPanel(panel === "full" ? "subtitle" : "full")}
-        aria-label={panel === "full" ? "Show the picture" : "Show the whole page"}
+        aria-label={panel === "full" ? t("Show the picture", "แสดงรูปภาพ") : t("Show the whole page", "แสดงหน้าทั้งหมด")}
 
         className="absolute inset-0 h-full w-full cursor-pointer"
       >
@@ -176,7 +178,7 @@ function Reader() {
           <img
             key={art}
             src={art}
-            alt={`Illustration for ${chapter.title}, page ${page + 1}`}
+            alt={t(`Illustration for ${chapter.title}, page ${page + 1}`, `ภาพประกอบของ ${chapter.title} หน้า ${page + 1}`)}
             className="h-full w-full object-cover animate-[art-fade_.5s_ease-out_both,ken-burns_14s_ease-out_both]"
           />
         ) : (
@@ -196,13 +198,13 @@ function Reader() {
           to="/book/$bookId"
           params={{ bookId }}
           onClick={() => stopAudio()}
-          aria-label="Go back"
+          aria-label={t("Go back", "ย้อนกลับ")}
           className="press glass-pill pointer-events-auto inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border/50 text-foreground"
         >
           <ChevronLeft className="h-5 w-5" />
         </Link>
         <p className="glass-pill pointer-events-none min-w-0 flex-1 truncate rounded-full border border-border/40 px-4 py-2 text-sm font-bold text-foreground">
-          Ch. {idx} · {chapter.title}
+          {t("Ch.", "บทที่")} {idx} · {chapter.title}
         </p>
         <div className="pointer-events-auto flex shrink-0 items-center gap-2">
           <button
@@ -211,8 +213,8 @@ function Reader() {
               stopAudio();
               setPlaying(false);
             }}
-            aria-label={`Narrator: ${voice === "female" ? "female" : "male"}. Tap to switch.`}
-            title="Switch narrator"
+            aria-label={voice === "female" ? t("Narrator: female. Tap to switch.", "เสียงผู้บรรยาย: หญิง แตะเพื่อเปลี่ยน") : t("Narrator: male. Tap to switch.", "เสียงผู้บรรยาย: ชาย แตะเพื่อเปลี่ยน")}
+            title={t("Switch narrator", "เปลี่ยนเสียงผู้บรรยาย")}
             className="press glass-pill inline-flex h-10 items-center gap-2 rounded-full border border-border/50 px-3 text-sm font-bold text-foreground"
           >
             <span aria-hidden>{voice === "female" ? "👩" : "👨"}</span>
@@ -226,7 +228,7 @@ function Reader() {
                 setMusic(true);
               }
             }}
-            aria-label={music ? "Turn off background music" : "Turn on background music"}
+            aria-label={music ? t("Turn off background music", "ปิดเพลงประกอบ") : t("Turn on background music", "เปิดเพลงประกอบ")}
             className="press glass-pill inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/50 text-foreground"
           >
             {music ? <Music className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
@@ -236,7 +238,7 @@ function Reader() {
             className="press inline-flex h-10 items-center gap-2 rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground shadow-lg"
           >
             {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-            <span className="hidden sm:inline">{playing ? "Stop" : "Read to me"}</span>
+            <span className="hidden sm:inline">{playing ? t("Stop", "หยุด") : t("Read to me", "อ่านให้ฟัง")}</span>
           </button>
         </div>
       </header>
@@ -254,7 +256,7 @@ function Reader() {
         <button
           type="button"
           onClick={() => setPanel(panel === "full" ? "subtitle" : "full")}
-          aria-label={panel === "full" ? "Collapse the text" : "Show the whole page"}
+          aria-label={panel === "full" ? t("Collapse the text", "ย่อข้อความ") : t("Show the whole page", "แสดงหน้าทั้งหมด")}
           className="mx-auto flex h-7 w-full max-w-5xl shrink-0 items-center justify-center text-muted-foreground"
         >
           {panel === "full" ? (
@@ -308,14 +310,14 @@ function Reader() {
             <button
               onClick={() => go(-1)}
               disabled={page === 0}
-              aria-label="Previous page"
+              aria-label={t("Previous page", "หน้าก่อนหน้า")}
               className="press inline-flex items-center gap-1 rounded-2xl bg-secondary px-4 py-2.5 font-bold text-secondary-foreground disabled:opacity-40"
             >
               <ChevronLeft className="h-5 w-5" />
-              <span className="hidden sm:inline">Back</span>
+              <span className="hidden sm:inline">{t("Back", "ย้อนกลับ")}</span>
             </button>
             <p className="text-xs text-muted-foreground sm:text-sm">
-              Page {page + 1} of {pages.length}
+              {t(`Page ${page + 1} of ${pages.length}`, `หน้า ${page + 1} จาก ${pages.length}`)}
             </p>
             {isLast ? (
               <Link
@@ -324,14 +326,14 @@ function Reader() {
                 onClick={() => stopAudio()}
                 className="press inline-flex items-center gap-1 rounded-2xl bg-primary px-4 py-2.5 font-bold text-primary-foreground"
               >
-                Quiz <ChevronRight className="h-5 w-5" />
+                {t("Quiz", "แบบทดสอบ")} <ChevronRight className="h-5 w-5" />
               </Link>
             ) : (
               <button
                 onClick={() => go(1)}
                 className="press inline-flex items-center gap-1 rounded-2xl bg-primary px-4 py-2.5 font-bold text-primary-foreground"
               >
-                <span className="hidden sm:inline">Next</span>
+                <span className="hidden sm:inline">{t("Next", "ถัดไป")}</span>
                 <ChevronRight className="h-5 w-5" />
               </button>
             )}
@@ -341,7 +343,7 @@ function Reader() {
             <button
               onClick={() => go(-1)}
               disabled={page === 0}
-              aria-label="Previous page"
+              aria-label={t("Previous page", "หน้าก่อนหน้า")}
               className="press inline-flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-secondary-foreground disabled:opacity-40"
             >
               <ChevronLeft className="h-5 w-5" />
@@ -354,15 +356,15 @@ function Reader() {
                 to="/book/$bookId/chapter/$n/quiz"
                 params={{ bookId, n }}
                 onClick={() => stopAudio()}
-                aria-label="Go to the quiz"
+                aria-label={t("Go to the quiz", "ไปที่แบบทดสอบ")}
                 className="press inline-flex h-9 items-center gap-1 rounded-full bg-primary px-3 text-sm font-bold text-primary-foreground"
               >
-                Quiz <ChevronRight className="h-4 w-4" />
+                {t("Quiz", "แบบทดสอบ")} <ChevronRight className="h-4 w-4" />
               </Link>
             ) : (
               <button
                 onClick={() => go(1)}
-                aria-label="Next page"
+                aria-label={t("Next page", "หน้าถัดไป")}
                 className="press inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground"
               >
                 <ChevronRight className="h-5 w-5" />
@@ -468,7 +470,7 @@ function SentenceCard({
           onClick={() => void speak(sentence.hanzi)}
           className="press mt-3 inline-flex items-center gap-2 rounded-xl bg-secondary px-3 py-2 text-sm font-bold text-secondary-foreground"
         >
-          <Play className="h-4 w-4" /> Hear this line
+          <Play className="h-4 w-4" /> {useT()("Hear this line", "ฟังประโยคนี้")}
         </button>
       )}
     </article>

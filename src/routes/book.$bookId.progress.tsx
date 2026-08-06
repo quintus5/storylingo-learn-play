@@ -4,6 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { StarRow } from "@/components/StarRow";
 import { bookQuery } from "@/lib/books";
 import { useProgress } from "@/lib/progress";
+import { useT } from "@/lib/i18n";
 
 export const Route = createFileRoute("/book/$bookId/progress")({
   loader: ({ context, params }) => context.queryClient.ensureQueryData(bookQuery(params.bookId)),
@@ -24,12 +25,13 @@ export const Route = createFileRoute("/book/$bookId/progress")({
   component: ProgressPage,
   errorComponent: () => (
     <AppShell>
-      <p className="text-muted-foreground">Progress could not be loaded.</p>
+      <p className="text-muted-foreground">{useT()("Progress could not be loaded.", "ไม่สามารถโหลดข้อมูลความก้าวหน้าได้")}</p>
     </AppShell>
   ),
 });
 
 function ProgressPage() {
+  const t = useT();
   const { bookId } = Route.useParams();
   const { data } = useSuspenseQuery(bookQuery(bookId));
   const { progress } = useProgress();
@@ -41,15 +43,15 @@ function ProgressPage() {
     .slice(0, 12);
 
   return (
-    <AppShell title="Progress" back={{ to: "/book/$bookId", params: { bookId } }}>
+    <AppShell title={t("Progress", "ความก้าวหน้า")} back={{ to: "/book/$bookId", params: { bookId } }}>
       <div className="grid gap-4 sm:grid-cols-3">
-        <Stat label="Stars earned" value={`${totalStars} / ${data.chapters.length * 3}`} />
-        <Stat label="Day streak" value={`${progress.streak} 🔥`} />
-        <Stat label="Words mastered" value={`${progress.wordsMastered.length}`} />
+        <Stat label={t("Stars earned", "ดาวที่ได้รับ")} value={`${totalStars} / ${data.chapters.length * 3}`} />
+        <Stat label={t("Day streak", "วันต่อเนื่อง")} value={`${progress.streak} 🔥`} />
+        <Stat label={t("Words mastered", "คำที่เชี่ยวชาญ")} value={`${progress.wordsMastered.length}`} />
       </div>
 
       <h2 className="mb-3 mt-8 text-sm font-bold uppercase tracking-widest text-primary">
-        Chapters
+        {t("Chapters", "บทเรียน")}
       </h2>
       <ul className="space-y-2">
         {data.chapters.map((chapter) => (
@@ -62,7 +64,7 @@ function ProgressPage() {
                 {chapter.idx}. {chapter.title}
               </p>
               <p className="text-xs text-muted-foreground">
-                {book.read[chapter.idx] ? "Read" : "Not read yet"}
+                {book.read[chapter.idx] ? t("Read", "อ่านแล้ว") : t("Not read yet", "ยังไม่ได้อ่าน")}
               </p>
             </div>
             <StarRow count={book.stars[chapter.idx] ?? 0} size={16} />
@@ -71,10 +73,10 @@ function ProgressPage() {
       </ul>
 
       <h2 className="mb-3 mt-8 text-sm font-bold uppercase tracking-widest text-primary">
-        Words to practise
+        {t("Words to practise", "คำที่ควรฝึกฝน")}
       </h2>
       {tricky.length === 0 ? (
-        <p className="text-muted-foreground">No tricky words yet — great work!</p>
+        <p className="text-muted-foreground">{t("No tricky words yet — great work!", "ยังไม่มีคำที่ยาก เก่งมาก!")}</p>
       ) : (
         <ul className="flex flex-wrap gap-2">
           {tricky.map(([hanzi, count]) => (

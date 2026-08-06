@@ -1,6 +1,8 @@
 import { Link } from "@tanstack/react-router";
 import { ChevronLeft } from "lucide-react";
 import type { ReactNode } from "react";
+import { useT } from "@/lib/i18n";
+import { LangToggle } from "@/components/LangToggle";
 
 export function AppShell({
   title,
@@ -13,6 +15,7 @@ export function AppShell({
   right?: ReactNode;
   children: ReactNode;
 }) {
+  const t = useT();
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-20 border-b border-border/60 bg-background/85 backdrop-blur">
@@ -22,7 +25,7 @@ export function AppShell({
               to={back.to}
               params={back.params}
               className="press inline-flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-secondary-foreground"
-              aria-label="Go back"
+              aria-label={t("Go back", "ย้อนกลับ")}
             >
               <ChevronLeft className="h-5 w-5" />
             </Link>
@@ -32,8 +35,9 @@ export function AppShell({
             </span>
           )}
           <h1 className="flex-1 truncate text-lg font-bold sm:text-xl">
-            {title ?? "StoryLingo"}
+            {title ?? t("StoryLingo", "StoryLingo")}
           </h1>
+          <LangToggle />
           {right}
         </div>
       </header>

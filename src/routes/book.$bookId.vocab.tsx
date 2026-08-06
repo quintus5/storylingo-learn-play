@@ -5,6 +5,7 @@ import { AppShell } from "@/components/AppShell";
 import { bookQuery } from "@/lib/books";
 import { useProgress } from "@/lib/progress";
 import { speak } from "@/lib/audio";
+import { useT } from "@/lib/i18n";
 
 export const Route = createFileRoute("/book/$bookId/vocab")({
   loader: ({ context, params }) => context.queryClient.ensureQueryData(bookQuery(params.bookId)),
@@ -28,18 +29,19 @@ export const Route = createFileRoute("/book/$bookId/vocab")({
   component: VocabPage,
   errorComponent: () => (
     <AppShell>
-      <p className="text-muted-foreground">The word list could not be loaded.</p>
+      <p className="text-muted-foreground">{useT()("The word list could not be loaded.", "ไม่สามารถโหลดคลังคำศัพท์ได้")}</p>
     </AppShell>
   ),
 });
 
 function VocabPage() {
+  const t = useT();
   const { bookId } = Route.useParams();
   const { data } = useSuspenseQuery(bookQuery(bookId));
   const { progress } = useProgress();
 
   return (
-    <AppShell title="Word list" back={{ to: "/book/$bookId", params: { bookId } }}>
+    <AppShell title={t("Word list", "คลังคำศัพท์")} back={{ to: "/book/$bookId", params: { bookId } }}>
       <div className="space-y-7">
         {data.chapters.map((chapter) => {
           const words = chapter.words ?? [];
@@ -47,7 +49,7 @@ function VocabPage() {
           return (
             <section key={chapter.id}>
               <h2 className="mb-3 text-sm font-bold uppercase tracking-widest text-primary">
-                Chapter {chapter.idx} · {chapter.title}
+                {t(`Chapter ${chapter.idx}`, `บทที่ ${chapter.idx}`)} · {chapter.title}
               </h2>
               <ul className="grid gap-3 sm:grid-cols-2">
                 {words.map((word) => {
@@ -63,10 +65,10 @@ function VocabPage() {
                         <p className="truncate text-sm text-muted-foreground">{word.dict}</p>
                       </div>
                       <div className="flex shrink-0 items-center gap-2">
-                        {mastered && <span className="text-lg" aria-label="Mastered">⭐</span>}
+                        {mastered && <span className="text-lg" aria-label={t("Mastered", "เชี่ยวชาญแล้ว")}>⭐</span>}
                         <button
                           onClick={() => void speak(word.hanzi, true)}
-                          aria-label={`Play ${word.hanzi}`}
+                          aria-label={t(`Play ${word.hanzi}`, `เล่นเสียง ${word.hanzi}`)}
                           className="press inline-flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-secondary-foreground"
                         >
                           <Volume2 className="h-5 w-5" />
