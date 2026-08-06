@@ -77,6 +77,9 @@ function CreatePage() {
   const [style, setStyle] = useState<ArtStyleId>(DEFAULT_ART_STYLE);
   const [error, setError] = useState<string | null>(null);
 
+  // The model returns the plan in both languages; show whichever is selected.
+  const planText = plan ? (lang === "th" && plan.th ? plan.th : plan) : null;
+
   const say = (line: string) => setLog((l) => [...l, line]);
 
   async function onFetch() {
