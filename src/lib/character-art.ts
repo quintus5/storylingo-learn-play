@@ -91,16 +91,16 @@ export const HAIR_PIECES: Record<string, Piece> = {
 
 /**
  * Hair is painted as a solid shape with no face opening, so each style is drawn
- * twice: once behind the face, and once on top clipped to its fringe. These are
- * the percentages of the hair box to cut away from the bottom of that top copy,
- * so the fringe stops just above the eyes.
+ * twice: once behind the face, and once on top clipped to its fringe. This is
+ * the y position (in the 816px frame, where the eyes sit at y=152) where the
+ * fringe copy is cut off, so hair covers the scalp but never the face.
  */
-export const HAIR_FRINGE_CLIP: Record<string, number> = {
-  short: 41,
-  bob: 46,
-  long: 58,
-  buns: 36,
-  curly: 18,
+export const HAIR_FRINGE_STOP: Record<string, number> = {
+  short: 132,
+  bob: 132,
+  long: 128,
+  buns: 126,
+  curly: 118,
 };
 
 export const OUTFIT_PIECES: Record<string, Piece> = {
