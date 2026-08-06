@@ -225,22 +225,26 @@ export function useProgress() {
 /**
  * Test switch: visiting any page with ?unlockAll=1 shows every outfit, hat and
  * pet for the rest of the browser session. Nothing is saved, so coins and real
- * ownership are untouched.
+ * ownership are untouched. Read after hydration so the server and the first
+ * client render agree.
  */
-export function unlockAllForTesting() {
-  if (typeof window === "undefined") return false;
-  try {
-    if (new URLSearchParams(window.location.search).get("unlockAll") === "1") {
-      sessionStorage.setItem("storylingo.unlockAll", "1");
+export function useTestUnlock() {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    try {
+      if (new URLSearchParams(window.location.search).get("unlockAll") === "1") {
+        sessionStorage.setItem("storylingo.unlockAll", "1");
+      }
+      setOn(sessionStorage.getItem("storylingo.unlockAll") === "1");
+    } catch {
+      setOn(false);
     }
-    return sessionStorage.getItem("storylingo.unlockAll") === "1";
-  } catch {
-    return false;
-  }
+  }, []);
+  return on;
 }
 
 export function owns(p: Progress, itemId: string) {
-  return p.owned.includes(itemId) || unlockAllForTesting();
+  return p.owned.includes(itemId);
 }
 
 export function isUnlocked(p: Progress, bookId: string, idx: number) {
