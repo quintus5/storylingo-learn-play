@@ -5,7 +5,7 @@ import { preloadCharacterArt } from "@/lib/character-art";
 import { spriteUrl, useSpriteUrl } from "@/lib/sprite-cache";
 import {
   BODIES,
-  BODY_FIT,
+  outfitFit,
   CANVAS_HEIGHT,
   FRAME_HEIGHT_PCT,
   FRAME_TOP_PCT,
@@ -153,7 +153,6 @@ export function CharacterSprite({
   }, []);
 
   const body = BODIES[look.skin] ?? BODIES["honey"]!;
-  const bodyFit = BODY_FIT[look.skin] ?? BODY_FIT["honey"]!;
   const hair = HAIR_PIECES[look.hair];
   const outfit = OUTFIT_PIECES[look.outfit];
   const hat = look.hat ? HAT_PIECES[look.hat] : null;
@@ -180,7 +179,7 @@ export function CharacterSprite({
         {/* Back hair sits under the body so only the part outside the head shows. */}
         {hair && <Hair piece={hair} color={hairColor(look)} />}
         <img src={resolve(body)} alt="" style={{ position: "absolute", inset: 0, width: "100%" }} draggable={false} />
-        {outfit && <Layer piece={fit(outfit, bodyFit)} alt="" />}
+        {outfit && <Layer piece={fit(outfit, outfitFit(look.outfit, look.skin))} alt="" />}
         <Face eyes={look.eyes} />
         {hair && (
           <FringeClip stop={HAIR_FRINGE_STOP[look.hair] ?? 130}>

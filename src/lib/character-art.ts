@@ -79,6 +79,24 @@ export const BODY_FIT: Record<string, { scale: number; dy: number }> = {
   cocoa: { scale: 1.18, dy: -8 },
 };
 
+/**
+ * A few outfits are painted with a different collar or sleeve line, so they
+ * need their own per-skin correction instead of the shared torso one.
+ */
+export const OUTFIT_FIT: Record<string, Record<string, { scale: number; dy: number }>> = {
+  raincoat: {
+    sand: { scale: 1.2, dy: 0 },
+    honey: { scale: 1, dy: 0 },
+    clay: { scale: 1.24, dy: 12 },
+    cocoa: { scale: 1.27, dy: 4 },
+  },
+};
+
+/** The correction an outfit layer should use for a given skin tone. */
+export function outfitFit(outfit: string, skin: string) {
+  return OUTFIT_FIT[outfit]?.[skin] ?? BODY_FIT[skin] ?? BODY_FIT["honey"]!;
+}
+
 export const HAIR_PIECES: Record<string, Piece> = {
   short: piece(hairShort, 273, -45, 270),
   bob: piece(hairBob, 258, -45, 300),
@@ -113,10 +131,10 @@ export const OUTFIT_PIECES: Record<string, Piece> = {
 };
 
 export const HAT_PIECES: Record<string, Piece> = {
-  straw: piece(hatStraw, 218, -25, 380),
-  crown: piece(hatCrown, 288, -70, 240),
-  wizard: piece(hatWizard, 258, -205, 300),
-  beanie: piece(hatBeanie, 278, -162, 260),
+  straw: piece(hatStraw, 218, -93, 380),
+  crown: piece(hatCrown, 273, -74, 270),
+  wizard: piece(hatWizard, 238, -237, 340),
+  beanie: piece(hatBeanie, 248, -212, 320),
 };
 
 export const PET_PIECES: Record<string, Piece> = {
