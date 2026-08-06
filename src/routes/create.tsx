@@ -10,7 +10,7 @@ import { CharacterSprite } from "@/components/CharacterSprite";
 import { characterPrompt } from "@/lib/character";
 import { PRICES } from "@/lib/economy";
 import { useProgress } from "@/lib/progress";
-import { useT } from "@/lib/i18n";
+import { useLang } from "@/lib/i18n";
 import type { ArtStyleId } from "@/lib/art-styles";
 
 type StoryPreview = {
