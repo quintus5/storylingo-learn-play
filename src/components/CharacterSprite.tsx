@@ -9,7 +9,7 @@ import {
   CANVAS_HEIGHT,
   FRAME_HEIGHT_PCT,
   FRAME_TOP_PCT,
-  HAIR_FRINGE_CLIP,
+  HAIR_FRINGE_STOP,
   HAIR_PIECES,
   HAT_PIECES,
   HEAD_CENTER,
@@ -77,6 +77,21 @@ function Hair({ piece, color, clipPath }: { piece: Piece; color: string; clipPat
         draggable={false}
         style={{ ...mask, left: 0, top: 0, width: "100%", opacity: 0.45, mixBlendMode: "multiply" }}
       />
+    </span>
+  );
+}
+
+/**
+ * Clips the top copy of the hair at an absolute y position in the 816px frame,
+ * so the fringe always stops above the eyes no matter how tall the art is.
+ */
+function FringeClip({ stop, children }: { stop: number; children: React.ReactNode }) {
+  const pct = (stop / 816) * 100;
+  return (
+    <span style={{ position: "absolute", inset: 0, height: `${pct}%`, overflow: "hidden", display: "block" }}>
+      <span style={{ position: "absolute", left: 0, top: 0, width: "100%", height: `${(100 / pct) * 100}%`, display: "block" }}>
+        {children}
+      </span>
     </span>
   );
 }
@@ -168,11 +183,9 @@ export function CharacterSprite({
         {outfit && <Layer piece={fit(outfit, bodyFit)} alt="" />}
         <Face eyes={look.eyes} />
         {hair && (
-          <Hair
-            piece={hair}
-            color={hairColor(look)}
-            clipPath={`inset(0 0 ${HAIR_FRINGE_CLIP[look.hair] ?? 40}% 0)`}
-          />
+          <FringeClip stop={HAIR_FRINGE_STOP[look.hair] ?? 130}>
+            <Hair piece={hair} color={hairColor(look)} />
+          </FringeClip>
         )}
         {hat && <Layer piece={hat} alt="" />}
         {pet && variant === "full" && <Layer piece={pet} alt="" />}
