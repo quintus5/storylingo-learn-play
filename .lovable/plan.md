@@ -1,23 +1,28 @@
-# Test coins switch
+# Unlock everything for testing
 
-## Where coins live today
+## Right now, no code change needed
 
-- `src/lib/economy.ts` — all the numbers: `STARTER_COINS` (150), `PRICES` (chapter 60, book 150, outfit 40, hat 30, pet 80, voice 100), `REWARDS`, `STREAK_BONUS`.
-- `src/lib/progress.ts` — the purse itself: `progress.coins` / `progress.earned`, saved on the device under `storylingo.progress.v1`. `give()` adds coins, `spend()` / `buyItem()` / `buyChapter()` take them away.
-- `src/components/CoinPurse.tsx` — the pill in the header showing the balance.
+Add `?unlockAll=1` to any page URL — every outfit, hat and pet becomes selectable for the rest of the browser session.
 
-## Change
+For coins, paste this in the browser console on the app, then reload:
 
-Add a URL test switch next to the existing `?unlockAll=1` one:
+```js
+const k="storylingo.progress.v1";const p=JSON.parse(localStorage.getItem(k)||"{}");
+localStorage.setItem(k,JSON.stringify({...p,coins:99999,earned:99999}));location.reload();
+```
 
-- Visiting any page with `?coins=9999` sets the purse to that amount (any number works, e.g. `?coins=500`).
-- Plain `?coins=1` style values still work, so you can also test the "not enough coins" states.
-- It writes to the real saved progress, so the balance sticks until you change it again — deliberate, so you can browse the shop, buy, and see spending work normally.
+## Change to make it one switch
 
-Also expose `window.storylingoCoins(n)` in development, so coins can be topped up from the browser console without a reload.
+Extend the existing test switch in `src/lib/progress.ts` so `?unlockAll=1` also:
+
+- Tops the purse up to 99,999 coins.
+- Marks every chapter of every book unlocked (`isUnlocked` returns true while the switch is on).
+- Treats every shop item as owned, so the shop shows them all as buyable/owned and the character screen has nothing locked.
+
+The switch stays session-only and never overwrites real saved progress except the coin top-up, which is what makes purchases testable end to end.
 
 ## Technical notes
 
-- New `useTestCoins()` in `src/lib/progress.ts` reads the `coins` query param after hydration and calls `update()` to set `coins`/`earned`; guarded to run once per value so it doesn't fight normal spending.
-- Mounted once in `src/routes/__root.tsx` so it works on every page.
-- The console helper is registered in the same hook behind an `import.meta.env.DEV` check.
+- `useTestUnlock()` gains the coin top-up (once per session) and is mounted in `src/routes/__root.tsx` so it applies on every page, not just the character screen.
+- `owns()` and `isUnlocked()` take the session flag into account via a module-level `testUnlockOn` boolean set by the hook.
+- Shop and reader screens already call `owns()` / `isUnlocked()`, so they pick this up with no further edits.
