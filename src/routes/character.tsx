@@ -109,6 +109,10 @@ function CharacterPage() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
+    preloadCharacterArt();
+  }, []);
+
+  useEffect(() => {
     if (progress.character) setLook(progress.character);
   }, [progress.character]);
 
