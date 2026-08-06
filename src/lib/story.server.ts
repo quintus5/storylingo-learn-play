@@ -104,7 +104,13 @@ export async function getSourceText(url: string): Promise<string> {
   return text;
 }
 
-export type PlotSpine = { characters: string[]; events: string[] };
+export type PlotSpine = {
+  characters: string[];
+  events: string[];
+  /** Same lists in Thai, for the Thai UI. */
+  charactersTh?: string[];
+  eventsTh?: string[];
+};
 
 const FIDELITY_RULES =
   `FAITHFULNESS RULES (very important):\n` +
@@ -118,18 +124,35 @@ const FIDELITY_RULES =
 
 /** Pull the real characters and ordered events out of the source before planning. */
 export async function extractPlotSpine(storyText: string): Promise<PlotSpine> {
-  const raw = await chatJson<{ characters?: unknown; events?: unknown }>(
+  const raw = await chatJson<{
+    characters?: unknown;
+    events?: unknown;
+    characters_th?: unknown;
+    events_th?: unknown;
+  }>(
     "You are a careful story analyst. You extract facts from a story exactly as written, never inventing. Reply with JSON only.",
     `Story source:\n"""${storyText}"""\n\n` +
       `List the real characters (with their real names) and every important event in the order it happens. ` +
       `Do not soften, skip or invent anything — include fights, deaths, tricks and the ending.\n` +
-      `Return JSON: {"characters": [string (name — one short role description)], "events": [string (one short English sentence per event, in order, 10-40 events)]}`,
+      `Return JSON: {"characters": [string (name — one short role description)], "events": [string (one short English sentence per event, in order, 10-40 events)], ` +
+      `"characters_th": [string (the SAME characters, same order, written in Thai)], ` +
+      `"events_th": [string (the SAME events, same order, written in Thai)]}`,
   );
   const list = (v: unknown, max: number) =>
     Array.isArray(v)
       ? v.filter((x): x is string => typeof x === "string" && x.trim().length > 0).map((x) => x.trim()).slice(0, max)
       : [];
-  return { characters: list(raw.characters, 20), events: list(raw.events, 40) };
+  const characters = list(raw.characters, 20);
+  const events = list(raw.events, 40);
+  const charactersTh = list(raw.characters_th, 20);
+  const eventsTh = list(raw.events_th, 40);
+  return {
+    characters,
+    events,
+    // Only trust the Thai lists when they line up one-to-one with the English ones.
+    charactersTh: charactersTh.length === characters.length ? charactersTh : undefined,
+    eventsTh: eventsTh.length === events.length ? eventsTh : undefined,
+  };
 }
 
 export async function buildOutline(
@@ -279,13 +302,38 @@ export type StoryPreview = {
   artStyleReason: string;
   characters: string[];
   keyEvents: string[];
+  /** Thai versions of every free-text field, for the Thai UI. */
+  th: {
+    title: string;
+    blurb: string;
+    reason: string;
+    chapterTitles: string[];
+    artStyleReason: string;
+    characters: string[];
+    keyEvents: string[];
+  };
+};
+
+type PreviewRaw = {
+  title?: string;
+  blurb?: string;
+  suggestedChapters?: number;
+  reason?: string;
+  chapterTitles?: unknown;
+  artStyle?: string;
+  artStyleReason?: string;
+  title_th?: string;
+  blurb_th?: string;
+  reason_th?: string;
+  chapterTitles_th?: unknown;
+  artStyleReason_th?: string;
 };
 
 /** Read a source link and suggest how many chapters the picture book should have. */
 export async function previewStory(url: string, fallbackTitle: string): Promise<StoryPreview> {
   const storyText = await getSourceText(url);
   const [raw, spine] = await Promise.all([
-    chatJson<Partial<StoryPreview> & { artStyle?: string }>(
+    chatJson<PreviewRaw>(
       "You are a children's book editor planning beginner Mandarin picture books for Thai-speaking children aged 6-10. " +
         "You retell in your own words but never change the real plot. Reply with JSON only.",
       `Source material (understand the plot only):\n"""${storyText.slice(0, 12000)}"""\n\n` +
@@ -295,31 +343,52 @@ export async function previewStory(url: string, fallbackTitle: string): Promise<
         `Also choose the illustration style whose culture and historical period best matches the story's ` +
         `origin and setting. Choose exactly one id from: ${ART_STYLE_MENU}. ` +
         `Use "${DEFAULT_ART_STYLE}" only for modern stories or when the origin is unclear.\n` +
+        `Every text field must also be given in Thai (the "_th" fields), saying exactly the same thing.\n` +
         `Return JSON: {"title": string (friendly English title, close to the real story's title), "blurb": string (one short English sentence), ` +
         `"suggestedChapters": number (1-10), "reason": string (one short English sentence explaining the number), ` +
         `"chapterTitles": [string] (one short English title per suggested chapter), ` +
         `"artStyle": string (one id from the list), ` +
-        `"artStyleReason": string (one short English sentence, e.g. "Classical Chinese fable set in the Tang dynasty")}`,
+        `"artStyleReason": string (one short English sentence, e.g. "Classical Chinese fable set in the Tang dynasty"), ` +
+        `"title_th": string, "blurb_th": string, "reason_th": string, ` +
+        `"chapterTitles_th": [string] (same chapters, same order, in Thai), "artStyleReason_th": string}`,
     ),
     extractPlotSpine(storyText).catch(() => ({ characters: [], events: [] }) as PlotSpine),
   ]);
 
   const suggested = Math.min(10, Math.max(1, Math.round(Number(raw.suggestedChapters) || 3)));
-  const titles = (Array.isArray(raw.chapterTitles) ? raw.chapterTitles : [])
-    .filter((t): t is string => typeof t === "string" && t.trim().length > 0)
-    .slice(0, suggested);
+  const strings = (v: unknown, max: number) =>
+    Array.isArray(v)
+      ? v.filter((t): t is string => typeof t === "string" && t.trim().length > 0).map((t) => t.trim()).slice(0, max)
+      : [];
+  const titles = strings(raw.chapterTitles, suggested);
+  const titlesTh = strings(raw.chapterTitles_th, suggested);
+
+  const title = (raw.title ?? "").trim() || fallbackTitle || "A new story";
+  const blurb = (raw.blurb ?? "").trim();
+  const reason = (raw.reason ?? "").trim();
+  const artStyleReason = (raw.artStyleReason ?? "").trim();
 
   return {
-    title: (raw.title ?? "").trim() || fallbackTitle || "A new story",
-    blurb: (raw.blurb ?? "").trim(),
+    title,
+    blurb,
     suggestedChapters: suggested,
-    reason: (raw.reason ?? "").trim(),
+    reason,
     chapterTitles: titles,
     wordCount: estimateWordCount(storyText),
     artStyle: isArtStyleId(raw.artStyle) ? raw.artStyle : DEFAULT_ART_STYLE,
-    artStyleReason: (raw.artStyleReason ?? "").trim(),
+    artStyleReason,
     characters: spine.characters,
     keyEvents: spine.events,
+    // Fall back to the English text whenever the Thai copy is missing or mismatched.
+    th: {
+      title: (raw.title_th ?? "").trim() || title,
+      blurb: (raw.blurb_th ?? "").trim() || blurb,
+      reason: (raw.reason_th ?? "").trim() || reason,
+      chapterTitles: titlesTh.length === titles.length ? titlesTh : titles,
+      artStyleReason: (raw.artStyleReason_th ?? "").trim() || artStyleReason,
+      characters: spine.charactersTh ?? spine.characters,
+      keyEvents: spine.eventsTh ?? spine.events,
+    },
   };
 }
 

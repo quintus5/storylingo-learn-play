@@ -10,7 +10,7 @@ import { CharacterSprite } from "@/components/CharacterSprite";
 import { characterPrompt } from "@/lib/character";
 import { PRICES } from "@/lib/economy";
 import { useProgress } from "@/lib/progress";
-import { useT } from "@/lib/i18n";
+import { useLang } from "@/lib/i18n";
 import type { ArtStyleId } from "@/lib/art-styles";
 
 type StoryPreview = {
@@ -24,6 +24,15 @@ type StoryPreview = {
   artStyleReason: string;
   characters: string[];
   keyEvents: string[];
+  th?: {
+    title: string;
+    blurb: string;
+    reason: string;
+    chapterTitles: string[];
+    artStyleReason: string;
+    characters: string[];
+    keyEvents: string[];
+  };
 };
 
 
@@ -49,7 +58,7 @@ export const Route = createFileRoute("/create")({
 });
 
 function CreatePage() {
-  const t = useT();
+  const { t, lang } = useLang();
   const navigate = useNavigate();
   const create = useServerFn(createBook);
   const chapter = useServerFn(generateChapter);
@@ -67,6 +76,9 @@ function CreatePage() {
   const [plan, setPlan] = useState<StoryPreview | null>(null);
   const [style, setStyle] = useState<ArtStyleId>(DEFAULT_ART_STYLE);
   const [error, setError] = useState<string | null>(null);
+
+  // The model returns the plan in both languages; show whichever is selected.
+  const planText = plan ? (lang === "th" && plan.th ? plan.th : plan) : null;
 
   const say = (line: string) => setLog((l) => [...l, line]);
 
@@ -231,8 +243,8 @@ function CreatePage() {
             ))}
           </select>
           <p className="mt-2 text-xs text-muted-foreground">
-            {plan?.artStyleReason && style === plan.artStyle
-              ? plan.artStyleReason
+            {planText?.artStyleReason && style === plan?.artStyle
+              ? planText.artStyleReason
               : t(artStyle(style).hint, artStyle(style).hintTh ?? artStyle(style).hint)}
           </p>
 
@@ -245,13 +257,13 @@ function CreatePage() {
           </div>
         </div>
 
-        {plan && (
+        {plan && planText && (
           <section className="animate-[float-in_0.4s_ease-out] rounded-3xl border border-primary/25 bg-card/70 p-5">
             <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-primary">
               <BookOpen className="h-4 w-4" /> {t("Suggested plan", "แผนที่แนะนำ")}
             </p>
-            <h3 className="mt-2 text-xl font-extrabold">{plan.title}</h3>
-            {plan.blurb && <p className="mt-1 text-sm text-muted-foreground">{plan.blurb}</p>}
+            <h3 className="mt-2 text-xl font-extrabold">{planText.title}</h3>
+            {planText.blurb && <p className="mt-1 text-sm text-muted-foreground">{planText.blurb}</p>}
 
             <div className="mt-4 rounded-2xl bg-secondary/50 p-3 text-sm">
               <p className="font-bold">
@@ -259,7 +271,7 @@ function CreatePage() {
                   ? t("1 chapter suggested", "แนะนำ 1 บท")
                   : t(`${plan.suggestedChapters} chapters suggested`, `แนะนำ ${plan.suggestedChapters} บท`)}
               </p>
-              {plan.reason && <p className="mt-1 text-muted-foreground">{plan.reason}</p>}
+              {planText.reason && <p className="mt-1 text-muted-foreground">{planText.reason}</p>}
               <p className="mt-1 text-xs text-muted-foreground">
                 {t(
                   `About ${plan.wordCount.toLocaleString()} words of source text. You can still move the slider.`,
@@ -268,24 +280,24 @@ function CreatePage() {
               </p>
             </div>
 
-            {plan.chapterTitles.length > 0 && (
+            {planText.chapterTitles.length > 0 && (
               <ol className="mt-4 space-y-1 text-sm">
-                {plan.chapterTitles.slice(0, chapterCount).map((t, i) => (
+                {planText.chapterTitles.slice(0, chapterCount).map((title, i) => (
                   <li key={i} className="flex gap-2">
                     <span className="font-bold text-primary">{i + 1}.</span>
-                    <span>{t}</span>
+                    <span>{title}</span>
                   </li>
                 ))}
               </ol>
             )}
 
-            {plan.characters.length > 0 && (
+            {planText.characters.length > 0 && (
               <div className="mt-4">
                 <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
                   {t("Characters kept from the original", "ตัวละครจากเรื่องต้นฉบับ")}
                 </p>
                 <ul className="mt-2 flex flex-wrap gap-2">
-                  {plan.characters.map((c, i) => (
+                  {planText.characters.map((c, i) => (
                     <li
                       key={i}
                       className="rounded-full bg-secondary/60 px-3 py-1 text-xs text-secondary-foreground"
@@ -297,16 +309,16 @@ function CreatePage() {
               </div>
             )}
 
-            {plan.keyEvents.length > 0 && (
+            {planText.keyEvents.length > 0 && (
               <details className="mt-4 rounded-2xl bg-secondary/40 p-3">
                 <summary className="cursor-pointer text-sm font-bold">
                   {t(
-                    `Real story beats we'll keep (${plan.keyEvents.length})`,
-                    `เหตุการณ์สำคัญที่เราจะคงไว้ (${plan.keyEvents.length})`,
+                    `Real story beats we'll keep (${planText.keyEvents.length})`,
+                    `เหตุการณ์สำคัญที่เราจะคงไว้ (${planText.keyEvents.length})`,
                   )}
                 </summary>
                 <ol className="mt-2 space-y-1 text-sm text-muted-foreground">
-                  {plan.keyEvents.map((e, i) => (
+                  {planText.keyEvents.map((e, i) => (
                     <li key={i} className="flex gap-2">
                       <span className="font-bold text-primary">{i + 1}.</span>
                       <span>{e}</span>
