@@ -117,11 +117,13 @@ function CharacterPage() {
     setSaved(false);
   };
 
+  const testUnlock = useTestUnlock();
+  const has = (id: string) => testUnlock || owns(progress, id);
   const lockedOutfits = OUTFITS.filter(
-    (o, i) => i > 1 && !owns(progress, `outfit:${o.id}`),
+    (o, i) => i > 1 && !has(`outfit:${o.id}`),
   ).map((o) => o.id);
-  const lockedHats = HATS.filter((o) => !owns(progress, `hat:${o.id}`)).map((o) => o.id);
-  const lockedPets = PETS.filter((o) => !owns(progress, `pet:${o.id}`)).map((o) => o.id);
+  const lockedHats = HATS.filter((o) => !has(`hat:${o.id}`)).map((o) => o.id);
+  const lockedPets = PETS.filter((o) => !has(`pet:${o.id}`)).map((o) => o.id);
 
   return (
     <AppShell title={t("My character", "ตัวละครของฉัน")} back={{ to: "/" }} right={<CoinPurse />}>
