@@ -82,7 +82,9 @@ export const BODY_FIT: Record<string, { scale: number; dy: number }> = {
 export const HAIR_PIECES: Record<string, Piece> = {
   short: piece(hairShort, 283, 2, 250),
   bob: piece(hairBob, 276, 0, 264),
-  long: piece(hairLong, 283, 2, 250),
+  // The long hair is painted with a face opening: its width and top are set so
+  // the opening centres on the face (x=408) and its fringe stops above the eyes.
+  long: piece(hairLong, 255, -15, 300),
   buns: piece(hairBuns, 271, -14, 274),
   curly: piece(hairCurly, 258, -10, 300),
 };
