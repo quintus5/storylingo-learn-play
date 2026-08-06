@@ -8,6 +8,7 @@ import { bookQuery } from "@/lib/books";
 import { useProgress } from "@/lib/progress";
 import { preload, speak, stopAudio } from "@/lib/audio";
 import type { Word } from "@/lib/types";
+import { useT } from "@/lib/i18n";
 
 export const Route = createFileRoute("/book/$bookId/chapter/$n/quiz")({
   loader: ({ context, params }) => context.queryClient.ensureQueryData(bookQuery(params.bookId)),
@@ -31,7 +32,7 @@ export const Route = createFileRoute("/book/$bookId/chapter/$n/quiz")({
   component: Quiz,
   errorComponent: () => (
     <AppShell>
-      <p className="text-muted-foreground">The quiz could not be loaded.</p>
+      <p className="text-muted-foreground">{useT()("The quiz could not be loaded.", "ไม่สามารถโหลดแบบทดสอบได้")}</p>
     </AppShell>
   ),
 });
@@ -41,11 +42,13 @@ type Question =
   | { kind: "listen"; prompt: Word; options: Word[] }
   | { kind: "translate"; prompt: Word; options: Word[] };
 
-const ROUND_LABEL: Record<Question["kind"], string> = {
-  match: "Round 1 · Match the word",
-  listen: "Round 2 · Listen and choose",
-  translate: "Round 3 · Say it in Mandarin",
-};
+function useRoundLabel(t: ReturnType<typeof useT>): Record<Question["kind"], string> {
+  return {
+    match: t("Round 1 · Match the word", "รอบที่ 1 · จับคู่คำศัพท์"),
+    listen: t("Round 2 · Listen and choose", "รอบที่ 2 · ฟังแล้วเลือก"),
+    translate: t("Round 3 · Say it in Mandarin", "รอบที่ 3 · พูดเป็นภาษาจีน"),
+  };
+}
 
 function shuffle<T>(items: T[]): T[] {
   const copy = [...items];
@@ -57,6 +60,8 @@ function shuffle<T>(items: T[]): T[] {
 }
 
 function Quiz() {
+  const t = useT();
+  const ROUND_LABEL = useRoundLabel(t);
   const { bookId, n } = Route.useParams();
   const idx = Number(n);
   const { data } = useSuspenseQuery(bookQuery(bookId));
@@ -121,7 +126,7 @@ function Quiz() {
   if (!chapter || questions.length === 0) {
     return (
       <AppShell back={{ to: "/book/$bookId", params: { bookId } }}>
-        <p className="text-muted-foreground">This chapter has no quiz words yet.</p>
+        <p className="text-muted-foreground">{t("This chapter has no quiz words yet.", "บทนี้ยังไม่มีคำศัพท์สำหรับทำแบบทดสอบ")}</p>
       </AppShell>
     );
   }
@@ -169,14 +174,17 @@ function Quiz() {
 
   if (!started) {
     return (
-      <AppShell title="Warm-up" back={{ to: "/book/$bookId/chapter/$n", params: { bookId, n } }}>
+      <AppShell title={t("Warm-up", "อุ่นเครื่อง")} back={{ to: "/book/$bookId/chapter/$n", params: { bookId, n } }}>
         <div className="mx-auto max-w-md rounded-3xl border border-primary/25 bg-card p-6 text-center">
           <p className="text-4xl" aria-hidden>
             🐫
           </p>
-          <h2 className="mt-3 text-2xl font-extrabold">Ready for chapter {idx}?</h2>
+          <h2 className="mt-3 text-2xl font-extrabold">{t(`Ready for chapter ${idx}?`, `พร้อมสำหรับบทที่ ${idx} หรือยัง?`)}</h2>
           <p className="mt-2 text-muted-foreground">
-            Three quick rounds: match the words, listen carefully, then choose the Mandarin.
+            {t(
+              "Three quick rounds: match the words, listen carefully, then choose the Mandarin.",
+              "สามรอบสั้นๆ: จับคู่คำศัพท์ ตั้งใจฟัง แล้วเลือกคำภาษาจีนให้ถูกต้อง",
+            )}
           </p>
           <div className="mt-4 flex flex-wrap justify-center gap-2">
             {(chapter.words ?? []).slice(0, 6).map((w) => (
@@ -194,7 +202,7 @@ function Quiz() {
             onClick={() => setStarted(true)}
             className="press mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-4 text-lg font-extrabold text-primary-foreground"
           >
-            <Sparkles className="h-5 w-5" /> Start the quiz
+            <Sparkles className="h-5 w-5" /> {t("Start the quiz", "เริ่มทำแบบทดสอบ")}
           </button>
         </div>
       </AppShell>
@@ -205,26 +213,29 @@ function Quiz() {
     const nextIdx = idx + 1;
     const hasNext = data.chapters.some((c) => c.idx === nextIdx && (c.pages?.length ?? 0) > 0);
     return (
-      <AppShell title="Well done!" back={{ to: "/book/$bookId", params: { bookId } }}>
+      <AppShell title={t("Well done!", "เก่งมาก!")} back={{ to: "/book/$bookId", params: { bookId } }}>
         <div className="mx-auto max-w-md rounded-3xl border border-gold/40 bg-card p-6 text-center">
           <p className="text-5xl animate-[boing_0.7s_ease-out]" aria-hidden>
             🌟
           </p>
           <h2 className="mt-3 text-2xl font-extrabold">
-            {correct} / {questions.length} correct
+            {t(`${correct} / ${questions.length} correct`, `ถูก ${correct} / ${questions.length} ข้อ`)}
           </h2>
           <div className="mt-3 flex justify-center">
             <StarRow count={stars} animate />
           </div>
           {coinsWon > 0 && (
             <p className="mt-3 animate-[pop_0.5s_ease-out] text-lg font-extrabold text-gold">
-              🪙 +{coinsWon} coins
+              🪙 +{coinsWon} {t("coins", "เหรียญ")}
             </p>
           )}
           <p className="mt-3 text-muted-foreground">
             {stars > 0
-              ? "The next chapter is unlocked!"
-              : "Read the chapter again and try once more to unlock the next one."}
+              ? t("The next chapter is unlocked!", "ปลดล็อกบทถัดไปแล้ว!")
+              : t(
+                  "Read the chapter again and try once more to unlock the next one.",
+                  "อ่านบทนี้อีกครั้งแล้วลองใหม่เพื่อปลดล็อกบทถัดไป",
+                )}
           </p>
           <div className="mt-6 flex flex-col gap-2">
             {stars > 0 && hasNext && (
@@ -233,7 +244,7 @@ function Quiz() {
                 params={{ bookId, n: String(nextIdx) }}
                 className="press rounded-2xl bg-primary px-5 py-3 font-extrabold text-primary-foreground"
               >
-                Read chapter {nextIdx}
+                {t(`Read chapter ${nextIdx}`, `อ่านบทที่ ${nextIdx}`)}
               </Link>
             )}
             <button
@@ -245,13 +256,13 @@ function Quiz() {
               }}
               className="press rounded-2xl bg-secondary px-5 py-3 font-bold text-secondary-foreground"
             >
-              Play again
+              {t("Play again", "เล่นอีกครั้ง")}
             </button>
             <button
               onClick={() => void navigate({ to: "/book/$bookId", params: { bookId } })}
               className="press rounded-2xl border border-border px-5 py-3 font-bold"
             >
-              Back to the book
+              {t("Back to the book", "กลับไปที่หนังสือ")}
             </button>
           </div>
         </div>
@@ -274,7 +285,7 @@ function Quiz() {
             <>
               <p className="han text-5xl font-bold text-sand">{question.prompt.hanzi}</p>
               <p className="mt-1 text-primary">{question.prompt.pinyin}</p>
-              <p className="mt-3 text-sm text-muted-foreground">Which meaning is right?</p>
+              <p className="mt-3 text-sm text-muted-foreground">{t("Which meaning is right?", "ความหมายไหนถูกต้อง?")}</p>
             </>
           )}
           {question.kind === "listen" && (
@@ -283,15 +294,15 @@ function Quiz() {
                 onClick={() => void speak(question.prompt.hanzi, true)}
                 className="press inline-flex items-center gap-2 rounded-2xl bg-primary px-5 py-4 font-extrabold text-primary-foreground"
               >
-                <Play className="h-5 w-5" /> Play again
+                <Play className="h-5 w-5" /> {t("Play again", "เล่นอีกครั้ง")}
               </button>
-              <p className="mt-3 text-sm text-muted-foreground">Which word did you hear?</p>
+              <p className="mt-3 text-sm text-muted-foreground">{t("Which word did you hear?", "คุณได้ยินคำไหน?")}</p>
             </>
           )}
           {question.kind === "translate" && (
             <>
               <p className="text-2xl font-bold">{question.prompt.dict}</p>
-              <p className="mt-3 text-sm text-muted-foreground">Choose the Mandarin word.</p>
+              <p className="mt-3 text-sm text-muted-foreground">{t("Choose the Mandarin word.", "เลือกคำภาษาจีนที่ถูกต้อง")}</p>
             </>
           )}
         </div>
@@ -334,7 +345,7 @@ function Quiz() {
         </div>
 
         <p className="mt-4 text-center text-sm text-muted-foreground">
-          Question {step + 1} of {questions.length}
+          {t(`Question ${step + 1} of ${questions.length}`, `ข้อที่ ${step + 1} จาก ${questions.length}`)}
         </p>
       </div>
     </AppShell>
