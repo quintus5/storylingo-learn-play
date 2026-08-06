@@ -217,11 +217,16 @@ export function useProgress() {
   };
 }
 
+/** Session-only test flag, mirrored here so owns()/isUnlocked() can see it. */
+let testUnlockOn = false;
+
+const TEST_COINS = 99999;
+
 /**
- * Test switch: visiting any page with ?unlockAll=1 shows every outfit, hat and
- * pet for the rest of the browser session. Nothing is saved, so coins and real
- * ownership are untouched. Read after hydration so the server and the first
- * client render agree.
+ * Test switch: visiting any page with ?unlockAll=1 unlocks every outfit, hat,
+ * pet and chapter for the rest of the browser session and tops the purse up to
+ * 99,999 coins once. Only the coin top-up is saved; ownership stays untouched.
+ * Read after hydration so the server and the first client render agree.
  */
 export function useTestUnlock() {
   const [on, setOn] = useState(false);
@@ -230,7 +235,15 @@ export function useTestUnlock() {
       if (new URLSearchParams(window.location.search).get("unlockAll") === "1") {
         sessionStorage.setItem("storylingo.unlockAll", "1");
       }
-      setOn(sessionStorage.getItem("storylingo.unlockAll") === "1");
+      const active = sessionStorage.getItem("storylingo.unlockAll") === "1";
+      testUnlockOn = active;
+      setOn(active);
+      // Top the purse up once per session so purchases are testable end to end.
+      if (active && sessionStorage.getItem("storylingo.unlockAll.paid") !== "1") {
+        sessionStorage.setItem("storylingo.unlockAll.paid", "1");
+        const p = read();
+        if (p.coins < TEST_COINS) write({ ...p, coins: TEST_COINS, earned: Math.max(p.earned, TEST_COINS) });
+      }
     } catch {
       setOn(false);
     }
@@ -239,10 +252,11 @@ export function useTestUnlock() {
 }
 
 export function owns(p: Progress, itemId: string) {
-  return p.owned.includes(itemId);
+  return testUnlockOn || p.owned.includes(itemId);
 }
 
 export function isUnlocked(p: Progress, bookId: string, idx: number) {
+  if (testUnlockOn) return true;
   if (idx <= 1) return true;
   if (p.bought[`${bookId}:${idx}`]) return true;
   return (p.books[bookId]?.stars[idx - 1] ?? 0) > 0;
