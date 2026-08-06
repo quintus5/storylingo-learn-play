@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { CharacterSprite } from "@/components/CharacterSprite";
-import { DEFAULT_LOOK, HAIRS, SKINS } from "@/lib/character";
+import { DEFAULT_LOOK, HAIRS, HATS, OUTFITS, SKINS } from "@/lib/character";
 
 /**
  * Developer-only contact sheet: every skin x hair combination at a fixed size,
