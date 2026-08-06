@@ -63,28 +63,44 @@ export const BODIES: Record<string, string> = {
   cocoa: bodyCocoa,
 };
 
+/**
+ * Shared anchor after normalising the bodies: the head sits with its top at
+ * y=8, its centre at x=408 and a width of 250px in the 816px frame, so hair,
+ * hats and the face fit every skin tone. Torsos are still painted at slightly
+ * different widths, so outfits get a per-skin nudge through BODY_FIT.
+ */
+export const HEAD_BOX = { top: 8, centerX: 408, width: 250 };
+
+/** Per-skin torso correction for outfit layers, measured from the art. */
+export const BODY_FIT: Record<string, { scale: number; dy: number }> = {
+  sand: { scale: 1.11, dy: -17 },
+  honey: { scale: 1, dy: 0 },
+  clay: { scale: 1.14, dy: 10 },
+  cocoa: { scale: 1.18, dy: -8 },
+};
+
 export const HAIR_PIECES: Record<string, Piece> = {
-  short: piece(hairShort, 281, 4, 250),
-  bob: piece(hairBob, 274, 2, 265),
-  long: piece(hairLong, 281, 4, 250),
-  buns: piece(hairBuns, 269, -12, 275),
-  curly: piece(hairCurly, 256, -8, 300),
+  short: piece(hairShort, 283, 2, 250),
+  bob: piece(hairBob, 276, 0, 264),
+  long: piece(hairLong, 283, 2, 250),
+  buns: piece(hairBuns, 271, -14, 274),
+  curly: piece(hairCurly, 258, -10, 300),
 };
 
 export const OUTFIT_PIECES: Record<string, Piece> = {
-  tunic: piece(outfitTunic, 241, 250, 330),
-  explorer: piece(outfitExplorer, 236, 255, 340),
-  hanfu: piece(outfitHanfu, 216, 250, 380),
-  knight: piece(outfitKnight, 241, 250, 330),
-  stargown: piece(outfitStargown, 231, 250, 350),
-  raincoat: piece(outfitRaincoat, 231, 250, 350),
+  tunic: piece(outfitTunic, 243, 252, 330),
+  explorer: piece(outfitExplorer, 238, 257, 340),
+  hanfu: piece(outfitHanfu, 218, 252, 380),
+  knight: piece(outfitKnight, 243, 252, 330),
+  stargown: piece(outfitStargown, 233, 252, 350),
+  raincoat: piece(outfitRaincoat, 233, 252, 350),
 };
 
 export const HAT_PIECES: Record<string, Piece> = {
-  straw: piece(hatStraw, 216, -25, 380),
-  crown: piece(hatCrown, 286, -83, 240),
-  wizard: piece(hatWizard, 256, -184, 300),
-  beanie: piece(hatBeanie, 276, -162, 260),
+  straw: piece(hatStraw, 218, -25, 380),
+  crown: piece(hatCrown, 288, -83, 240),
+  wizard: piece(hatWizard, 258, -184, 300),
+  beanie: piece(hatBeanie, 278, -162, 260),
 };
 
 export const PET_PIECES: Record<string, Piece> = {
