@@ -13,6 +13,7 @@ import { Route as ShopRouteImport } from './routes/shop'
 import { Route as CreateRouteImport } from './routes/create'
 import { Route as CharacterRouteImport } from './routes/character'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DevSpriteGridRouteImport } from './routes/dev.sprite-grid'
 import { Route as ApiTtsRouteImport } from './routes/api/tts'
 import { Route as BookBookIdIndexRouteImport } from './routes/book.$bookId.index'
 import { Route as BookBookIdVocabRouteImport } from './routes/book.$bookId.vocab'
@@ -39,6 +40,11 @@ const CharacterRoute = CharacterRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevSpriteGridRoute = DevSpriteGridRouteImport.update({
+  id: '/dev/sprite-grid',
+  path: '/dev/sprite-grid',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiTtsRoute = ApiTtsRouteImport.update({
@@ -83,6 +89,7 @@ export interface FileRoutesByFullPath {
   '/create': typeof CreateRoute
   '/shop': typeof ShopRoute
   '/api/tts': typeof ApiTtsRoute
+  '/dev/sprite-grid': typeof DevSpriteGridRoute
   '/book/$bookId/progress': typeof BookBookIdProgressRoute
   '/book/$bookId/vocab': typeof BookBookIdVocabRoute
   '/book/$bookId/': typeof BookBookIdIndexRoute
@@ -96,6 +103,7 @@ export interface FileRoutesByTo {
   '/create': typeof CreateRoute
   '/shop': typeof ShopRoute
   '/api/tts': typeof ApiTtsRoute
+  '/dev/sprite-grid': typeof DevSpriteGridRoute
   '/book/$bookId/progress': typeof BookBookIdProgressRoute
   '/book/$bookId/vocab': typeof BookBookIdVocabRoute
   '/book/$bookId': typeof BookBookIdIndexRoute
@@ -110,6 +118,7 @@ export interface FileRoutesById {
   '/create': typeof CreateRoute
   '/shop': typeof ShopRoute
   '/api/tts': typeof ApiTtsRoute
+  '/dev/sprite-grid': typeof DevSpriteGridRoute
   '/book/$bookId/progress': typeof BookBookIdProgressRoute
   '/book/$bookId/vocab': typeof BookBookIdVocabRoute
   '/book/$bookId/': typeof BookBookIdIndexRoute
@@ -125,6 +134,7 @@ export interface FileRouteTypes {
     | '/create'
     | '/shop'
     | '/api/tts'
+    | '/dev/sprite-grid'
     | '/book/$bookId/progress'
     | '/book/$bookId/vocab'
     | '/book/$bookId/'
@@ -138,6 +148,7 @@ export interface FileRouteTypes {
     | '/create'
     | '/shop'
     | '/api/tts'
+    | '/dev/sprite-grid'
     | '/book/$bookId/progress'
     | '/book/$bookId/vocab'
     | '/book/$bookId'
@@ -151,6 +162,7 @@ export interface FileRouteTypes {
     | '/create'
     | '/shop'
     | '/api/tts'
+    | '/dev/sprite-grid'
     | '/book/$bookId/progress'
     | '/book/$bookId/vocab'
     | '/book/$bookId/'
@@ -165,6 +177,7 @@ export interface RootRouteChildren {
   CreateRoute: typeof CreateRoute
   ShopRoute: typeof ShopRoute
   ApiTtsRoute: typeof ApiTtsRoute
+  DevSpriteGridRoute: typeof DevSpriteGridRoute
   BookBookIdProgressRoute: typeof BookBookIdProgressRoute
   BookBookIdVocabRoute: typeof BookBookIdVocabRoute
   BookBookIdIndexRoute: typeof BookBookIdIndexRoute
@@ -201,6 +214,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dev/sprite-grid': {
+      id: '/dev/sprite-grid'
+      path: '/dev/sprite-grid'
+      fullPath: '/dev/sprite-grid'
+      preLoaderRoute: typeof DevSpriteGridRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/tts': {
@@ -261,6 +281,7 @@ const rootRouteChildren: RootRouteChildren = {
   CreateRoute: CreateRoute,
   ShopRoute: ShopRoute,
   ApiTtsRoute: ApiTtsRoute,
+  DevSpriteGridRoute: DevSpriteGridRoute,
   BookBookIdProgressRoute: BookBookIdProgressRoute,
   BookBookIdVocabRoute: BookBookIdVocabRoute,
   BookBookIdIndexRoute: BookBookIdIndexRoute,
