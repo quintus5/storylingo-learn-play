@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { BookOpen, Loader2, Search, Wand2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { createBook, generateChapter, previewBook } from "@/lib/story.functions";
+import { createBook, generateChapter, markBookFailed, previewBook } from "@/lib/story.functions";
 import { ART_STYLES, DEFAULT_ART_STYLE, artStyle } from "@/lib/art-styles";
 import { CoinPurse } from "@/components/CoinPurse";
 import { CharacterSprite } from "@/components/CharacterSprite";
