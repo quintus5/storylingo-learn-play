@@ -57,10 +57,28 @@ async function synthesizeFish(text: string, slow: boolean, apiKey: string, voice
   });
 }
 
+/** Narration is for this app's own pages, not a public TTS proxy. */
+function isSameOrigin(request: Request): boolean {
+  const self = new URL(request.url).origin;
+  const origin = request.headers.get("origin");
+  if (origin) return origin === self;
+  const referer = request.headers.get("referer");
+  if (referer) {
+    try {
+      return new URL(referer).origin === self;
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
 export const Route = createFileRoute("/api/tts")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        if (!isSameOrigin(request)) return new Response("Forbidden", { status: 403 });
+
         const fishKey = process.env.FISH_AUDIO_API_KEY;
         const apiKey = process.env.LOVABLE_API_KEY;
         if (!fishKey && !apiKey) return new Response("Missing TTS credentials", { status: 500 });
@@ -88,9 +106,9 @@ export const Route = createFileRoute("/api/tts")({
 
         let bytes = new Uint8Array(await res.arrayBuffer());
 
-        // Sanity-check the clip: a short word must not come back as a long
-        // recording (a sign the model spoke more than the requested text).
-        const maxBytes = 6000 + text.length * 9000;
+        // Only retry on obviously broken audio. A generous ceiling matters:
+        // every retry is a second paid synthesis.
+        const maxBytes = 60_000 + text.length * 30_000;
         if (bytes.byteLength < 600 || bytes.byteLength > maxBytes) {
           res = await run();
 
@@ -99,6 +117,7 @@ export const Route = createFileRoute("/api/tts")({
             if (retry.byteLength >= 600) bytes = retry;
           }
         }
+
 
         if (bytes.byteLength < 600) return new Response("Empty audio", { status: 502 });
 
