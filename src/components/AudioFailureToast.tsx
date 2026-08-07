@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { VolumeX } from "lucide-react";
-import { onAudioFailure } from "@/lib/audio";
+import { onAudioFailure, unlockAudio } from "@/lib/audio";
 import { useT } from "@/lib/i18n";
 
 /**
