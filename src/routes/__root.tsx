@@ -12,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { LanguageProvider } from "../lib/i18n";
+import { AudioFailureToast } from "../components/AudioFailureToast";
 import { useTestUnlock } from "../lib/progress";
 
 function NotFoundComponent() {
@@ -136,6 +137,7 @@ function RootComponent() {
       <LanguageProvider>
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
+        <AudioFailureToast />
       </LanguageProvider>
     </QueryClientProvider>
   );
