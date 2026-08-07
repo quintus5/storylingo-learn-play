@@ -22,6 +22,7 @@ export type Database = {
           character_prompt: string | null
           cover_url: string | null
           created_at: string
+          generation_error: string | null
           id: string
           native_lang: string
           source_url: string | null
@@ -36,6 +37,7 @@ export type Database = {
           character_prompt?: string | null
           cover_url?: string | null
           created_at?: string
+          generation_error?: string | null
           id?: string
           native_lang?: string
           source_url?: string | null
@@ -50,6 +52,7 @@ export type Database = {
           character_prompt?: string | null
           cover_url?: string | null
           created_at?: string
+          generation_error?: string | null
           id?: string
           native_lang?: string
           source_url?: string | null
