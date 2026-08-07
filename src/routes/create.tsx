@@ -76,6 +76,9 @@ function CreatePage() {
   const [plan, setPlan] = useState<StoryPreview | null>(null);
   const [style, setStyle] = useState<ArtStyleId>(DEFAULT_ART_STYLE);
   const [error, setError] = useState<string | null>(null);
+  /** A book whose generation stopped part-way, so it can be finished later. */
+  const [stuckBookId, setStuckBookId] = useState<string | null>(null);
+
 
   // The model returns the plan in both languages; show whichever is selected.
   const planText = plan ? (lang === "th" && plan.th ? plan.th : plan) : null;
