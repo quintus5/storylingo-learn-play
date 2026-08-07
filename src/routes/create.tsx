@@ -63,6 +63,8 @@ function CreatePage() {
   const create = useServerFn(createBook);
   const chapter = useServerFn(generateChapter);
   const preview = useServerFn(previewBook);
+  const fail = useServerFn(markBookFailed);
+
   const { progress, spend } = useProgress();
   const buddy = progress.character;
   const canAfford = progress.coins >= PRICES.book;
