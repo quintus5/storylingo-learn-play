@@ -38,7 +38,7 @@ const EMPTY: Progress = {
   wordsMastered: [],
   lastDay: null,
   streak: 0,
-  coins: 1000,
+  coins: 2000,
   earned: 0,
   owned: [],
   awarded: {},
