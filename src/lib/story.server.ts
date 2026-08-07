@@ -255,7 +255,10 @@ export async function buildChapterContent(
       `Every page MUST include its own "scene" description matching what happens on that page. ` +
       `Rules: split every sentence into its real words (1-3 characters each, no punctuation as a word). ` +
       `"dict" is the GENERAL dictionary meaning of the word on its own; "context" is what it means in that sentence. ` +
-      `The top-level "words" array holds 6 to 10 key vocabulary words for this chapter's quiz.`,
+      `The top-level "words" array holds 6 to 10 key vocabulary words for this chapter's quiz. ` +
+      `Pinyin MUST use tone-mark letters (nǐ hǎo), never tone numbers (ni3 hao3) and never bare letters, ` +
+      `and must apply 不/一 tone sandhi (不是 = bú shì, 一样 = yí yàng, 一天 = yì tiān). ` +
+      `Give each of the 6-10 quiz words a DIFFERENT dictionary meaning so quiz choices are never ambiguous.`,
   );
 
   // Models occasionally emit malformed JSON; retry once before giving up.
