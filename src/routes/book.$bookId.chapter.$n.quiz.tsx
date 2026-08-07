@@ -82,25 +82,42 @@ function Quiz() {
   const questions = useMemo<Question[]>(() => {
     const words = (chapter?.words ?? []).filter((w) => w.hanzi && w.dict);
     if (words.length < 2) return [];
-    const pool = [...learned, ...words];
+
+    // One entry per character, so the same word can't appear twice as an option.
+    const pool: Word[] = [];
+    const seen = new Set<string>();
+    for (const w of [...words, ...learned]) {
+      if (!w.hanzi || !w.dict || seen.has(w.hanzi)) continue;
+      seen.add(w.hanzi);
+      pool.push(w);
+    }
+
+    const norm = (s: string) => s.trim().toLowerCase();
 
     const pick = (answer: Word) => {
-      const distractors = shuffle(pool.filter((w) => w.hanzi !== answer.hanzi)).slice(0, 3);
+      // Skip look-alike answers: a distractor meaning the same thing has no
+      // right answer from the child's point of view.
+      const distractors = shuffle(
+        pool.filter((w) => w.hanzi !== answer.hanzi && norm(w.dict) !== norm(answer.dict)),
+      ).slice(0, 3);
       return shuffle([answer, ...distractors]);
     };
 
-    const chosen = shuffle(words);
+    const chosen = shuffle(words.filter((w, i, list) => list.findIndex((o) => o.hanzi === w.hanzi) === i));
+    /** Take `count` words starting at `offset`, wrapping when the list is short. */
     const round = (kind: Question["kind"], count: number, offset: number) =>
-      chosen
-        .slice(offset, offset + count)
-        .map((w) => ({ kind, prompt: w, options: pick(w) }) as Question);
+      Array.from({ length: Math.min(count, chosen.length) }, (_, k) => {
+        const w = chosen[(offset + k) % chosen.length];
+        return { kind, prompt: w, options: pick(w) } as Question;
+      });
 
     return [
       ...round("match", 4, 0),
-      ...round("listen", 3, 0),
-      ...round("translate", 3, 1),
+      ...round("listen", 3, 4),
+      ...round("translate", 3, 7),
     ].filter((q) => q.options.length > 1);
   }, [chapter?.id, learned]);
+
 
   const [started, setStarted] = useState(false);
   const [step, setStep] = useState(0);
