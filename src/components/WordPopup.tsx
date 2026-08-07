@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { X, Volume2 } from "lucide-react";
 import type { Word } from "@/lib/types";
-import { speak } from "@/lib/audio";
+import { speak, stopAudio } from "@/lib/audio";
 import { useT } from "@/lib/i18n";
 
 export function WordPopup({ word, onClose }: { word: Word; onClose: () => void }) {
