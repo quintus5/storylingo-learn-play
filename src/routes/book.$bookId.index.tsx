@@ -44,9 +44,42 @@ function BookPage() {
   const { data } = useSuspenseQuery(bookQuery(bookId));
   const { progress, buyChapter } = useProgress();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [wiggling, setWiggling] = useState<number | null>(null);
+  const [repairing, setRepairing] = useState(false);
+  const [repairNote, setRepairNote] = useState<string | null>(null);
+
+  const findMissing = useServerFn(missingChapters);
+  const buildChapter = useServerFn(generateChapter);
 
   const { book, chapters } = data;
+  const unfinished = chapters.filter((c) => !c.pages?.length).length;
+
+  /** Retry only the chapters that never got written, a few at a time. */
+  async function finishBook() {
+    setRepairing(true);
+    setRepairNote(null);
+    try {
+      const { idxs } = await findMissing({ data: { bookId } });
+      for (let i = 0; i < idxs.length; i += 3) {
+        const batch = idxs.slice(i, i + 3);
+        setRepairNote(
+          t(`Writing chapter ${batch.join(", ")}…`, `กำลังเขียนบทที่ ${batch.join(", ")}…`),
+        );
+        await Promise.all(batch.map((idx) => buildChapter({ data: { bookId, idx } })));
+      }
+      await queryClient.invalidateQueries({ queryKey: bookQuery(bookId).queryKey });
+      setRepairNote(null);
+    } catch (err) {
+      setRepairNote(
+        err instanceof Error
+          ? err.message
+          : t("That didn't work. Please try again.", "ยังไม่สำเร็จ ลองอีกครั้งนะ"),
+      );
+    } finally {
+      setRepairing(false);
+    }
+  }
 
   return (
     <AppShell
@@ -65,6 +98,39 @@ function BookPage() {
         </div>
       }
     >
+      {unfinished > 0 && (
+        <section className="mb-5 rounded-3xl border border-primary/30 bg-primary/10 p-4">
+          <p className="font-bold">
+            {t(
+              `${unfinished} chapter${unfinished > 1 ? "s" : ""} didn't finish drawing.`,
+              `มี ${unfinished} บทที่ยังวาดไม่เสร็จ`,
+            )}
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {repairNote ??
+              t(
+                "Tap to finish the missing chapters. It costs no extra coins.",
+                "แตะเพื่อทำบทที่ขาดให้เสร็จ ไม่เสียเหรียญเพิ่ม",
+              )}
+          </p>
+          <button
+            type="button"
+            onClick={() => void finishBook()}
+            disabled={repairing}
+            className="press mt-3 inline-flex min-h-11 items-center gap-2 rounded-2xl bg-primary px-4 text-sm font-bold text-primary-foreground disabled:opacity-60"
+          >
+            {repairing ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" /> {t("Finishing…", "กำลังทำต่อ…")}
+              </>
+            ) : (
+              t("Finish this book", "ทำหนังสือให้เสร็จ")
+            )}
+          </button>
+        </section>
+      )}
+
+
       <section className="mb-7 flex flex-col gap-4 rounded-3xl border border-primary/20 bg-card/70 p-4 sm:flex-row">
         <div className="h-44 w-32 shrink-0 overflow-hidden rounded-2xl bg-secondary">
           {book.cover_url ? (
