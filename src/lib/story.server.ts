@@ -278,8 +278,15 @@ export async function illustratePages(
   styleId?: string | null,
   characterPrompt?: string | null,
 ): Promise<Page[]> {
-  return Promise.all(
-    pages.map(async (page, i) => {
+  const out: Page[] = new Array(pages.length);
+  let next = 0;
+
+  // A small pool keeps a long chapter from firing a dozen image calls at once.
+  const worker = async () => {
+    while (true) {
+      const i = next++;
+      if (i >= pages.length) return;
+      const page = pages[i];
       const scene = page.scene?.trim() || `${chapterTitle}: ${page.sentences[0]?.native ?? ""}`;
       try {
         const url = await makeArt(
@@ -289,14 +296,18 @@ export async function illustratePages(
           styleId,
           characterPrompt,
         );
-        return { ...page, image_url: url };
+        out[i] = { ...page, image_url: url };
       } catch (err) {
         console.error(`Page ${i + 1} illustration failed`, err);
-        return { ...page, image_url: null };
+        out[i] = { ...page, image_url: null };
       }
-    }),
-  );
+    }
+  };
+
+  await Promise.all(Array.from({ length: Math.min(4, pages.length) }, worker));
+  return out;
 }
+
 
 /** Generate an illustration, store it, and return its public app URL. */
 export async function makeArt(
