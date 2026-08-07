@@ -13,17 +13,30 @@ const CreateBookInput = z.object({
   characterPrompt: z.string().trim().max(600).optional(),
 });
 
+/** Books anyone may start in one hour, so a script cannot drain AI credits. */
+const HOURLY_BOOK_LIMIT = 12;
+
 export const createBook = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => CreateBookInput.parse(input))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { getSourceText, buildOutline } = await import("./story.server");
 
+    const since = new Date(Date.now() - 3600_000).toISOString();
+    const { count } = await supabaseAdmin
+      .from("books")
+      .select("id", { count: "exact", head: true })
+      .gte("created_at", since);
+    if ((count ?? 0) >= HOURLY_BOOK_LIMIT) {
+      throw new Error("StoryLingo is making a lot of books right now. Please try again in a while.");
+    }
+
     const storyText = await getSourceText(data.url);
     const outline = await buildOutline(storyText, data.title, data.chapterCount);
 
     const chapters = (outline.chapters ?? []).slice(0, data.chapterCount);
     if (chapters.length < 1) throw new Error("Could not split that story into chapters.");
+
 
     const { data: book, error } = await supabaseAdmin
       .from("books")
