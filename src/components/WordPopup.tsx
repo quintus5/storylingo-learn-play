@@ -6,18 +6,49 @@ import { useT } from "@/lib/i18n";
 
 export function WordPopup({ word, onClose }: { word: Word; onClose: () => void }) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
   const t = useT();
 
   useEffect(() => {
     void speak(word.hanzi, true);
   }, [word.hanzi]);
 
+  // Stop the narration when the card closes, so it doesn't talk over the page.
+  useEffect(() => () => stopAudio(), []);
+
+  // Move focus into the card and keep Tab inside it while it is open.
   useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
+    closeRef.current?.focus();
+
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const panel = panelRef.current;
+      if (!panel) return;
+      const focusable = panel.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
+
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      opener?.focus?.();
+    };
   }, [onClose]);
 
   return (
@@ -40,13 +71,15 @@ export function WordPopup({ word, onClose }: { word: Word; onClose: () => void }
             <p className="mt-1 text-lg font-semibold text-primary">{word.pinyin}</p>
           </div>
           <button
+            ref={closeRef}
             onClick={onClose}
             aria-label={t("Close", "ปิด")}
-            className="press inline-flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-secondary-foreground"
+            className="press inline-flex h-11 w-11 items-center justify-center rounded-full bg-secondary text-secondary-foreground"
           >
-            <X className="h-4 w-4" />
+            <X className="h-5 w-5" />
           </button>
         </div>
+
 
         <dl className="mt-4 space-y-3">
           <div className="rounded-2xl bg-secondary/60 p-3">
