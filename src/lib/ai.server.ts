@@ -14,6 +14,8 @@ export async function chatJson<T>(
 ): Promise<T> {
   const res = await fetch(`${GATEWAY}/chat/completions`, {
     method: "POST",
+    // Without a deadline a hung gateway call blocks until the platform cuts it.
+    signal: AbortSignal.timeout(90_000),
     headers: {
       Authorization: `Bearer ${key()}`,
       "Content-Type": "application/json",
@@ -62,6 +64,7 @@ export function parseJsonLoose<T>(raw: string): T {
 export async function generateIllustration(prompt: string): Promise<Uint8Array> {
   const res = await fetch(`${GATEWAY}/images/generations`, {
     method: "POST",
+    signal: AbortSignal.timeout(90_000),
     headers: {
       Authorization: `Bearer ${key()}`,
       "Content-Type": "application/json",
