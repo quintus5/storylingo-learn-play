@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { applySandhi, isToneMarked } from "./pinyin";
 import type { Page, Word } from "./types";
 
 /** Thrown when model output cannot be repaired into usable story content. */
@@ -13,19 +14,28 @@ export class StoryValidationError extends Error {
 
 const nonEmpty = (max = 400) => z.string().trim().min(1).max(max);
 
-export const WordSchema = z.object({
-  hanzi: nonEmpty(20),
-  pinyin: nonEmpty(60),
-  dict: nonEmpty(200),
-  context: z.string().trim().max(200).optional(),
-});
+/** Pinyin without tone marks teaches the wrong sounds, so it is rejected. */
+const pinyin = (max: number) =>
+  nonEmpty(max).refine(isToneMarked, { message: "pinyin must use tone marks" });
 
-export const SentenceSchema = z.object({
-  hanzi: nonEmpty(200),
-  pinyin: nonEmpty(400),
-  native: nonEmpty(400),
-  words: z.array(WordSchema).min(1),
-});
+export const WordSchema = z
+  .object({
+    hanzi: nonEmpty(20),
+    pinyin: pinyin(60),
+    dict: nonEmpty(200),
+    context: z.string().trim().max(200).optional(),
+  })
+  .transform((w) => ({ ...w, pinyin: applySandhi(w.hanzi, w.pinyin) }));
+
+export const SentenceSchema = z
+  .object({
+    hanzi: nonEmpty(200),
+    pinyin: pinyin(400),
+    native: nonEmpty(400),
+    words: z.array(WordSchema).min(1),
+  })
+  .transform((s) => ({ ...s, pinyin: applySandhi(s.hanzi, s.pinyin) }));
+
 
 export const PageSchema = z.object({
   sentences: z.array(SentenceSchema).min(1),
