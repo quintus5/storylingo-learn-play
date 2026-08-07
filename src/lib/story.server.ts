@@ -42,6 +42,9 @@ function extractHtmlText(html: string): string {
 const BLOCKED_HOST =
   /^(localhost|127\.|0\.|10\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|\[?::1\]?|\[?f[cd])/i;
 
+/** Bare IP literals are never a legitimate story link, and hide rebinding tricks. */
+const IP_LITERAL = /^(\d{1,3}\.){3}\d{1,3}$|^\[?[0-9a-f:]+\]?$/i;
+
 /** Only allow public http(s) links — never internal/metadata addresses. */
 function assertSafeUrl(url: string): URL {
   let parsed: URL;
@@ -53,20 +56,43 @@ function assertSafeUrl(url: string): URL {
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
     throw new Error("Only http and https links are supported.");
   }
-  if (BLOCKED_HOST.test(parsed.hostname) || !parsed.hostname.includes(".")) {
+  if (
+    BLOCKED_HOST.test(parsed.hostname) ||
+    IP_LITERAL.test(parsed.hostname) ||
+    !parsed.hostname.includes(".")
+  ) {
     throw new Error("That link points to a private address StoryLingo can't read.");
   }
   return parsed;
 }
 
+const MAX_REDIRECTS = 3;
+
+/**
+ * Fetch following redirects by hand, re-checking every hop. Letting fetch
+ * follow redirects would allow a public link to bounce us at an internal
+ * address, which is the classic SSRF hole.
+ */
+async function safeFetch(url: string): Promise<Response> {
+  let target = assertSafeUrl(url).toString();
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+    const res = await fetch(target, {
+      redirect: "manual",
+      signal: AbortSignal.timeout(30000),
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; StoryLingoBot/1.0)" },
+    });
+    if (res.status < 300 || res.status >= 400) return res;
+    const location = res.headers.get("location");
+    if (!location) return res;
+    // Re-validate the new destination before following it.
+    target = assertSafeUrl(new URL(location, target).toString()).toString();
+  }
+  throw new Error("That link redirects too many times.");
+}
+
 /** Fetch a web page or PDF and reduce it to readable plain text. */
 export async function fetchStoryText(url: string): Promise<string> {
-  const safe = assertSafeUrl(url);
-  const res = await fetch(safe.toString(), {
-    redirect: "follow",
-    signal: AbortSignal.timeout(30000),
-    headers: { "User-Agent": "Mozilla/5.0 (compatible; StoryLingoBot/1.0)" },
-  });
+  const res = await safeFetch(url);
   if (!res.ok) throw new Error(`Could not read that page (status ${res.status}).`);
 
   const declaredSize = Number(res.headers.get("content-length") ?? 0);
@@ -91,6 +117,7 @@ export async function fetchStoryText(url: string): Promise<string> {
   assertReadable(text);
   return text.slice(0, 24000);
 }
+
 
 
 /** Cache source text per URL for the lifetime of the worker instance. */
