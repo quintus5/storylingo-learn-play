@@ -65,8 +65,9 @@
   --color-dusk: var(--dusk);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
-  --font-display: "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
-  --font-sans: "Nunito", system-ui, sans-serif;
+  --font-display: "Baloo 2", "Noto Sans Thai", "Trebuchet MS", system-ui, sans-serif;
+  /* Noto Sans Thai keeps Thai tone marks from clipping above the line. */
+  --font-sans: "Nunito", "Noto Sans Thai", system-ui, sans-serif;
   --font-han: "Noto Serif SC", "Songti SC", serif;
   --animate-wiggle: wiggle 0.5s ease-in-out;
   --animate-pop: pop 0.45s cubic-bezier(0.34, 1.8, 0.64, 1);

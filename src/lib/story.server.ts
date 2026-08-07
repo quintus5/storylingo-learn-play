@@ -42,6 +42,9 @@ function extractHtmlText(html: string): string {
 const BLOCKED_HOST =
   /^(localhost|127\.|0\.|10\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|\[?::1\]?|\[?f[cd])/i;
 
+/** Bare IP literals are never a legitimate story link, and hide rebinding tricks. */
+const IP_LITERAL = /^(\d{1,3}\.){3}\d{1,3}$|^\[?[0-9a-f:]+\]?$/i;
+
 /** Only allow public http(s) links — never internal/metadata addresses. */
 function assertSafeUrl(url: string): URL {
   let parsed: URL;
@@ -53,20 +56,43 @@ function assertSafeUrl(url: string): URL {
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
     throw new Error("Only http and https links are supported.");
   }
-  if (BLOCKED_HOST.test(parsed.hostname) || !parsed.hostname.includes(".")) {
+  if (
+    BLOCKED_HOST.test(parsed.hostname) ||
+    IP_LITERAL.test(parsed.hostname) ||
+    !parsed.hostname.includes(".")
+  ) {
     throw new Error("That link points to a private address StoryLingo can't read.");
   }
   return parsed;
 }
 
+const MAX_REDIRECTS = 3;
+
+/**
+ * Fetch following redirects by hand, re-checking every hop. Letting fetch
+ * follow redirects would allow a public link to bounce us at an internal
+ * address, which is the classic SSRF hole.
+ */
+async function safeFetch(url: string): Promise<Response> {
+  let target = assertSafeUrl(url).toString();
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+    const res = await fetch(target, {
+      redirect: "manual",
+      signal: AbortSignal.timeout(30000),
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; StoryLingoBot/1.0)" },
+    });
+    if (res.status < 300 || res.status >= 400) return res;
+    const location = res.headers.get("location");
+    if (!location) return res;
+    // Re-validate the new destination before following it.
+    target = assertSafeUrl(new URL(location, target).toString()).toString();
+  }
+  throw new Error("That link redirects too many times.");
+}
+
 /** Fetch a web page or PDF and reduce it to readable plain text. */
 export async function fetchStoryText(url: string): Promise<string> {
-  const safe = assertSafeUrl(url);
-  const res = await fetch(safe.toString(), {
-    redirect: "follow",
-    signal: AbortSignal.timeout(30000),
-    headers: { "User-Agent": "Mozilla/5.0 (compatible; StoryLingoBot/1.0)" },
-  });
+  const res = await safeFetch(url);
   if (!res.ok) throw new Error(`Could not read that page (status ${res.status}).`);
 
   const declaredSize = Number(res.headers.get("content-length") ?? 0);
@@ -91,6 +117,7 @@ export async function fetchStoryText(url: string): Promise<string> {
   assertReadable(text);
   return text.slice(0, 24000);
 }
+
 
 
 /** Cache source text per URL for the lifetime of the worker instance. */
@@ -228,7 +255,10 @@ export async function buildChapterContent(
       `Every page MUST include its own "scene" description matching what happens on that page. ` +
       `Rules: split every sentence into its real words (1-3 characters each, no punctuation as a word). ` +
       `"dict" is the GENERAL dictionary meaning of the word on its own; "context" is what it means in that sentence. ` +
-      `The top-level "words" array holds 6 to 10 key vocabulary words for this chapter's quiz.`,
+      `The top-level "words" array holds 6 to 10 key vocabulary words for this chapter's quiz. ` +
+      `Pinyin MUST use tone-mark letters (nǐ hǎo), never tone numbers (ni3 hao3) and never bare letters, ` +
+      `and must apply 不/一 tone sandhi (不是 = bú shì, 一样 = yí yàng, 一天 = yì tiān). ` +
+      `Give each of the 6-10 quiz words a DIFFERENT dictionary meaning so quiz choices are never ambiguous.`,
   );
 
   // Models occasionally emit malformed JSON; retry once before giving up.
@@ -251,8 +281,15 @@ export async function illustratePages(
   styleId?: string | null,
   characterPrompt?: string | null,
 ): Promise<Page[]> {
-  return Promise.all(
-    pages.map(async (page, i) => {
+  const out: Page[] = new Array(pages.length);
+  let next = 0;
+
+  // A small pool keeps a long chapter from firing a dozen image calls at once.
+  const worker = async () => {
+    while (true) {
+      const i = next++;
+      if (i >= pages.length) return;
+      const page = pages[i];
       const scene = page.scene?.trim() || `${chapterTitle}: ${page.sentences[0]?.native ?? ""}`;
       try {
         const url = await makeArt(
@@ -262,14 +299,18 @@ export async function illustratePages(
           styleId,
           characterPrompt,
         );
-        return { ...page, image_url: url };
+        out[i] = { ...page, image_url: url };
       } catch (err) {
         console.error(`Page ${i + 1} illustration failed`, err);
-        return { ...page, image_url: null };
+        out[i] = { ...page, image_url: null };
       }
-    }),
-  );
+    }
+  };
+
+  await Promise.all(Array.from({ length: Math.min(4, pages.length) }, worker));
+  return out;
 }
+
 
 /** Generate an illustration, store it, and return its public app URL. */
 export async function makeArt(

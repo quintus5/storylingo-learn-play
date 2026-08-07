@@ -6,6 +6,13 @@
 const DB_NAME = "storylingo-audio";
 const STORE = "clips";
 
+/** How many clips we keep on the device before dropping the oldest ones. */
+const MAX_CACHED_CLIPS = 300;
+/** How many decoded clips we keep in memory for this session. */
+const MAX_MEMORY_CLIPS = 50;
+
+type ClipRecord = { blob: Blob; lastUsed: number };
+
 let dbPromise: Promise<IDBDatabase | null> | null = null;
 
 function openDb(): Promise<IDBDatabase | null> {
@@ -27,25 +34,52 @@ async function readCache(key: string): Promise<Blob | null> {
   const db = await openDb();
   if (!db) return null;
   return new Promise((resolve) => {
-    const req = db.transaction(STORE, "readonly").objectStore(STORE).get(key);
-    req.onsuccess = () => resolve((req.result as Blob) ?? null);
+    const store = db.transaction(STORE, "readwrite").objectStore(STORE);
+    const req = store.get(key);
+    req.onsuccess = () => {
+      const record = req.result as ClipRecord | Blob | undefined;
+      if (!record) return resolve(null);
+      const blob = record instanceof Blob ? record : record.blob;
+      // Touch the record so the least-used clips are the ones pruned later.
+      try {
+        store.put({ blob, lastUsed: Date.now() } satisfies ClipRecord, key);
+      } catch {
+        /* pruning is best effort */
+      }
+      resolve(blob ?? null);
+    };
     req.onerror = () => resolve(null);
   });
 }
 
-async function writeCache(key: string, blob: Blob): Promise<void> {
+/** True when the clip was saved; false when the device refused (quota full). */
+async function writeCache(key: string, blob: Blob): Promise<boolean> {
   const db = await openDb();
-  if (!db) return;
-  await new Promise<void>((resolve) => {
+  if (!db) return false;
+  return new Promise<boolean>((resolve) => {
+    let ok = true;
     const tx = db.transaction(STORE, "readwrite");
-    tx.objectStore(STORE).put(blob, key);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => resolve();
+    tx.objectStore(STORE).put({ blob, lastUsed: Date.now() } satisfies ClipRecord, key);
+    tx.oncomplete = () => resolve(ok);
+    tx.onabort = () => resolve(false);
+    tx.onerror = () => {
+      ok = false;
+      resolve(false);
+    };
   });
 }
 
 const memory = new Map<string, Blob>();
 const inflight = new Map<string, Promise<Blob | null>>();
+
+function remember(key: string, blob: Blob) {
+  memory.set(key, blob);
+  while (memory.size > MAX_MEMORY_CLIPS) {
+    const oldest = memory.keys().next().value;
+    if (oldest === undefined) break;
+    memory.delete(oldest);
+  }
+}
 
 /** Narrator voices (Fish Audio reference ids). */
 export type VoiceId = "male" | "female";
@@ -86,26 +120,50 @@ export function onVoiceChange(listener: (v: VoiceId) => void): () => void {
 }
 
 /** Bump when the TTS backend or voices change, so stale clips are ignored. */
-const CACHE_VERSION = "v4";
+const CACHE_VERSION = "v5";
 
 function cacheKey(text: string, slow: boolean) {
   return `${CACHE_VERSION}:fish-${VOICE_IDS[voice]}:${slow ? "slow" : "normal"}:${text}`;
 }
 
-/** Drop clips cached by an older narrator/model so nothing plays the old voice. */
-async function purgeStaleCache() {
+/**
+ * Housekeeping on startup: drop clips from an older narrator/model, then keep
+ * the cache to a fixed size so it can never fill the device up.
+ */
+async function pruneCache() {
   const db = await openDb();
   if (!db) return;
   const store = db.transaction(STORE, "readwrite").objectStore(STORE);
-  const req = store.getAllKeys();
-  req.onsuccess = () => {
-    for (const k of req.result) {
-      if (typeof k === "string" && !k.startsWith(`${CACHE_VERSION}:`)) store.delete(k);
-    }
+  const keysReq = store.getAllKeys();
+  const valuesReq = store.getAll();
+  keysReq.onsuccess = () => {
+    valuesReq.onsuccess = () => {
+      const keys = keysReq.result as IDBValidKey[];
+      const values = valuesReq.result as (ClipRecord | Blob)[];
+      const live: { key: IDBValidKey; lastUsed: number }[] = [];
+
+      keys.forEach((k, i) => {
+        if (typeof k !== "string" || !k.startsWith(`${CACHE_VERSION}:`)) {
+          store.delete(k);
+          return;
+        }
+        const v = values[i];
+        live.push({ key: k, lastUsed: v instanceof Blob ? 0 : (v?.lastUsed ?? 0) });
+      });
+
+      if (live.length <= MAX_CACHED_CLIPS) return;
+      live
+        .sort((a, b) => a.lastUsed - b.lastUsed)
+        .slice(0, live.length - MAX_CACHED_CLIPS)
+        .forEach((entry) => store.delete(entry.key));
+    };
   };
 }
 
-if (typeof indexedDB !== "undefined") void purgeStaleCache();
+if (typeof indexedDB !== "undefined") void pruneCache();
+
+/** Set once the device refuses to save clips, so we stop trying every time. */
+let cacheFull = false;
 
 export async function getClip(text: string, slow: boolean): Promise<Blob | null> {
   const key = cacheKey(text, slow);
@@ -119,7 +177,7 @@ export async function getClip(text: string, slow: boolean): Promise<Blob | null>
   const task = (async () => {
     const cached = await readCache(key);
     if (cached) {
-      memory.set(key, cached);
+      remember(key, cached);
       return cached;
     }
     try {
@@ -131,10 +189,17 @@ export async function getClip(text: string, slow: boolean): Promise<Blob | null>
       if (!res.ok) return null;
       const blob = await res.blob();
       if (blob.size < 600) return null;
-      memory.set(key, blob);
       // Only persist clips from the real narrator voice; fallback audio
       // must not stick around once the narrator is available again.
-      if (res.headers.get("X-TTS-Provider") === "fish") void writeCache(key, blob);
+      const fromNarrator = res.headers.get("X-TTS-Provider") === "fish";
+      if (fromNarrator) remember(key, blob);
+      if (fromNarrator && !cacheFull) {
+        const saved = await writeCache(key, blob);
+        if (!saved) {
+          cacheFull = true;
+          void pruneCache();
+        }
+      }
       return blob;
     } catch {
       return null;
@@ -148,7 +213,52 @@ export async function getClip(text: string, slow: boolean): Promise<Blob | null>
 }
 
 
-let current: HTMLAudioElement | null = null;
+/**
+ * One reusable element. iOS only lets audio start from inside a tap, so the
+ * element must exist and be started during the gesture — creating a new
+ * Audio() after awaiting the network would be blocked.
+ */
+let player: HTMLAudioElement | null = null;
+let unlocked = false;
+const SILENCE =
+  "data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCA" +
+  "gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgP////////////////////////////" +
+  "//8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAAnGZTuU8AAAAAAAAAAAAAAAAAAAA";
+
+function ensurePlayer(): HTMLAudioElement {
+  if (!player) {
+    player = new Audio();
+    player.preload = "auto";
+  }
+  return player;
+}
+
+/**
+ * Call from a tap handler before any awaiting. Starting (and immediately
+ * pausing) silent audio marks the element as user-activated on iOS Safari,
+ * so a clip fetched later is allowed to play.
+ */
+export function unlockAudio() {
+  if (unlocked || typeof window === "undefined") return;
+  const el = ensurePlayer();
+  try {
+    el.src = SILENCE;
+    el.muted = true;
+    void el.play().then(
+      () => {
+        el.pause();
+        el.muted = false;
+        unlocked = true;
+      },
+      () => {
+        el.muted = false;
+      },
+    );
+  } catch {
+    el.muted = false;
+  }
+}
+
 let currentUrl: string | null = null;
 let token = 0;
 const listeners = new Set<(text: string | null) => void>();
@@ -157,6 +267,18 @@ let speakingText: string | null = null;
 /** 0..1 position inside the clip currently playing, for word highlighting. */
 const progressListeners = new Set<(p: number) => void>();
 let speakingProgress = 0;
+
+/** Told about clips that could not be fetched or played, so the UI can react. */
+const failureListeners = new Set<() => void>();
+
+export function onAudioFailure(listener: () => void): () => void {
+  failureListeners.add(listener);
+  return () => failureListeners.delete(listener);
+}
+
+function reportFailure() {
+  failureListeners.forEach((l) => l());
+}
 
 function setProgress(p: number) {
   speakingProgress = p;
@@ -191,80 +313,95 @@ export function onSpeakingChange(listener: (text: string | null) => void): () =>
   return () => listeners.delete(listener);
 }
 
-export function stopAudio() {
-  token += 1;
-  if (current) {
-    current.pause();
-    current.src = "";
-    current = null;
-  }
+function releaseUrl() {
   if (currentUrl) {
     URL.revokeObjectURL(currentUrl);
     currentUrl = null;
   }
+}
+
+export function stopAudio() {
+  token += 1;
+  if (player) {
+    player.pause();
+    player.ontimeupdate = null;
+    player.onended = null;
+    player.onerror = null;
+  }
+  releaseUrl();
   setSpeaking(null);
 }
 
-/** Play one clip. Any clip already playing is cancelled first. */
-export async function speak(text: string, slow = false): Promise<void> {
-  stopAudio();
-  const mine = token;
-  const blob = await getClip(text, slow);
-  if (!blob || mine !== token) return;
-
+/** Play one clip on the shared element. Returns false when nothing played. */
+async function playBlob(blob: Blob, text: string, mine: number): Promise<boolean> {
+  const audio = ensurePlayer();
   const url = URL.createObjectURL(blob);
-  const audio = new Audio(url);
-  current = audio;
   currentUrl = url;
+  audio.src = url;
   setSpeaking(text);
   trackProgress(audio, mine);
 
-
-  await new Promise<void>((resolve) => {
-    const done = () => {
-      if (mine === token) {
-        if (currentUrl) URL.revokeObjectURL(currentUrl);
-        current = null;
-        currentUrl = null;
-        setSpeaking(null);
-      }
-      resolve();
+  return new Promise<boolean>((resolve) => {
+    let settled = false;
+    const done = (ok: boolean) => {
+      if (settled) return;
+      settled = true;
+      audio.onended = null;
+      audio.onerror = null;
+      resolve(ok && mine === token);
     };
-    audio.onended = done;
-    audio.onerror = done;
-    void audio.play().catch(done);
+    audio.onended = () => done(true);
+    audio.onerror = () => done(false);
+    void audio.play().catch(() => done(false));
   });
+}
+
+/**
+ * Play one clip. Any clip already playing is cancelled first.
+ * Returns true when the clip actually played to the end.
+ */
+export async function speak(text: string, slow = false): Promise<boolean> {
+  unlockAudio();
+  stopAudio();
+  const mine = token;
+  const blob = await getClip(text, slow);
+  if (!blob) {
+    reportFailure();
+    return false;
+  }
+  if (mine !== token) return false;
+
+  const finished = await playBlob(blob, text, mine);
+  if (mine === token) {
+    releaseUrl();
+    setSpeaking(null);
+  }
+  if (!finished && mine === token) reportFailure();
+  return finished;
 }
 
 /** Play a list of clips one after another (cancelled by any new speak/stop). */
 export async function speakSequence(texts: string[], slow = false): Promise<void> {
+  unlockAudio();
   stopAudio();
   const mine = token;
   for (const text of texts) {
     if (mine !== token) return;
     const blob = await getClip(text, slow);
-    if (!blob || mine !== token) return;
+    if (!blob) {
+      reportFailure();
+      return;
+    }
+    if (mine !== token) return;
 
-    const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
-    current = audio;
-    currentUrl = url;
-    setSpeaking(text);
-    trackProgress(audio, mine);
-
-
-    const finished = await new Promise<boolean>((resolve) => {
-      const done = () => resolve(mine === token);
-      audio.onended = done;
-      audio.onerror = done;
-      void audio.play().catch(done);
-    });
-    URL.revokeObjectURL(url);
-    if (!finished) return;
+    const finished = await playBlob(blob, text, mine);
+    releaseUrl();
+    if (!finished) {
+      if (mine === token) reportFailure();
+      return;
+    }
   }
   if (mine === token) {
-    current = null;
-    currentUrl = null;
     setSpeaking(null);
   }
 }

@@ -13,17 +13,30 @@ const CreateBookInput = z.object({
   characterPrompt: z.string().trim().max(600).optional(),
 });
 
+/** Books anyone may start in one hour, so a script cannot drain AI credits. */
+const HOURLY_BOOK_LIMIT = 12;
+
 export const createBook = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => CreateBookInput.parse(input))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { getSourceText, buildOutline } = await import("./story.server");
 
+    const since = new Date(Date.now() - 3600_000).toISOString();
+    const { count } = await supabaseAdmin
+      .from("books")
+      .select("id", { count: "exact", head: true })
+      .gte("created_at", since);
+    if ((count ?? 0) >= HOURLY_BOOK_LIMIT) {
+      throw new Error("StoryLingo is making a lot of books right now. Please try again in a while.");
+    }
+
     const storyText = await getSourceText(data.url);
     const outline = await buildOutline(storyText, data.title, data.chapterCount);
 
     const chapters = (outline.chapters ?? []).slice(0, data.chapterCount);
     if (chapters.length < 1) throw new Error("Could not split that story into chapters.");
+
 
     const { data: book, error } = await supabaseAdmin
       .from("books")
@@ -166,12 +179,69 @@ export const generateChapter = createServerFn({ method: "POST" })
       await supabaseAdmin.from("books").update({ cover_url: cover }).eq("id", data.bookId);
     }
 
-    if (data.idx >= (book.chapter_count ?? 0)) {
-      await supabaseAdmin.from("books").update({ status: "ready" }).eq("id", data.bookId);
+    // Chapters are written in parallel batches, so "done" means every chapter
+    // actually has pages — not just that the last index finished.
+    const { data: after } = await supabaseAdmin
+      .from("chapters")
+      .select("idx, pages")
+      .eq("book_id", data.bookId);
+    const missing = (after ?? []).filter((c) => ((c.pages ?? []) as unknown[]).length === 0);
+    if (missing.length === 0) {
+      await supabaseAdmin
+        .from("books")
+        .update({ status: "ready", generation_error: null })
+        .eq("id", data.bookId);
     }
 
     return { ok: true, idx: data.idx };
   });
+
+const FailInput = z.object({
+  bookId: z.string().uuid(),
+  message: z.string().trim().max(300).optional(),
+});
+
+/** Flag a half-built book so it stops looking like it is still working. */
+export const markBookFailed = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => FailInput.parse(input))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: book } = await supabaseAdmin
+      .from("books")
+      .select("status")
+      .eq("id", data.bookId)
+      .single();
+    if (!book || book.status === "ready") return { ok: false };
+    await supabaseAdmin
+      .from("books")
+      .update({ status: "failed", generation_error: data.message ?? null })
+      .eq("id", data.bookId);
+    return { ok: true };
+  });
+
+/** Which chapters of a book still have no pages, so they can be retried. */
+export const missingChapters = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => z.object({ bookId: z.string().uuid() }).parse(input))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: rows } = await supabaseAdmin
+      .from("chapters")
+      .select("idx, pages")
+      .eq("book_id", data.bookId)
+      .order("idx");
+    const idxs = (rows ?? [])
+      .filter((c) => ((c.pages ?? []) as unknown[]).length === 0)
+      .map((c) => c.idx as number);
+    if (idxs.length > 0) {
+      await supabaseAdmin
+        .from("books")
+        .update({ status: "generating", generation_error: null })
+        .eq("id", data.bookId);
+    }
+    return { idxs };
+  });
+
+
 
 const PreviewInput = z.object({
   title: z.string().trim().max(120).optional(),

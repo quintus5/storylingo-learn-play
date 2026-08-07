@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { BookOpen, Loader2, Search, Wand2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { createBook, generateChapter, previewBook } from "@/lib/story.functions";
+import { createBook, generateChapter, markBookFailed, previewBook } from "@/lib/story.functions";
 import { ART_STYLES, DEFAULT_ART_STYLE, artStyle } from "@/lib/art-styles";
 import { CoinPurse } from "@/components/CoinPurse";
 import { CharacterSprite } from "@/components/CharacterSprite";
@@ -63,6 +63,8 @@ function CreatePage() {
   const create = useServerFn(createBook);
   const chapter = useServerFn(generateChapter);
   const preview = useServerFn(previewBook);
+  const fail = useServerFn(markBookFailed);
+
   const { progress, spend } = useProgress();
   const buddy = progress.character;
   const canAfford = progress.coins >= PRICES.book;
@@ -76,6 +78,9 @@ function CreatePage() {
   const [plan, setPlan] = useState<StoryPreview | null>(null);
   const [style, setStyle] = useState<ArtStyleId>(DEFAULT_ART_STYLE);
   const [error, setError] = useState<string | null>(null);
+  /** A book whose generation stopped part-way, so it can be finished later. */
+  const [stuckBookId, setStuckBookId] = useState<string | null>(null);
+
 
   // The model returns the plan in both languages; show whichever is selected.
   const planText = plan ? (lang === "th" && plan.th ? plan.th : plan) : null;
@@ -103,7 +108,10 @@ function CreatePage() {
     e.preventDefault();
     setError(null);
     setLog([]);
-    if (!spend(PRICES.book)) {
+    setStuckBookId(null);
+    // Coins are only taken once the book actually finishes, so a failed
+    // generation never costs anything.
+    if (!canAfford) {
       setError(
         t(
           `A new book costs ${PRICES.book} coins. You have ${progress.coins}. Read a chapter or play a quiz to earn more!`,
@@ -113,6 +121,7 @@ function CreatePage() {
       return;
     }
     setBusy(true);
+    let startedBookId: string | null = null;
     try {
 
       say(t("Reading the story…", "กำลังอ่านนิทาน…"));
@@ -125,6 +134,7 @@ function CreatePage() {
           characterPrompt: characterPrompt(buddy),
         },
       });
+      startedBookId = bookId;
       say(t(`Retelling it as ${count} chapters…`, `กำลังเล่าใหม่เป็น ${count} บท…`));
       // Chapters are built a few at a time so the whole book finishes much faster.
       const BATCH = 3;
@@ -147,13 +157,26 @@ function CreatePage() {
         await Promise.all(batch.map((i) => chapter({ data: { bookId, idx: i } })));
       }
       say(t("Your book is ready!", "หนังสือของคุณพร้อมแล้ว!"));
+      spend(PRICES.book);
       await navigate({ to: "/book/$bookId", params: { bookId } });
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("Something went wrong.", "เกิดข้อผิดพลาดบางอย่าง"));
+      const message =
+        err instanceof Error ? err.message : t("Something went wrong.", "เกิดข้อผิดพลาดบางอย่าง");
+      setError(message);
+      if (startedBookId) {
+        // Mark it so the bookshelf shows it as unfinished instead of "making…".
+        setStuckBookId(startedBookId);
+        try {
+          await fail({ data: { bookId: startedBookId, message: message.slice(0, 300) } });
+        } catch {
+          /* the book is already flagged client-side */
+        }
+      }
     } finally {
       setBusy(false);
     }
   }
+
 
   return (
     <AppShell title={t("New story", "สร้างนิทานใหม่")} back={{ to: "/" }} right={<CoinPurse />}>
@@ -415,10 +438,28 @@ function CreatePage() {
         )}
 
         {error && (
-          <p className="rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive-foreground">
-            {error}
-          </p>
+          <div className="space-y-3 rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive-foreground">
+            <p>{error}</p>
+            {stuckBookId && (
+              <>
+                <p>
+                  {t(
+                    "No coins were spent. The part that was written is saved — you can finish it from the book page.",
+                    "ยังไม่ได้หักเหรียญ ส่วนที่เขียนไว้ถูกบันทึกแล้ว ไปทำต่อได้ที่หน้าหนังสือ",
+                  )}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void navigate({ to: "/book/$bookId", params: { bookId: stuckBookId } })}
+                  className="press inline-flex min-h-11 items-center rounded-2xl bg-secondary px-4 text-sm font-bold text-secondary-foreground"
+                >
+                  {t("Open the unfinished book", "เปิดหนังสือที่ยังไม่เสร็จ")}
+                </button>
+              </>
+            )}
+          </div>
         )}
+
       </form>
     </AppShell>
   );
