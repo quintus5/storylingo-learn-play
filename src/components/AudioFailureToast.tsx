@@ -18,11 +18,19 @@ export function AudioFailureToast() {
       clearTimeout(timer);
       timer = setTimeout(() => setVisible(false), 4000);
     });
+
+    // iOS only allows audio that starts inside a tap, so arm the player on
+    // the very first touch anywhere in the app.
+    const arm = () => unlockAudio();
+    window.addEventListener("pointerdown", arm, { once: true, capture: true });
+
     return () => {
       off();
       clearTimeout(timer);
+      window.removeEventListener("pointerdown", arm, { capture: true });
     };
   }, []);
+
 
   if (!visible) return null;
 
