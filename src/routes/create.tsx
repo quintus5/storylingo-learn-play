@@ -438,10 +438,28 @@ function CreatePage() {
         )}
 
         {error && (
-          <p className="rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive-foreground">
-            {error}
-          </p>
+          <div className="space-y-3 rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive-foreground">
+            <p>{error}</p>
+            {stuckBookId && (
+              <>
+                <p>
+                  {t(
+                    "No coins were spent. The part that was written is saved — you can finish it from the book page.",
+                    "ยังไม่ได้หักเหรียญ ส่วนที่เขียนไว้ถูกบันทึกแล้ว ไปทำต่อได้ที่หน้าหนังสือ",
+                  )}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void navigate({ to: "/book/$bookId", params: { bookId: stuckBookId } })}
+                  className="press inline-flex min-h-11 items-center rounded-2xl bg-secondary px-4 text-sm font-bold text-secondary-foreground"
+                >
+                  {t("Open the unfinished book", "เปิดหนังสือที่ยังไม่เสร็จ")}
+                </button>
+              </>
+            )}
+          </div>
         )}
+
       </form>
     </AppShell>
   );
