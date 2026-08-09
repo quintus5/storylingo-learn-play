@@ -57,21 +57,39 @@ async function synthesizeFish(text: string, slow: boolean, apiKey: string, voice
   });
 }
 
-/** Narration is for this app's own pages, not a public TTS proxy. */
-function isSameOrigin(request: Request): boolean {
-  const self = new URL(request.url).origin;
-  const origin = request.headers.get("origin");
-  if (origin) return origin === self;
-  const referer = request.headers.get("referer");
-  if (referer) {
-    try {
-      return new URL(referer).origin === self;
-    } catch {
-      return false;
-    }
+function hostOf(value: string | null): string | null {
+  if (!value) return null;
+  try {
+    return new URL(value).host.toLowerCase();
+  } catch {
+    return null;
   }
-  return false;
 }
+
+/**
+ * Narration is for this app's own pages, not a public TTS proxy.
+ * The public hostname the browser used arrives in the forwarded host headers —
+ * `request.url` holds the internal address, so it can't be compared directly.
+ */
+function isSameOrigin(request: Request): boolean {
+  const headers = request.headers;
+
+  // Browsers send this for genuine first-party fetches.
+  const fetchSite = headers.get("sec-fetch-site");
+  if (fetchSite === "same-origin") return true;
+  if (fetchSite && fetchSite !== "none") return false;
+
+  const forwarded = (headers.get("x-forwarded-host") || headers.get("host") || "")
+    .split(",")[0]
+    .trim()
+    .toLowerCase();
+  const expected = forwarded || new URL(request.url).host.toLowerCase();
+
+  const caller = hostOf(headers.get("origin")) ?? hostOf(headers.get("referer"));
+  if (!caller) return false;
+  return caller === expected;
+}
+
 
 export const Route = createFileRoute("/api/tts")({
   server: {
