@@ -29,8 +29,10 @@ async function synthesize(text: string, slow: boolean, apiKey: string) {
 
 /** Fish Audio narrator voices (reference ids). */
 const FISH_VOICES = {
-  male: "2926cb350f1a426d800bf8c360c3cb94",
-  female: "be404a1ef6704fdb86d02ea05ad0bcc2",
+  wang: "59cb5986671546eaa6ca8ae6f29f6d22",
+  kenshi: "5a88883c20a84f378db686ac6b0bba79",
+  hong: "5fc69411fe274f149bce4e743534ffa4",
+  lee: "626bb6d3f3364c9cbc3aa6a67300a664",
 } as const;
 
 type VoiceId = keyof typeof FISH_VOICES;
