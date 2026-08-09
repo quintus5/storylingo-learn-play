@@ -320,10 +320,18 @@ export async function makeArt(
   styleId?: string | null,
   characterPrompt?: string | null,
 ): Promise<string> {
-  const buddy = characterPrompt?.trim() ? `\n\n${characterPrompt.trim()}` : "";
+  const style = artStylePrompt(styleId);
+  const buddy = characterPrompt?.trim()
+    ? `\n\n${characterPrompt.trim()}\n` +
+      `Paint this child with exactly the same medium, brushwork, line quality, texture and palette as the ` +
+      `rest of the picture, as if drawn by the same artist in one sitting. Never render the child in a ` +
+      `different style (no cartoon, 3D, sticker or cut-out look pasted onto the scene) — translate the ` +
+      `described skin, hair, eyes, clothing and companion into this art tradition's own conventions.`
+    : "";
   const bytes = await generateIllustration(
-    `${scene}${buddy}\n\nStyle: ${artStylePrompt(styleId)}`,
+    `Style (applies to every element in the picture, including any characters): ${style}\n\nScene: ${scene}${buddy}`,
   );
+
   const path = `${bookId}/${name}.png`;
   const { error } = await supabaseAdmin.storage
     .from(BUCKET)
