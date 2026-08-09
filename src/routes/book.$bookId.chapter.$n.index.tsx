@@ -83,6 +83,7 @@ function Reader() {
   const [music, setMusic] = useState(false);
   const [dir, setDir] = useState(1);
   const [active, setActive] = useState(0);
+  const [voiceOpen, setVoiceOpen] = useState(false);
   const trackRef = useRef<HTMLDivElement>(null);
 
   const current = pages[page];
