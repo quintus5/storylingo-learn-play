@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Music,
@@ -13,7 +14,14 @@ import { AppShell } from "@/components/AppShell";
 import { WordPopup } from "@/components/WordPopup";
 import { bookQuery } from "@/lib/books";
 import { useProgress } from "@/lib/progress";
-import { preload, speak, speakSequence, stopAudio } from "@/lib/audio";
+import {
+  preload,
+  speak,
+  speakSequence,
+  stopAudio,
+  VOICE_LIST,
+  VOICE_NAMES,
+} from "@/lib/audio";
 import { moodFor, setMusicDucked, startMusic, stopMusic } from "@/lib/music";
 import { useSpeakingProgress, useSpeakingText } from "@/hooks/use-speaking";
 import { useVoice } from "@/hooks/use-voice";
