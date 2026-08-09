@@ -49,7 +49,23 @@ function ErrorMessage() {
 function Bookshelf() {
   const { data: books } = useSuspenseQuery(booksQuery);
   const { progress } = useProgress();
+  const dev = useDevMode();
+  const queryClient = useQueryClient();
+  const [removing, setRemoving] = useState<string | null>(null);
   const t = useT();
+
+  async function removeBook(bookId: string, title: string) {
+    if (!window.confirm(`Delete "${title}"? This cannot be undone.`)) return;
+    setRemoving(bookId);
+    try {
+      await deleteBook({ data: { bookId } });
+      await queryClient.invalidateQueries({ queryKey: ["books"] });
+    } finally {
+      setRemoving(null);
+    }
+  }
+
+
 
   return (
     <AppShell
