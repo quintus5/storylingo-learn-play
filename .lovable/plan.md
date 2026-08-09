@@ -1,31 +1,44 @@
-# Slimmer sentence box, controls outside it, slower narration
+# Real learning progress, one honest coin balance, consistent vocabulary
 
-## Layout
+## 1. Coins that never disagree
 
-The bottom area becomes one row instead of a stacked panel:
+Two confirmed causes of the balance jumping between screens:
 
-```text
-[ hear ]        [   centered sentence box   ]        [ < > ]
-[ • • • ]                                            page arrows
-```
+- The purse falls back to a placeholder of 2,000 coins before the device's saved balance is read (`EMPTY.coins = 2000` in `src/lib/progress.ts`), while a genuinely new reader starts on 150. So the first paint of any page can show 2,000 and then snap to the real number.
+- The test switch (`?unlockAll=1`) tops the purse up to 99,999 for the session, and that flag lives in session storage, so some tabs/pages show test money and others don't.
 
-- The glass box shrinks to fit the sentence only: no fixed or minimum height, no leftover empty space above or below the three lines — the box hugs the tallest sentence on the page with even, tight padding, so it never looks like a half-empty rectangle. Narrower width too (roughly 60-70% of the screen, centred), sitting at the very bottom.
-- Height stays steady while swiping between sentences on a page (sized to the tallest card), so the box doesn't jump as lines change length.
-- "Hear this line" moves out of the box to the bottom-left, with the sentence dots directly beside it.
-- Page arrows move out of the box to the bottom-right, transparent (no pill background), still expanding on hover to show "Next page · 1/3"; the Quiz link keeps its filled style on the last page.
-- Left/right sentence chevrons pull inward off the very edge so they have breathing room beside the box.
-- Sentence text gets a step bigger (Hanzi, pinyin and Thai all scale up) since the box is tighter.
-- Everything stays inside the safe area on mobile; on narrow screens the box takes more width and the side controls tuck under it rather than overlapping.
+Fix:
 
-## Narration
+- The placeholder balance becomes the real starter amount (150), so the value shown before and after loading is the same number.
+- The purse renders a quiet placeholder (no number) until the saved balance is loaded, so children never see a figure that then changes.
+- Coins are read from one shared store for every screen — header, shop, book page, progress — so language switches and navigation can't produce different numbers.
+- When the test switch is on, the purse is clearly marked as test money so a parent isn't confused by 99,999.
 
-- Slower speech overall: page-reading speed drops from 0.78 to about 0.65, and single-word slow playback from 0.55 to 0.5.
-- A clear pause between sentences during "Read to me" — a short silent gap (~700ms) after each clip before the next starts, so the strip glide and the next line don't run together.
+## 2. Progress that measures learning
+
+The progress page currently shows stars, day streak and mastered-word count only. It gains real learning signal:
+
+- **Words learned** — a word counts as learned after it is answered correctly in a quiz twice on different days; words seen but not yet learned are shown separately as "meeting" words.
+- **Tones practised** — every quiz answer and every word tapped in the reader is bucketed by its pinyin tone (1-4 and neutral). A small five-bar chart shows how much practice each tone has had and the success rate per tone, so "third tone is shaky" becomes visible.
+- **Listening accuracy** — the listening round already exists; its answers are recorded separately from matching/translation, giving a percentage over the last 20 listening questions plus a trend arrow.
+- **Review streak** — alongside the day streak, a "practised on N of the last 7 days" strip, plus a "due for review" count of learned words not seen in 5+ days.
+
+These appear as a summary row plus three cards on the book progress page, all in Thai/English through the existing `useT`. Everything stays on the device, same as today's progress.
+
+## 3. Vocabulary consistency
+
+Chapter word lists and the words inside sentences are generated in two separate AI passes, so the same word can arrive with different pinyin spacing ("bǎojiàn" vs "bǎo jiàn") and slightly different Thai meanings.
+
+- One canonical word entry per chapter: entries are merged by the Chinese characters, and the chapter word list is the single source of truth for pinyin and Thai meaning.
+- Pinyin is normalised the same way everywhere: one space between syllables, sandhi applied, no stray punctuation — so the reader, the word popup, the quiz and the word list always print the identical string.
+- Where a sentence word and a chapter word disagree on meaning, the chapter entry wins and the sentence copy is rewritten to match at load time, so existing books are fixed without regeneration.
 
 ## Technical notes
 
-- `src/routes/book.$bookId.chapter.$n.index.tsx`: restructure the bottom `<section>` from a glass panel wrapping everything into a bottom bar (`absolute inset-x-0 bottom-0 flex items-end justify-between`). Only the sentence track keeps the `glass-subtitle` surface, sized `w-[min(38rem,68%)] mx-auto`, height auto. Hear button + dots become a left cluster, page nav a right cluster with `bg-transparent`. `SentenceArrow` offsets change from `left-0.5/right-0.5` to a negative outside offset with side margin.
-- Box height: drop any `min-h`/`h-*` and vertical-centring spacers on the panel and cards; the track uses `items-stretch` with cards `h-auto`, and padding is a single tight `py-3`. Since flex track children stretch to the tallest card, the box height stays constant across sentences without a hardcoded value.
-- Text sizes in `SentenceCard` bumped one Tailwind step each.
-- `src/routes/api/tts.ts`: lower the `speed`/`prosody.speed` values for both the Fish and OpenAI paths.
-- `src/lib/audio.ts`: `speakSequence` awaits a cancellable ~700ms delay between clips; bump `CACHE_VERSION` to `v7` so old faster clips are dropped.
+- `src/lib/progress.ts`: `EMPTY.coins` → `STARTER_COINS`; add a `loaded` flag to `useProgress` for the purse placeholder; extend `Progress` with `toneStats` (per-tone attempts/correct), `listenLog` (bounded array of recent listening results), `wordLog` (`hanzi -> { correctDays: string[], lastSeen: string }`) and `activeDays` (bounded list of ISO days). Bump the storage key to `storylingo.progress.v2` with a migration that carries over v1 fields.
+- `src/components/CoinPurse.tsx`: use the shared store's `loaded` flag; show a dash until loaded; show a "test" badge when `useTestUnlock()` is on.
+- `src/routes/book.$bookId.chapter.$n.quiz.tsx`: record per-question tone and round kind through new `recordAnswer(word, kind, correct)` instead of the current `missWord`/`masterWord` pair (both kept as thin wrappers).
+- `src/routes/book.$bookId.chapter.$n.index.tsx`: word taps also call `recordAnswer(word, "read", true)` for tone exposure.
+- `src/routes/book.$bookId.progress.tsx`: new stat cards and the tone bar chart (plain divs, existing tokens — no chart library).
+- Pinyin normalisation: add `normalizePinyin()` to `src/lib/pinyin.ts` (collapse whitespace, one space per syllable, keep tone marks) with unit tests in `src/lib/pinyin.test.ts`; apply it in `src/lib/story-schema.ts` transforms so new books are consistent, and in `src/lib/books.ts` when a book is loaded so existing books are reconciled (sentence words inherit chapter-list pinyin and `dict`).
+- No database or generation-pipeline changes; all reconciliation happens in the loader.
