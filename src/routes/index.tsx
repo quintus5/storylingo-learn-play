@@ -1,12 +1,16 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { BookOpen, Plus, Sparkles } from "lucide-react";
+import { useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
+import { BookOpen, Plus, Sparkles, X } from "lucide-react";
+import { useState } from "react";
 import { booksQuery } from "@/lib/books";
+import { deleteBook } from "@/lib/story.functions";
 import { AppShell } from "@/components/AppShell";
 import { useProgress } from "@/lib/progress";
 import { CoinPurse } from "@/components/CoinPurse";
 import { CharacterSprite } from "@/components/CharacterSprite";
+import { useDevMode } from "@/lib/dev-mode";
 import { useT } from "@/lib/i18n";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
