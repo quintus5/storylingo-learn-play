@@ -201,18 +201,58 @@ export function useProgress() {
     [update],
   );
 
-  const missWord = useCallback(
-    (word: string) =>
-      update((p) => ({
-        ...p,
-        wordsMissed: { ...p.wordsMissed, [word]: (p.wordsMissed[word] ?? 0) + 1 },
-      })),
+  /**
+   * Record one practice event for a word: quiz answer or a tap in the reader.
+   * Feeds words learned, tone practice, listening accuracy and review dates.
+   */
+  const recordAnswer = useCallback(
+    (word: { hanzi: string; pinyin?: string }, kind: AnswerKind, correct: boolean) =>
+      update((p) => {
+        const day = today();
+        const bucket = toneBucket(word.pinyin ?? "");
+        const prevTone = p.toneStats[bucket] ?? { attempts: 0, correct: 0 };
+        const entry = p.wordLog[word.hanzi] ?? { correctDays: [], lastSeen: day };
+        const correctDays =
+          correct && kind !== "read" && !entry.correctDays.includes(day)
+            ? [...entry.correctDays, day].slice(-8)
+            : entry.correctDays;
+
+        let next: Progress = {
+          ...p,
+          toneStats: {
+            ...p.toneStats,
+            [bucket]: {
+              // Reading a word aloud is exposure, not a graded attempt.
+              attempts: prevTone.attempts + (kind === "read" ? 0 : 1),
+              correct: prevTone.correct + (correct && kind !== "read" ? 1 : 0),
+            },
+          },
+          wordLog: { ...p.wordLog, [word.hanzi]: { correctDays, lastSeen: day } },
+          listenLog:
+            kind === "listen" ? [...p.listenLog, correct ? 1 : 0].slice(-40) : p.listenLog,
+        };
+
+        if (correct && kind !== "read") {
+          next = { ...next, wordsMastered: Array.from(new Set([...next.wordsMastered, word.hanzi])) };
+        } else if (!correct) {
+          next = {
+            ...next,
+            wordsMissed: { ...next.wordsMissed, [word.hanzi]: (next.wordsMissed[word.hanzi] ?? 0) + 1 },
+          };
+        }
+        return next;
+      }),
     [update],
   );
 
+  const missWord = useCallback(
+    (word: string) => recordAnswer({ hanzi: word }, "match", false),
+    [recordAnswer],
+  );
+
   const masterWord = useCallback(
-    (word: string) => update((p) => ({ ...p, wordsMastered: Array.from(new Set([...p.wordsMastered, word])) })),
-    [update],
+    (word: string) => recordAnswer({ hanzi: word }, "match", true),
+    [recordAnswer],
   );
 
   /** Spend coins. Returns false (and changes nothing) when the purse is short. */
