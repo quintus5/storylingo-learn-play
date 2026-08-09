@@ -20,7 +20,7 @@ async function synthesize(text: string, slow: boolean, apiKey: string) {
       input: text,
       voice: "alloy",
       instructions: INSTRUCTIONS,
-      speed: slow ? 0.55 : 0.78,
+      speed: slow ? 0.5 : 0.65,
       response_format: "mp3",
       stream_format: "audio",
     }),
@@ -54,7 +54,7 @@ async function synthesizeFish(text: string, slow: boolean, apiKey: string, voice
       normalize: true,
       latency: "normal",
       ...(referenceId ? { reference_id: referenceId } : {}),
-      prosody: { speed: slow ? 0.55 : 0.78, volume: 0 },
+      prosody: { speed: slow ? 0.5 : 0.65, volume: 0 },
     }),
   });
 }

@@ -9,7 +9,7 @@ import { useProgress } from "@/lib/progress";
 import { CoinPurse } from "@/components/CoinPurse";
 import { CharacterSprite } from "@/components/CharacterSprite";
 import { useDevMode } from "@/lib/dev-mode";
-import { useT } from "@/lib/i18n";
+import { useLocalText, useT } from "@/lib/i18n";
 
 
 export const Route = createFileRoute("/")({
@@ -53,9 +53,10 @@ function Bookshelf() {
   const queryClient = useQueryClient();
   const [removing, setRemoving] = useState<string | null>(null);
   const t = useT();
+  const local = useLocalText();
 
   async function removeBook(bookId: string, title: string) {
-    if (!window.confirm(`Delete "${title}"? This cannot be undone.`)) return;
+    if (!window.confirm(t(`Delete "${title}"? This cannot be undone.`, `ลบ "${title}" ใช่ไหม ลบแล้วกู้คืนไม่ได้`))) return;
     setRemoving(bookId);
     try {
       await deleteBook({ data: { bookId } });
@@ -195,7 +196,7 @@ function Bookshelf() {
                   )}
                 </div>
                 <div className="p-3">
-                  <p className="line-clamp-2 font-bold leading-snug">{book.title}</p>
+                  <p className="line-clamp-2 font-bold leading-snug">{local(book.title, book.title_th)}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {t(`${stars}/${book.chapter_count} chapters done`, `ทำแล้ว ${stars}/${book.chapter_count} บท`)}
                   </p>

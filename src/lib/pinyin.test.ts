@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applySandhi, isToneMarked, syllableTone } from "./pinyin";
+import { applySandhi, isToneMarked, normalizePinyin, syllableTone } from "./pinyin";
 
 describe("isToneMarked", () => {
   it("accepts tone-marked pinyin", () => {
@@ -67,5 +67,24 @@ describe("applySandhi", () => {
 
   it("handles 不 at the end of a phrase", () => {
     expect(applySandhi("好不", "hǎo bù")).toBe("hǎo bù");
+  });
+});
+
+describe("normalizePinyin", () => {
+  it("splits clumped syllables so both screens agree", () => {
+    expect(normalizePinyin("bǎojiàn")).toBe("bǎo jiàn");
+    expect(normalizePinyin("bǎo  jiàn")).toBe("bǎo jiàn");
+  });
+
+  it("drops apostrophes and hyphens", () => {
+    expect(normalizePinyin("xī'ān")).toBe("xī ān");
+  });
+
+  it("applies sandhi when hanzi is given", () => {
+    expect(normalizePinyin("bùduì", "不对")).toBe("bú duì");
+  });
+
+  it("leaves an unknown chunk alone rather than mangling it", () => {
+    expect(normalizePinyin("hmm")).toBe("hmm");
   });
 });

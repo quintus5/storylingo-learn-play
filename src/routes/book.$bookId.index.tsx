@@ -10,7 +10,7 @@ import { generateChapter, missingChapters } from "@/lib/story.functions";
 import { isUnlocked, useProgress } from "@/lib/progress";
 import { PRICES } from "@/lib/economy";
 import { CoinPurse } from "@/components/CoinPurse";
-import { useT } from "@/lib/i18n";
+import { useLocalText, useT } from "@/lib/i18n";
 
 
 export const Route = createFileRoute("/book/$bookId/")({
@@ -43,6 +43,7 @@ export const Route = createFileRoute("/book/$bookId/")({
 
 function BookPage() {
   const t = useT();
+  const local = useLocalText();
   const { bookId } = Route.useParams();
   const { data } = useSuspenseQuery(bookQuery(bookId));
   const { progress, buyChapter } = useProgress();
@@ -86,7 +87,7 @@ function BookPage() {
 
   return (
     <AppShell
-      title={book.title}
+      title={local(book.title, book.title_th)}
       back={{ to: "/" }}
       right={
         <div className="flex items-center gap-2">
@@ -139,7 +140,7 @@ function BookPage() {
           {book.cover_url ? (
             <img
               src={book.cover_url}
-              alt={t(`Cover illustration for ${book.title}`, `ภาพปกของ ${book.title}`)}
+              alt={t(`Cover illustration for ${local(book.title, book.title_th)}`, `ภาพปกของ ${local(book.title, book.title_th)}`)}
               className="h-full w-full object-cover"
             />
           ) : (
@@ -149,8 +150,10 @@ function BookPage() {
           )}
         </div>
         <div className="min-w-0">
-          <h2 className="text-2xl font-extrabold">{book.title}</h2>
-          {book.blurb && <p className="mt-1 text-muted-foreground">{book.blurb}</p>}
+          <h2 className="text-2xl font-extrabold">{local(book.title, book.title_th)}</h2>
+          {local(book.blurb, book.blurb_th) && (
+            <p className="mt-1 text-muted-foreground">{local(book.blurb, book.blurb_th)}</p>
+          )}
           <Link
             to="/book/$bookId/vocab"
             params={{ bookId }}
@@ -195,7 +198,7 @@ function BookPage() {
                   {chapter.image_url ? (
                     <img
                       src={chapter.image_url}
-                      alt={t(`Illustration for ${chapter.title}`, `ภาพประกอบของ ${chapter.title}`)}
+                      alt={t(`Illustration for ${local(chapter.title, chapter.title_th)}`, `ภาพประกอบของ ${local(chapter.title, chapter.title_th)}`)}
                       className="h-full w-full object-cover"
                       loading="lazy"
                     />
@@ -214,7 +217,7 @@ function BookPage() {
                   <p className="text-xs font-bold uppercase tracking-wide text-primary">
                     {t(`Chapter ${chapter.idx}`, `บทที่ ${chapter.idx}`)}
                   </p>
-                  <p className="line-clamp-2 font-bold leading-snug">{chapter.title}</p>
+                  <p className="line-clamp-2 font-bold leading-snug">{local(chapter.title, chapter.title_th)}</p>
                   <div className="mt-2">
                     <StarRow count={stars} size={15} />
                   </div>

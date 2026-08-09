@@ -27,6 +27,8 @@ export type ChapterRow = {
   book_id: string;
   idx: number;
   title: string;
+  /** Thai chapter title, when the book has been translated. */
+  title_th?: string | null;
   summary: string | null;
   image_url: string | null;
   pages: Page[];
@@ -36,6 +38,8 @@ export type ChapterRow = {
 export type BookRow = {
   id: string;
   title: string;
+  title_th?: string | null;
+  blurb_th?: string | null;
   source_url: string | null;
   target_lang: string;
   native_lang: string;

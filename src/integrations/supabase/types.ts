@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           art_style: string
           blurb: string | null
+          blurb_th: string | null
           chapter_count: number
           character_prompt: string | null
           cover_url: string | null
@@ -29,10 +30,12 @@ export type Database = {
           status: string
           target_lang: string
           title: string
+          title_th: string | null
         }
         Insert: {
           art_style?: string
           blurb?: string | null
+          blurb_th?: string | null
           chapter_count?: number
           character_prompt?: string | null
           cover_url?: string | null
@@ -44,10 +47,12 @@ export type Database = {
           status?: string
           target_lang?: string
           title: string
+          title_th?: string | null
         }
         Update: {
           art_style?: string
           blurb?: string | null
+          blurb_th?: string | null
           chapter_count?: number
           character_prompt?: string | null
           cover_url?: string | null
@@ -59,6 +64,7 @@ export type Database = {
           status?: string
           target_lang?: string
           title?: string
+          title_th?: string | null
         }
         Relationships: []
       }
@@ -72,6 +78,7 @@ export type Database = {
           pages: Json
           summary: string | null
           title: string
+          title_th: string | null
           words: Json
         }
         Insert: {
@@ -83,6 +90,7 @@ export type Database = {
           pages?: Json
           summary?: string | null
           title: string
+          title_th?: string | null
           words?: Json
         }
         Update: {
@@ -94,6 +102,7 @@ export type Database = {
           pages?: Json
           summary?: string | null
           title?: string
+          title_th?: string | null
           words?: Json
         }
         Relationships: [

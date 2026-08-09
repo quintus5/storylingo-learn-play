@@ -195,8 +195,14 @@ function CreatePage() {
           />
 
           <label className="mt-5 block text-sm font-semibold" htmlFor="url">
-            {t("Story link", "ลิงก์นิทาน")}
+            {t("Where is the story?", "นิทานอยู่ที่ไหน")}
           </label>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {t(
+              "Paste the web address of a story you like.",
+              "วางลิงก์ของนิทานที่หนูชอบ แล้ว StoryLingo จะไปอ่านให้",
+            )}
+          </p>
           <input
             id="url"
             required
@@ -225,10 +231,13 @@ function CreatePage() {
             ) : (
               <Search className="h-4 w-4" />
             )}
-            {fetching ? t("Reading the story…", "กำลังอ่านนิทาน…") : t("Fetch book", "ดึงข้อมูลนิทาน")}
+            {fetching
+              ? t("Reading the story…", "กำลังอ่านนิทาน…")
+              : t("Find this story", "ไปหานิทานเรื่องนี้")}
           </button>
 
           <label className="mt-5 block text-sm font-semibold" htmlFor="chapters">
+            {t("How many parts?", "แบ่งเป็นกี่ตอน")} · 
             {chapterCount === 1
               ? t("1 chapter (quick mini-book)", "1 บท (หนังสือเล่มเล็ก)")
               : t(`${chapterCount} chapters`, `${chapterCount} บท`)}
@@ -246,9 +255,15 @@ function CreatePage() {
             onChange={(e) => setChapterCount(Number(e.target.value))}
             className="mt-3 w-full accent-[var(--gold)]"
           />
+          <p className="mt-1 text-xs text-muted-foreground">
+            {t(
+              "Each part is one short reading with pictures and a game at the end.",
+              "แต่ละตอนคือการอ่านสั้น ๆ พร้อมรูปภาพ และมีเกมตอนจบ",
+            )}
+          </p>
 
           <label className="mt-5 block text-sm font-semibold" htmlFor="art-style">
-            {t("Illustration style", "สไตล์ภาพประกอบ")}
+            {t("How should the pictures look?", "อยากให้รูปเป็นแบบไหน")}
             {plan && style === plan.artStyle && (
               <span className="ml-2 font-normal text-primary">· {t("detected", "ตรวจพบ")}</span>
             )}
@@ -425,6 +440,13 @@ function CreatePage() {
                 `คุณต้องการเหรียญเพิ่มอีก 🪙 ${PRICES.book - progress.coins} เหรียญ อ่านบทหรือเล่นแบบทดสอบเพื่อสะสมเหรียญนะ!`,
               )}
         </p>
+        <p className="text-center text-xs text-muted-foreground">
+          {t(
+            "Coins are pretend money kept on this device. You earn them by reading and by playing the games.",
+            "เหรียญเป็นเงินสมมติที่เก็บไว้ในเครื่องนี้ ได้มาจากการอ่านและการเล่นเกม",
+          )}
+        </p>
+
 
         {log.length > 0 && (
           <ul className="space-y-1 rounded-2xl border border-border bg-card/70 p-4 text-sm">

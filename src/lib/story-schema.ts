@@ -51,6 +51,8 @@ export const ChapterContentSchema = z.object({
 
 export const OutlineChapterSchema = z.object({
   title: nonEmpty(120),
+  /** Thai chapter title; children read this one first. */
+  title_th: z.string().trim().max(160).optional(),
   summary: nonEmpty(1200),
   /** 3-5 short beats from the real story that this chapter must cover, in order. */
   keyEvents: z.array(nonEmpty(300)).max(12).default([]),
@@ -60,7 +62,9 @@ export const OutlineChapterSchema = z.object({
 
 export const OutlineSchema = z.object({
   title: nonEmpty(160),
+  title_th: z.string().trim().max(200).optional(),
   blurb: z.string().trim().max(600).optional(),
+  blurb_th: z.string().trim().max(700).optional(),
   characters: z.array(nonEmpty(120)).max(20).default([]),
   chapters: z.array(OutlineChapterSchema).min(1),
 });
@@ -150,7 +154,9 @@ export function parseOutline(raw: unknown, expectedCount?: number): Outline {
 
   const result = OutlineSchema.safeParse({
     title: obj.title,
+    title_th: typeof obj.title_th === "string" ? obj.title_th : undefined,
     blurb: typeof obj.blurb === "string" ? obj.blurb : undefined,
+    blurb_th: typeof obj.blurb_th === "string" ? obj.blurb_th : undefined,
     characters: stringList(obj.characters, 120),
     chapters,
   });

@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import type { CharacterLook } from "./character";
 import { PRICES, REWARDS, STARTER_COINS, STREAK_BONUS } from "./economy";
+import { syllableTone } from "./pinyin";
 
-const KEY = "storylingo.progress.v1";
+const KEY = "storylingo.progress.v2";
+const LEGACY_KEY = "storylingo.progress.v1";
 
 export type BookProgress = {
   /** chapter idx -> stars earned (1-3) */
@@ -10,6 +12,19 @@ export type BookProgress = {
   /** chapter idx -> true once the reader reached the last page */
   read: Record<number, boolean>;
 };
+
+/** Practice counters for one tone bucket (0 = neutral, 1-4 = tones). */
+export type ToneStat = { attempts: number; correct: number };
+
+/** What we remember about a single word's practice history. */
+export type WordLogEntry = {
+  /** ISO days on which the word was answered correctly (deduped, max 8). */
+  correctDays: string[];
+  /** Last ISO day the word was seen at all. */
+  lastSeen: string;
+};
+
+export type AnswerKind = "match" | "listen" | "translate" | "read";
 
 export type Progress = {
   books: Record<string, BookProgress>;
@@ -29,6 +44,14 @@ export type Progress = {
   /** "bookId:chapterIdx" keys unlocked with coins instead of stars. */
   bought: Record<string, boolean>;
   character: CharacterLook | null;
+  /** Tone bucket ("0".."4") -> practice counters. */
+  toneStats: Record<string, ToneStat>;
+  /** Recent listening-round results, newest last, capped at 40. */
+  listenLog: number[];
+  /** hanzi -> practice history, for "words learned" and review reminders. */
+  wordLog: Record<string, WordLogEntry>;
+  /** ISO days the child practised, newest last, capped at 30. */
+  activeDays: string[];
 };
 
 const EMPTY: Progress = {
@@ -38,12 +61,18 @@ const EMPTY: Progress = {
   wordsMastered: [],
   lastDay: null,
   streak: 0,
-  coins: 2000,
+  // Same value a brand new reader really starts with, so the number shown
+  // before storage loads matches the number shown after.
+  coins: STARTER_COINS,
   earned: 0,
   owned: [],
   awarded: {},
   bought: {},
   character: null,
+  toneStats: {},
+  listenLog: [],
+  wordLog: {},
+  activeDays: [],
 };
 
 function today() {
@@ -53,7 +82,7 @@ function today() {
 function read(): Progress {
   if (typeof localStorage === "undefined") return EMPTY;
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(KEY) ?? localStorage.getItem(LEGACY_KEY);
     // A brand new reader gets a starter purse so they can make a first book.
     if (!raw) return { ...EMPTY, coins: STARTER_COINS, earned: STARTER_COINS };
     return { ...EMPTY, ...(JSON.parse(raw) as Progress) };
@@ -75,7 +104,10 @@ const listeners = new Set<(p: Progress) => void>();
 
 function touchStreak(p: Progress): Progress {
   const day = today();
-  if (p.lastDay === day) return p;
+  const activeDays = p.activeDays.includes(day)
+    ? p.activeDays
+    : [...p.activeDays, day].slice(-30);
+  if (p.lastDay === day) return activeDays === p.activeDays ? p : { ...p, activeDays };
   const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
   const streak = p.lastDay === yesterday ? p.streak + 1 : 1;
   // Coming back on a new day always pays a small bonus.
@@ -83,6 +115,7 @@ function touchStreak(p: Progress): Progress {
     ...p,
     lastDay: day,
     streak,
+    activeDays,
     coins: p.coins + STREAK_BONUS,
     earned: p.earned + STREAK_BONUS,
   };
@@ -100,17 +133,28 @@ function give(p: Progress, amount: number, key?: string): Progress {
   };
 }
 
+/** Tone bucket of a word: the tone of its first syllable ("0".."4"). */
+function toneBucket(pinyin: string): string {
+  const first = pinyin.trim().split(/[\s'·-]+/)[0] ?? "";
+  return String(syllableTone(first));
+}
+
 export function useProgress() {
   const [progress, setProgress] = useState<Progress>(EMPTY);
+  // False until the device's saved purse/progress is in hand, so the UI can
+  // stay quiet instead of flashing a placeholder balance.
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     setProgress(read());
+    setLoaded(true);
     const listener = (p: Progress) => setProgress(p);
     listeners.add(listener);
     return () => {
       listeners.delete(listener);
     };
   }, []);
+
 
   const update = useCallback((fn: (p: Progress) => Progress) => {
     write(touchStreak(fn(read())));
@@ -157,18 +201,58 @@ export function useProgress() {
     [update],
   );
 
-  const missWord = useCallback(
-    (word: string) =>
-      update((p) => ({
-        ...p,
-        wordsMissed: { ...p.wordsMissed, [word]: (p.wordsMissed[word] ?? 0) + 1 },
-      })),
+  /**
+   * Record one practice event for a word: quiz answer or a tap in the reader.
+   * Feeds words learned, tone practice, listening accuracy and review dates.
+   */
+  const recordAnswer = useCallback(
+    (word: { hanzi: string; pinyin?: string }, kind: AnswerKind, correct: boolean) =>
+      update((p) => {
+        const day = today();
+        const bucket = toneBucket(word.pinyin ?? "");
+        const prevTone = p.toneStats[bucket] ?? { attempts: 0, correct: 0 };
+        const entry = p.wordLog[word.hanzi] ?? { correctDays: [], lastSeen: day };
+        const correctDays =
+          correct && kind !== "read" && !entry.correctDays.includes(day)
+            ? [...entry.correctDays, day].slice(-8)
+            : entry.correctDays;
+
+        let next: Progress = {
+          ...p,
+          toneStats: {
+            ...p.toneStats,
+            [bucket]: {
+              // Reading a word aloud is exposure, not a graded attempt.
+              attempts: prevTone.attempts + (kind === "read" ? 0 : 1),
+              correct: prevTone.correct + (correct && kind !== "read" ? 1 : 0),
+            },
+          },
+          wordLog: { ...p.wordLog, [word.hanzi]: { correctDays, lastSeen: day } },
+          listenLog:
+            kind === "listen" ? [...p.listenLog, correct ? 1 : 0].slice(-40) : p.listenLog,
+        };
+
+        if (correct && kind !== "read") {
+          next = { ...next, wordsMastered: Array.from(new Set([...next.wordsMastered, word.hanzi])) };
+        } else if (!correct) {
+          next = {
+            ...next,
+            wordsMissed: { ...next.wordsMissed, [word.hanzi]: (next.wordsMissed[word.hanzi] ?? 0) + 1 },
+          };
+        }
+        return next;
+      }),
     [update],
   );
 
+  const missWord = useCallback(
+    (word: string) => recordAnswer({ hanzi: word }, "match", false),
+    [recordAnswer],
+  );
+
   const masterWord = useCallback(
-    (word: string) => update((p) => ({ ...p, wordsMastered: Array.from(new Set([...p.wordsMastered, word])) })),
-    [update],
+    (word: string) => recordAnswer({ hanzi: word }, "match", true),
+    [recordAnswer],
   );
 
   /** Spend coins. Returns false (and changes nothing) when the purse is short. */
@@ -205,15 +289,72 @@ export function useProgress() {
 
   return {
     progress,
+    loaded,
     markRead,
     awardStars,
     seeWords,
+    recordAnswer,
     missWord,
     masterWord,
     spend,
     buyItem,
     buyChapter,
     saveCharacter,
+  };
+}
+
+/** Learning summary derived from the stored counters, for the progress page. */
+export type LearningStats = {
+  learned: number;
+  meeting: number;
+  dueForReview: number;
+  listenAccuracy: number | null;
+  listenTrend: number;
+  listenCount: number;
+  activeLast7: number;
+  tones: { tone: string; attempts: number; correct: number; rate: number | null }[];
+};
+
+const DAY = 86400000;
+
+export function learningStats(p: Progress): LearningStats {
+  const entries = Object.entries(p.wordLog);
+  // Two correct answers on different days is our bar for "learned".
+  const learnedWords = entries.filter(([, e]) => e.correctDays.length >= 2);
+  const now = Date.now();
+  const dueForReview = learnedWords.filter(
+    ([, e]) => now - new Date(`${e.lastSeen}T00:00:00Z`).getTime() >= 5 * DAY,
+  ).length;
+
+  const log = p.listenLog;
+  const recent = log.slice(-20);
+  const older = log.slice(-40, -20);
+  const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
+  const recentAvg = avg(recent);
+  const olderAvg = avg(older);
+
+  const week = new Set(
+    Array.from({ length: 7 }, (_, i) => new Date(now - i * DAY).toISOString().slice(0, 10)),
+  );
+
+  return {
+    learned: learnedWords.length,
+    meeting: entries.length - learnedWords.length,
+    dueForReview,
+    listenAccuracy: recentAvg === null ? null : Math.round(recentAvg * 100),
+    listenTrend:
+      recentAvg === null || olderAvg === null ? 0 : Math.round((recentAvg - olderAvg) * 100),
+    listenCount: recent.length,
+    activeLast7: p.activeDays.filter((d) => week.has(d)).length,
+    tones: ["1", "2", "3", "4", "0"].map((tone) => {
+      const s = p.toneStats[tone] ?? { attempts: 0, correct: 0 };
+      return {
+        tone,
+        attempts: s.attempts,
+        correct: s.correct,
+        rate: s.attempts ? Math.round((s.correct / s.attempts) * 100) : null,
+      };
+    }),
   };
 }
 

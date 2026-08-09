@@ -204,8 +204,9 @@ export async function buildOutline(
       `${FIDELITY_RULES}\n\n` +
       `Plan a faithful retelling with exactly ${chapterCount} short chapters that together cover ALL of the real events above, in order.\n` +
       `Return JSON: {"title": string (a friendly title in English, close to the real story's title), "blurb": string (one short English sentence), ` +
+      `"title_th": string (the same title in natural Thai for a child), "blurb_th": string (the same blurb in Thai), ` +
       `"characters": [string (the real character names used in this book)], ` +
-      `"chapters": [{"title": string (short, English), "summary": string (2-3 sentences describing what really happens, in English), ` +
+      `"chapters": [{"title": string (short, English), "title_th": string (that chapter title in Thai), "summary": string (2-3 sentences describing what really happens, in English), ` +
       `"keyEvents": [string (3-5 short beats from the real story that this chapter must cover, in order)], ` +
       `"illustration": string (a vivid English description of one scene to paint, no text in image)}]}` +
       (chapterCount === 1
