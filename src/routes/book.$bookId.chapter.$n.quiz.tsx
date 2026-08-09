@@ -66,7 +66,7 @@ function Quiz() {
   const idx = Number(n);
   const { data } = useSuspenseQuery(bookQuery(bookId));
   const navigate = useNavigate();
-  const { progress, awardStars, missWord, masterWord } = useProgress();
+  const { progress, awardStars, recordAnswer } = useProgress();
   const coinsAtStart = useRef<number | null>(null);
 
   const chapter = data.chapters.find((c) => c.idx === idx);
