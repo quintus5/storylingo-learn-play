@@ -392,12 +392,29 @@ export async function speak(text: string, slow = false): Promise<boolean> {
   return finished;
 }
 
+/** Silent gap left between sentences so beginners hear where a line ends. */
+const SENTENCE_GAP_MS = 700;
+
+/** Cancellable wait: resolves early (false) when a new speak/stop happens. */
+function gap(ms: number, mine: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const started = Date.now();
+    const tick = () => {
+      if (mine !== token) return resolve(false);
+      if (Date.now() - started >= ms) return resolve(true);
+      setTimeout(tick, 60);
+    };
+    setTimeout(tick, 60);
+  });
+}
+
 /** Play a list of clips one after another (cancelled by any new speak/stop). */
 export async function speakSequence(texts: string[], slow = false): Promise<void> {
   unlockAudio();
   stopAudio();
   const mine = token;
-  for (const text of texts) {
+  for (let i = 0; i < texts.length; i += 1) {
+    const text = texts[i];
     if (mine !== token) return;
     const blob = await getClip(text, slow);
     if (!blob) {
@@ -412,6 +429,8 @@ export async function speakSequence(texts: string[], slow = false): Promise<void
       if (mine === token) reportFailure();
       return;
     }
+    // A clear breath between lines: the strip can glide before the next clip.
+    if (i < texts.length - 1 && !(await gap(SENTENCE_GAP_MS, mine))) return;
   }
   if (mine === token) {
     setSpeaking(null);
