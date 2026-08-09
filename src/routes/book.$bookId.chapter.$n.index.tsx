@@ -349,7 +349,7 @@ function Reader() {
               onClick={() => go(-1)}
               disabled={page === 0}
               aria-label={t("Previous page", "หน้าก่อนหน้า")}
-              className="press group inline-flex h-9 items-center gap-1 rounded-full px-1.5 text-foreground/70 transition-all duration-200 hover:text-foreground disabled:opacity-30 motion-reduce:transition-none"
+              className="press group inline-flex h-9 items-center gap-1 rounded-full border border-border/30 bg-secondary/70 px-2.5 text-secondary-foreground backdrop-blur-sm transition-all duration-200 hover:bg-secondary disabled:opacity-30 motion-reduce:transition-none"
             >
               <ChevronLeft className="h-5 w-5 shrink-0" />
               <span className="max-w-0 overflow-hidden whitespace-nowrap text-[11px] font-bold opacity-0 transition-all duration-200 group-hover:max-w-[7rem] group-hover:opacity-100 group-focus-visible:max-w-[7rem] group-focus-visible:opacity-100 motion-reduce:transition-none">
