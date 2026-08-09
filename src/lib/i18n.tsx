@@ -70,3 +70,18 @@ export function useLang(): Ctx {
 export function useT() {
   return useLang().t;
 }
+
+/**
+ * Picks the Thai version of story text stored in the database when the child
+ * is reading in Thai, falling back to the English one while a book is still
+ * missing its translation.
+ */
+export function useLocalText() {
+  const { lang } = useLang();
+  return useCallback(
+    (en?: string | null, th?: string | null) =>
+      (lang === "th" ? th?.trim() || en?.trim() : en?.trim() || th?.trim()) ?? "",
+    [lang],
+  );
+}
+
