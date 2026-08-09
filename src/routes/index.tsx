@@ -1,12 +1,16 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { BookOpen, Plus, Sparkles } from "lucide-react";
+import { useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
+import { BookOpen, Plus, Sparkles, X } from "lucide-react";
+import { useState } from "react";
 import { booksQuery } from "@/lib/books";
+import { deleteBook } from "@/lib/story.functions";
 import { AppShell } from "@/components/AppShell";
 import { useProgress } from "@/lib/progress";
 import { CoinPurse } from "@/components/CoinPurse";
 import { CharacterSprite } from "@/components/CharacterSprite";
+import { useDevMode } from "@/lib/dev-mode";
 import { useT } from "@/lib/i18n";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -45,7 +49,23 @@ function ErrorMessage() {
 function Bookshelf() {
   const { data: books } = useSuspenseQuery(booksQuery);
   const { progress } = useProgress();
+  const dev = useDevMode();
+  const queryClient = useQueryClient();
+  const [removing, setRemoving] = useState<string | null>(null);
   const t = useT();
+
+  async function removeBook(bookId: string, title: string) {
+    if (!window.confirm(`Delete "${title}"? This cannot be undone.`)) return;
+    setRemoving(bookId);
+    try {
+      await deleteBook({ data: { bookId } });
+      await queryClient.invalidateQueries({ queryKey: ["books"] });
+    } finally {
+      setRemoving(null);
+    }
+  }
+
+
 
   return (
     <AppShell
@@ -140,12 +160,23 @@ function Bookshelf() {
           {books.map((book) => {
             const stars = Object.values(progress.books[book.id]?.stars ?? {}).length;
             return (
+              <div key={book.id} className="relative">
+              {dev && (
+                <button
+                  onClick={() => void removeBook(book.id, book.title)}
+                  disabled={removing === book.id}
+                  aria-label={`Delete ${book.title}`}
+                  className="press absolute -right-2 -top-2 z-10 grid h-8 w-8 place-items-center rounded-full bg-destructive text-destructive-foreground shadow-lg disabled:opacity-50"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
               <Link
-                key={book.id}
                 to="/book/$bookId"
                 params={{ bookId: book.id }}
-                className="press group overflow-hidden rounded-3xl border border-border bg-card shadow-[0_18px_40px_-18px_oklch(0_0_0/0.75)]"
+                className="press group block overflow-hidden rounded-3xl border border-border bg-card shadow-[0_18px_40px_-18px_oklch(0_0_0/0.75)]"
               >
+
                 <div className="aspect-[3/4] w-full overflow-hidden bg-secondary">
                   {book.cover_url ? (
                     <img
@@ -170,7 +201,9 @@ function Bookshelf() {
                   </p>
                 </div>
               </Link>
+              </div>
             );
+
           })}
         </div>
       )}

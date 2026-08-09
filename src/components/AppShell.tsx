@@ -3,6 +3,8 @@ import { ChevronLeft } from "lucide-react";
 import type { ReactNode } from "react";
 import { useT } from "@/lib/i18n";
 import { LangToggle } from "@/components/LangToggle";
+import { toggleDevMode, useDevMode } from "@/lib/dev-mode";
+
 
 export function AppShell({
   title,
@@ -16,6 +18,7 @@ export function AppShell({
   children: ReactNode;
 }) {
   const t = useT();
+  const dev = useDevMode();
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-20 border-b border-border/60 bg-background/85 backdrop-blur">
@@ -30,10 +33,16 @@ export function AppShell({
               <ChevronLeft className="h-5 w-5" />
             </Link>
           ) : (
-            <span className="text-2xl" aria-hidden>
+            <span
+              onDoubleClick={() => toggleDevMode()}
+              title={dev ? "Developer mode on" : undefined}
+              className={`cursor-default select-none text-2xl transition-opacity ${dev ? "opacity-60" : ""}`}
+              aria-hidden
+            >
               🌙
             </span>
           )}
+
           <h1 className="flex-1 truncate text-lg font-bold sm:text-xl">
             {title ?? t("StoryLingo", "StoryLingo")}
           </h1>

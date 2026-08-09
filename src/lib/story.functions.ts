@@ -254,3 +254,16 @@ export const previewBook = createServerFn({ method: "POST" })
     const { previewStory } = await import("./story.server");
     return previewStory(data.url, data.title ?? "");
   });
+
+const DeleteBookInput = z.object({ bookId: z.string().uuid() });
+
+/** Developer-only cleanup: removes a book and everything under it. */
+export const deleteBook = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => DeleteBookInput.parse(input))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await supabaseAdmin.from("chapters").delete().eq("book_id", data.bookId);
+    const { error } = await supabaseAdmin.from("books").delete().eq("id", data.bookId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });

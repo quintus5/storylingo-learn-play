@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Music,
@@ -13,7 +14,14 @@ import { AppShell } from "@/components/AppShell";
 import { WordPopup } from "@/components/WordPopup";
 import { bookQuery } from "@/lib/books";
 import { useProgress } from "@/lib/progress";
-import { preload, speak, speakSequence, stopAudio } from "@/lib/audio";
+import {
+  preload,
+  speak,
+  speakSequence,
+  stopAudio,
+  VOICE_LIST,
+  VOICE_NAMES,
+} from "@/lib/audio";
 import { moodFor, setMusicDucked, startMusic, stopMusic } from "@/lib/music";
 import { useSpeakingProgress, useSpeakingText } from "@/hooks/use-speaking";
 import { useVoice } from "@/hooks/use-voice";
@@ -75,6 +83,7 @@ function Reader() {
   const [music, setMusic] = useState(false);
   const [dir, setDir] = useState(1);
   const [active, setActive] = useState(0);
+  const [voiceOpen, setVoiceOpen] = useState(false);
   const trackRef = useRef<HTMLDivElement>(null);
 
   const current = pages[page];
@@ -199,6 +208,16 @@ function Reader() {
     setActive(best);
   }
 
+  function goSentence(delta: number) {
+    const count = current?.sentences.length ?? 0;
+    const next = Math.min(Math.max(active + delta, 0), Math.max(count - 1, 0));
+    if (next === active) return;
+    setActive(next);
+    scrollToSentence(next);
+  }
+
+
+
   const art = current.image_url ?? (page === 0 ? chapter.image_url : null) ?? chapter.image_url;
 
   return (
@@ -233,18 +252,46 @@ function Reader() {
           {t("Ch.", "บทที่")} {idx} · {chapter.title}
         </p>
         <div className="pointer-events-auto flex shrink-0 items-center gap-2">
-          <button
-            onClick={() => {
-              chooseVoice(voice === "female" ? "male" : "female");
-              stopAudio();
-              setPlaying(false);
-            }}
-            aria-label={voice === "female" ? t("Narrator: female. Tap to switch.", "เสียงผู้บรรยาย: หญิง แตะเพื่อเปลี่ยน") : t("Narrator: male. Tap to switch.", "เสียงผู้บรรยาย: ชาย แตะเพื่อเปลี่ยน")}
-            title={t("Switch narrator", "เปลี่ยนเสียงผู้บรรยาย")}
-            className="press glass-pill inline-flex h-10 items-center gap-2 rounded-full border border-border/50 px-3 text-sm font-bold text-foreground"
-          >
-            <span aria-hidden>{voice === "female" ? "👩" : "👨"}</span>
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setVoiceOpen((v) => !v)}
+              aria-haspopup="menu"
+              aria-expanded={voiceOpen}
+              aria-label={t("Choose the narrator voice", "เลือกเสียงผู้บรรยาย")}
+              className="press glass-pill inline-flex h-10 items-center gap-1.5 rounded-full border border-border/50 px-3 text-sm font-bold text-foreground"
+            >
+              <span className="hidden text-muted-foreground sm:inline">{t("Voice", "เสียง")}</span>
+              <span>{VOICE_NAMES[voice]}</span>
+              <ChevronDown className="h-3.5 w-3.5" />
+            </button>
+            {voiceOpen && (
+              <div
+                role="menu"
+                className="glass-subtitle absolute right-0 top-12 z-30 w-36 overflow-hidden rounded-2xl border border-border/50 p-1 animate-[fade-in_.15s_ease-out]"
+              >
+                {VOICE_LIST.map((id) => (
+                  <button
+                    key={id}
+                    role="menuitemradio"
+                    aria-checked={voice === id}
+                    onClick={() => {
+                      chooseVoice(id);
+                      stopAudio();
+                      setPlaying(false);
+                      setVoiceOpen(false);
+                    }}
+                    className={`block w-full rounded-xl px-3 py-2 text-left text-sm font-bold transition-colors ${
+                      voice === id
+                        ? "bg-primary text-primary-foreground"
+                        : "text-foreground hover:bg-secondary"
+                    }`}
+                  >
+                    {VOICE_NAMES[id]}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <button
             onClick={() => {
               if (music) {
@@ -271,82 +318,114 @@ function Reader() {
 
       {/* Reading strip — sentences slide sideways, never covering the art */}
       <section className="glass-subtitle absolute inset-x-2 bottom-3 z-10 flex flex-col overflow-hidden rounded-[1.75rem] border border-border/40 sm:inset-x-6">
-        <div
-          ref={trackRef}
-          onScroll={onTrackScroll}
-          className="flex snap-x snap-mandatory gap-3 overflow-x-auto overflow-y-hidden px-3 pt-3 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        >
-          {current.sentences.map((sentence, i) => (
-            <div
-              key={`${page}-${i}`}
-              className={`w-[88%] shrink-0 snap-center ${
-                dir > 0
-                  ? "animate-[page-in-next_.4s_cubic-bezier(.22,.8,.3,1)_both]"
-                  : "animate-[page-in-prev_.4s_cubic-bezier(.22,.8,.3,1)_both]"
-              }`}
-            >
-              <SentenceCard
-                sentence={sentence}
-                speaking={speaking === sentence.hanzi}
-                progress={speaking === sentence.hanzi ? progress : -1}
-                dimmed={i !== active}
-                onPlay={() => {
-                  setActive(i);
-                  scrollToSentence(i);
-                  void speak(sentence.hanzi);
-                }}
-                onWord={setWord}
-              />
-            </div>
-          ))}
-        </div>
-
-        {current.sentences.length > 1 && (
-          <div className="flex shrink-0 items-center justify-center gap-1.5 pb-1">
-            {current.sentences.map((_, i) => (
-              <span
-                key={i}
-                className={`h-1.5 rounded-full transition-all duration-200 motion-reduce:transition-none ${
-                  i === active ? "w-4 bg-gold" : "w-1.5 bg-muted-foreground/40"
+        <div className="relative">
+          <div
+            ref={trackRef}
+            onScroll={onTrackScroll}
+            className="flex snap-x snap-mandatory gap-3 overflow-x-auto overflow-y-hidden px-[6%] pb-1 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {current.sentences.map((sentence, i) => (
+              <div
+                key={`${page}-${i}`}
+                className={`w-[88%] shrink-0 snap-center ${
+                  dir > 0
+                    ? "animate-[page-in-next_.4s_cubic-bezier(.22,.8,.3,1)_both]"
+                    : "animate-[page-in-prev_.4s_cubic-bezier(.22,.8,.3,1)_both]"
                 }`}
-              />
+              >
+                <SentenceCard
+                  sentence={sentence}
+                  speaking={speaking === sentence.hanzi}
+                  progress={speaking === sentence.hanzi ? progress : -1}
+                  dimmed={i !== active}
+                  onWord={setWord}
+                />
+              </div>
             ))}
           </div>
-        )}
 
-        <nav className="mx-auto flex w-full max-w-5xl shrink-0 items-center justify-between gap-2 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1">
+          {current.sentences.length > 1 && (
+            <>
+              <SentenceArrow
+                side="left"
+                hidden={active === 0}
+                label={t("Previous sentence", "ประโยคก่อนหน้า")}
+                onClick={() => goSentence(-1)}
+              />
+              <SentenceArrow
+                side="right"
+                hidden={active >= current.sentences.length - 1}
+                label={t("Next sentence", "ประโยคถัดไป")}
+                onClick={() => goSentence(1)}
+              />
+            </>
+          )}
+        </div>
+
+        <nav className="flex shrink-0 items-center justify-end gap-2 px-3 pb-[max(0.4rem,env(safe-area-inset-bottom))] pt-0.5">
+          <button
+            onClick={() => void speak(current.sentences[active]?.hanzi ?? "")}
+            className="press inline-flex items-center gap-1.5 rounded-full bg-secondary px-2.5 py-1 text-[11px] font-bold text-secondary-foreground"
+          >
+            <Play className="h-3 w-3" /> {t("Hear this line", "ฟังประโยคนี้")}
+          </button>
+
+          {current.sentences.length > 1 && (
+            <div className="flex items-center gap-1">
+              {current.sentences.map((_, i) => (
+                <span
+                  key={i}
+                  className={`h-1.5 rounded-full transition-all duration-200 motion-reduce:transition-none ${
+                    i === active ? "w-4 bg-gold" : "w-1.5 bg-muted-foreground/40"
+                  }`}
+                />
+              ))}
+            </div>
+          )}
+
           <button
             onClick={() => go(-1)}
             disabled={page === 0}
             aria-label={t("Previous page", "หน้าก่อนหน้า")}
-            className="press inline-flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-secondary-foreground disabled:opacity-40"
+            className="press group inline-flex h-8 items-center gap-1 rounded-full bg-secondary px-2 text-secondary-foreground transition-all duration-200 hover:pr-3 disabled:opacity-40 motion-reduce:transition-none"
           >
-            <ChevronLeft className="h-5 w-5" />
+            <ChevronLeft className="h-4 w-4 shrink-0" />
+            <span className="max-w-0 overflow-hidden whitespace-nowrap text-[11px] font-bold opacity-0 transition-all duration-200 group-hover:max-w-[7rem] group-hover:opacity-100 group-focus-visible:max-w-[7rem] group-focus-visible:opacity-100 motion-reduce:transition-none">
+              {t("Previous page", "หน้าก่อนหน้า")}
+            </span>
           </button>
-          <p className="text-[11px] text-muted-foreground">
-            {t(`Page ${page + 1} of ${pages.length}`, `หน้า ${page + 1} จาก ${pages.length}`)}
-          </p>
+
           {isLast ? (
             <Link
               to="/book/$bookId/chapter/$n/quiz"
               params={{ bookId, n }}
               onClick={() => stopAudio()}
               aria-label={t("Go to the quiz", "ไปที่แบบทดสอบ")}
-              className="press inline-flex h-9 items-center gap-1 rounded-full bg-primary px-3 text-sm font-bold text-primary-foreground"
+              className="press inline-flex h-8 items-center gap-1 rounded-full bg-primary px-3 text-[11px] font-bold text-primary-foreground"
             >
               {t("Quiz", "แบบทดสอบ")} <ChevronRight className="h-4 w-4" />
             </Link>
           ) : (
             <button
               onClick={() => go(1)}
-              aria-label={t("Next page", "หน้าถัดไป")}
-              className="press inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground"
+              aria-label={t(
+                `Next page. Page ${page + 1} of ${pages.length}`,
+                `หน้าถัดไป หน้า ${page + 1} จาก ${pages.length}`,
+              )}
+              className="press group inline-flex h-8 items-center gap-1 rounded-full bg-primary px-2 text-primary-foreground transition-all duration-200 hover:pl-3 motion-reduce:transition-none"
             >
-              <ChevronRight className="h-5 w-5" />
+              <span className="max-w-0 overflow-hidden whitespace-nowrap text-[11px] font-bold opacity-0 transition-all duration-200 group-hover:max-w-[9rem] group-hover:opacity-100 group-focus-visible:max-w-[9rem] group-focus-visible:opacity-100 motion-reduce:transition-none">
+                {t(
+                  `Next page · ${page + 1}/${pages.length}`,
+                  `หน้าถัดไป · ${page + 1}/${pages.length}`,
+                )}
+              </span>
+              <ChevronRight className="h-4 w-4 shrink-0" />
             </button>
           )}
         </nav>
       </section>
+
 
       {word && <WordPopup word={word} onClose={() => setWord(null)} />}
     </div>
@@ -369,38 +448,69 @@ function activeWordIndex(sentence: Sentence, progress: number) {
   return weights.length - 1;
 }
 
+/** Soft, translucent chevron for stepping between sentences. */
+function SentenceArrow({
+  side,
+  hidden,
+  label,
+  onClick,
+}: {
+  side: "left" | "right";
+  hidden: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label={label}
+      tabIndex={hidden ? -1 : 0}
+      className={`absolute top-1/2 z-10 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-border/30 bg-background/25 text-foreground/70 backdrop-blur-sm transition-all duration-200 hover:bg-background/50 hover:text-foreground active:scale-90 motion-reduce:transition-none ${
+        side === "left" ? "left-0.5" : "right-0.5"
+      } ${
+        hidden
+          ? "pointer-events-none opacity-0"
+          : side === "left"
+            ? "opacity-45 hover:-translate-x-0.5 motion-reduce:hover:translate-x-0"
+            : "opacity-45 hover:translate-x-0.5 motion-reduce:hover:translate-x-0"
+      }`}
+    >
+      {side === "left" ? (
+        <ChevronLeft className="h-6 w-6" />
+      ) : (
+        <ChevronRight className="h-6 w-6" />
+      )}
+    </button>
+  );
+}
+
 function SentenceCard({
   sentence,
   speaking,
   progress = -1,
   dimmed = false,
-  onPlay,
   onWord,
 }: {
   sentence: Sentence;
   speaking: boolean;
   progress?: number;
   dimmed?: boolean;
-  onPlay: () => void;
   onWord: (word: Word) => void;
 }) {
-  const t = useT();
   const active = speaking ? activeWordIndex(sentence, progress) : -1;
   return (
     <article
-      className={`rounded-2xl px-2 py-1 text-center transition-opacity duration-300 motion-reduce:transition-none ${
+      className={`px-6 text-center transition-opacity duration-300 motion-reduce:transition-none ${
         dimmed ? "opacity-45" : "opacity-100"
       }`}
     >
-      <div className="flex min-h-[3.5rem] flex-wrap items-end justify-center gap-x-1 gap-y-1">
+      <div className="flex min-h-[2.75rem] flex-wrap items-end justify-center gap-x-1">
         {sentence.words.length > 0
           ? sentence.words.map((w, i) => (
               <button
                 key={`${w.hanzi}-${i}`}
                 onClick={() => onWord(w)}
-                className={`press rounded-xl px-1 py-0.5 text-left transition-colors duration-150 motion-reduce:transition-none hover:bg-secondary ${
-                  i === active ? "bg-gold/25 ring-1 ring-gold/60" : ""
-                }`}
+                className="press rounded-lg px-0.5 text-left"
               >
                 <span
                   className={`block text-[10px] ${i === active ? "text-gold" : "text-primary"}`}
@@ -408,8 +518,8 @@ function SentenceCard({
                   {w.pinyin}
                 </span>
                 <span
-                  className={`han block origin-bottom text-2xl font-bold leading-tight transition-transform duration-200 motion-reduce:transform-none motion-reduce:transition-none ${
-                    i === active ? "scale-[1.35] text-gold" : "text-sand"
+                  className={`han block origin-bottom text-xl font-bold leading-tight transition-transform duration-200 motion-reduce:transform-none motion-reduce:transition-none ${
+                    i === active ? "scale-[1.4] text-gold" : "text-sand"
                   }`}
                 >
                   {w.hanzi}
@@ -419,18 +529,12 @@ function SentenceCard({
           : (
               <div>
                 <span className="block text-[10px] text-primary">{sentence.pinyin}</span>
-                <span className="han block text-2xl font-bold text-sand">{sentence.hanzi}</span>
+                <span className="han block text-xl font-bold text-sand">{sentence.hanzi}</span>
               </div>
             )}
       </div>
-      <p className="mt-1 text-sm text-muted-foreground">{sentence.native}</p>
-      <button
-        onClick={onPlay}
-        aria-label={t("Hear this line", "ฟังประโยคนี้")}
-        className="press mt-1 inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-xs font-bold text-secondary-foreground"
-      >
-        <Play className="h-3.5 w-3.5" /> {t("Hear this line", "ฟังประโยคนี้")}
-      </button>
+      <p className="mt-0.5 text-xs text-muted-foreground">{sentence.native}</p>
     </article>
   );
 }
+
