@@ -4,7 +4,7 @@ import { z } from "zod";
 const Body = z.object({
   text: z.string().trim().min(1).max(400),
   slow: z.boolean().optional(),
-  voice: z.enum(["male", "female"]).optional(),
+  voice: z.enum(["wang", "kenshi", "hong", "lee"]).optional(),
 });
 
 const INSTRUCTIONS =
