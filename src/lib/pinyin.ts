@@ -86,3 +86,34 @@ export function applySandhi(hanzi: string, pinyin: string): string {
 }
 
 export { NEUTRAL_TONE_MAP };
+
+// One syllable: optional initial, then a vowel run (tone marks included),
+// then an optional nasal ending. Used to split clumps like "bǎojiàn".
+const INITIAL = "(?:zh|ch|sh|[bpmfdtnlgkhjqxrzcsyw])?";
+const VOWEL = "[aeiouüāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]";
+const SYLLABLE_RE = new RegExp(`${INITIAL}${VOWEL}+(?:ng|n|r)?`, "gi");
+
+/** Split a run of pinyin letters into syllables ("bǎojiàn" -> ["bǎo","jiàn"]). */
+function splitSyllables(chunk: string): string[] {
+  const found = chunk.match(SYLLABLE_RE);
+  if (!found) return [chunk];
+  // Only trust the split when it consumed the whole chunk.
+  return found.join("").length === chunk.length ? found : [chunk];
+}
+
+/**
+ * One canonical spelling for a word wherever it appears: exactly one space
+ * between syllables, no apostrophes or hyphens, and sandhi applied. Without
+ * this the reader could show "bǎojiàn" while the vocabulary list shows
+ * "bǎo jiàn" for the same word.
+ */
+export function normalizePinyin(pinyin: string, hanzi?: string): string {
+  const cleaned = (pinyin ?? "").normalize("NFC").replace(/[’'·]/g, " ").replace(/[-–—]/g, " ");
+  const syllables = cleaned
+    .split(/\s+/)
+    .filter(Boolean)
+    .flatMap((chunk) => splitSyllables(chunk));
+  const spaced = syllables.join(" ").trim();
+  return hanzi ? applySandhi(hanzi, spaced) : spaced;
+}
+
