@@ -208,6 +208,16 @@ function Reader() {
     setActive(best);
   }
 
+  function goSentence(delta: number) {
+    const count = current?.sentences.length ?? 0;
+    const next = Math.min(Math.max(active + delta, 0), Math.max(count - 1, 0));
+    if (next === active) return;
+    setActive(next);
+    scrollToSentence(next);
+  }
+
+
+
   const art = current.image_url ?? (page === 0 ? chapter.image_url : null) ?? chapter.image_url;
 
   return (
