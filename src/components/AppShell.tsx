@@ -3,6 +3,8 @@ import { ChevronLeft } from "lucide-react";
 import type { ReactNode } from "react";
 import { useT } from "@/lib/i18n";
 import { LangToggle } from "@/components/LangToggle";
+import { toggleDevMode, useDevMode } from "@/lib/dev-mode";
+
 
 export function AppShell({
   title,
