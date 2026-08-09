@@ -82,20 +82,32 @@ function remember(key: string, blob: Blob) {
 }
 
 /** Narrator voices (Fish Audio reference ids). */
-export type VoiceId = "male" | "female";
+export type VoiceId = "wang" | "kenshi" | "hong" | "lee";
 export const VOICE_IDS: Record<VoiceId, string> = {
-  male: "2926cb350f1a426d800bf8c360c3cb94",
-  female: "be404a1ef6704fdb86d02ea05ad0bcc2",
+  wang: "59cb5986671546eaa6ca8ae6f29f6d22",
+  kenshi: "5a88883c20a84f378db686ac6b0bba79",
+  hong: "5fc69411fe274f149bce4e743534ffa4",
+  lee: "626bb6d3f3364c9cbc3aa6a67300a664",
 };
+export const VOICE_NAMES: Record<VoiceId, string> = {
+  wang: "Wang",
+  kenshi: "Kenshi",
+  hong: "Hong",
+  lee: "Lee",
+};
+export const VOICE_LIST = Object.keys(VOICE_IDS) as VoiceId[];
 
 const VOICE_KEY = "storylingo-voice";
-let voice: VoiceId = "female";
+const DEFAULT_VOICE: VoiceId = "wang";
+let voice: VoiceId = DEFAULT_VOICE;
 const voiceListeners = new Set<(v: VoiceId) => void>();
 
 if (typeof localStorage !== "undefined") {
   const saved = localStorage.getItem(VOICE_KEY);
-  if (saved === "male" || saved === "female") voice = saved;
+  // Older devices stored "male"/"female"; those fall back to the default.
+  if (saved && (VOICE_LIST as string[]).includes(saved)) voice = saved as VoiceId;
 }
+
 
 export function getVoice(): VoiceId {
   return voice;
