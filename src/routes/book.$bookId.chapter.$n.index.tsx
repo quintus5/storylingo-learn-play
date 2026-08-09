@@ -374,7 +374,7 @@ function Reader() {
                   `Next page. Page ${page + 1} of ${pages.length}`,
                   `หน้าถัดไป หน้า ${page + 1} จาก ${pages.length}`,
                 )}
-                className="press group inline-flex h-9 items-center gap-1 rounded-full px-1.5 text-foreground/80 transition-all duration-200 hover:text-foreground motion-reduce:transition-none"
+                className="press group inline-flex h-9 items-center gap-1 rounded-full border border-primary/40 bg-primary/80 px-2.5 text-primary-foreground backdrop-blur-sm transition-all duration-200 hover:bg-primary motion-reduce:transition-none"
               >
                 <span className="max-w-0 overflow-hidden whitespace-nowrap text-[11px] font-bold opacity-0 transition-all duration-200 group-hover:max-w-[9rem] group-hover:opacity-100 group-focus-visible:max-w-[9rem] group-focus-visible:opacity-100 motion-reduce:transition-none">
                   {t(
