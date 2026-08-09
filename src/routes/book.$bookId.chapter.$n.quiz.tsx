@@ -160,12 +160,11 @@ function Quiz() {
     if (picked || !question) return;
     setPicked(option.hanzi);
     const right = option.hanzi === question.prompt.hanzi;
+    // Records the tone bucket and the round kind, not just right/wrong.
+    recordAnswer(question.prompt, question.kind, right);
     if (right) {
       setCorrect((c) => c + 1);
-      masterWord(question.prompt.hanzi);
       void speak(question.prompt.hanzi);
-    } else {
-      missWord(question.prompt.hanzi);
     }
     setTimeout(() => {
       setPicked(null);
