@@ -448,38 +448,69 @@ function activeWordIndex(sentence: Sentence, progress: number) {
   return weights.length - 1;
 }
 
+/** Soft, translucent chevron for stepping between sentences. */
+function SentenceArrow({
+  side,
+  hidden,
+  label,
+  onClick,
+}: {
+  side: "left" | "right";
+  hidden: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label={label}
+      tabIndex={hidden ? -1 : 0}
+      className={`absolute top-1/2 z-10 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-border/30 bg-background/25 text-foreground/70 backdrop-blur-sm transition-all duration-200 hover:bg-background/50 hover:text-foreground active:scale-90 motion-reduce:transition-none ${
+        side === "left" ? "left-0.5" : "right-0.5"
+      } ${
+        hidden
+          ? "pointer-events-none opacity-0"
+          : side === "left"
+            ? "opacity-45 hover:-translate-x-0.5 motion-reduce:hover:translate-x-0"
+            : "opacity-45 hover:translate-x-0.5 motion-reduce:hover:translate-x-0"
+      }`}
+    >
+      {side === "left" ? (
+        <ChevronLeft className="h-6 w-6" />
+      ) : (
+        <ChevronRight className="h-6 w-6" />
+      )}
+    </button>
+  );
+}
+
 function SentenceCard({
   sentence,
   speaking,
   progress = -1,
   dimmed = false,
-  onPlay,
   onWord,
 }: {
   sentence: Sentence;
   speaking: boolean;
   progress?: number;
   dimmed?: boolean;
-  onPlay: () => void;
   onWord: (word: Word) => void;
 }) {
-  const t = useT();
   const active = speaking ? activeWordIndex(sentence, progress) : -1;
   return (
     <article
-      className={`rounded-2xl px-2 py-1 text-center transition-opacity duration-300 motion-reduce:transition-none ${
+      className={`px-6 text-center transition-opacity duration-300 motion-reduce:transition-none ${
         dimmed ? "opacity-45" : "opacity-100"
       }`}
     >
-      <div className="flex min-h-[3.5rem] flex-wrap items-end justify-center gap-x-1 gap-y-1">
+      <div className="flex min-h-[2.75rem] flex-wrap items-end justify-center gap-x-1">
         {sentence.words.length > 0
           ? sentence.words.map((w, i) => (
               <button
                 key={`${w.hanzi}-${i}`}
                 onClick={() => onWord(w)}
-                className={`press rounded-xl px-1 py-0.5 text-left transition-colors duration-150 motion-reduce:transition-none hover:bg-secondary ${
-                  i === active ? "bg-gold/25 ring-1 ring-gold/60" : ""
-                }`}
+                className="press rounded-lg px-0.5 text-left"
               >
                 <span
                   className={`block text-[10px] ${i === active ? "text-gold" : "text-primary"}`}
@@ -487,8 +518,8 @@ function SentenceCard({
                   {w.pinyin}
                 </span>
                 <span
-                  className={`han block origin-bottom text-2xl font-bold leading-tight transition-transform duration-200 motion-reduce:transform-none motion-reduce:transition-none ${
-                    i === active ? "scale-[1.35] text-gold" : "text-sand"
+                  className={`han block origin-bottom text-xl font-bold leading-tight transition-transform duration-200 motion-reduce:transform-none motion-reduce:transition-none ${
+                    i === active ? "scale-[1.4] text-gold" : "text-sand"
                   }`}
                 >
                   {w.hanzi}
@@ -498,18 +529,12 @@ function SentenceCard({
           : (
               <div>
                 <span className="block text-[10px] text-primary">{sentence.pinyin}</span>
-                <span className="han block text-2xl font-bold text-sand">{sentence.hanzi}</span>
+                <span className="han block text-xl font-bold text-sand">{sentence.hanzi}</span>
               </div>
             )}
       </div>
-      <p className="mt-1 text-sm text-muted-foreground">{sentence.native}</p>
-      <button
-        onClick={onPlay}
-        aria-label={t("Hear this line", "ฟังประโยคนี้")}
-        className="press mt-1 inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-xs font-bold text-secondary-foreground"
-      >
-        <Play className="h-3.5 w-3.5" /> {t("Hear this line", "ฟังประโยคนี้")}
-      </button>
+      <p className="mt-0.5 text-xs text-muted-foreground">{sentence.native}</p>
     </article>
   );
 }
+
