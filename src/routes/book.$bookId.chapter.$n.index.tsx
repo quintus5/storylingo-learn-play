@@ -308,82 +308,114 @@ function Reader() {
 
       {/* Reading strip — sentences slide sideways, never covering the art */}
       <section className="glass-subtitle absolute inset-x-2 bottom-3 z-10 flex flex-col overflow-hidden rounded-[1.75rem] border border-border/40 sm:inset-x-6">
-        <div
-          ref={trackRef}
-          onScroll={onTrackScroll}
-          className="flex snap-x snap-mandatory gap-3 overflow-x-auto overflow-y-hidden px-3 pt-3 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        >
-          {current.sentences.map((sentence, i) => (
-            <div
-              key={`${page}-${i}`}
-              className={`w-[88%] shrink-0 snap-center ${
-                dir > 0
-                  ? "animate-[page-in-next_.4s_cubic-bezier(.22,.8,.3,1)_both]"
-                  : "animate-[page-in-prev_.4s_cubic-bezier(.22,.8,.3,1)_both]"
-              }`}
-            >
-              <SentenceCard
-                sentence={sentence}
-                speaking={speaking === sentence.hanzi}
-                progress={speaking === sentence.hanzi ? progress : -1}
-                dimmed={i !== active}
-                onPlay={() => {
-                  setActive(i);
-                  scrollToSentence(i);
-                  void speak(sentence.hanzi);
-                }}
-                onWord={setWord}
-              />
-            </div>
-          ))}
-        </div>
-
-        {current.sentences.length > 1 && (
-          <div className="flex shrink-0 items-center justify-center gap-1.5 pb-1">
-            {current.sentences.map((_, i) => (
-              <span
-                key={i}
-                className={`h-1.5 rounded-full transition-all duration-200 motion-reduce:transition-none ${
-                  i === active ? "w-4 bg-gold" : "w-1.5 bg-muted-foreground/40"
+        <div className="relative">
+          <div
+            ref={trackRef}
+            onScroll={onTrackScroll}
+            className="flex snap-x snap-mandatory gap-3 overflow-x-auto overflow-y-hidden px-[6%] pb-1 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {current.sentences.map((sentence, i) => (
+              <div
+                key={`${page}-${i}`}
+                className={`w-[88%] shrink-0 snap-center ${
+                  dir > 0
+                    ? "animate-[page-in-next_.4s_cubic-bezier(.22,.8,.3,1)_both]"
+                    : "animate-[page-in-prev_.4s_cubic-bezier(.22,.8,.3,1)_both]"
                 }`}
-              />
+              >
+                <SentenceCard
+                  sentence={sentence}
+                  speaking={speaking === sentence.hanzi}
+                  progress={speaking === sentence.hanzi ? progress : -1}
+                  dimmed={i !== active}
+                  onWord={setWord}
+                />
+              </div>
             ))}
           </div>
-        )}
 
-        <nav className="mx-auto flex w-full max-w-5xl shrink-0 items-center justify-between gap-2 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1">
+          {current.sentences.length > 1 && (
+            <>
+              <SentenceArrow
+                side="left"
+                hidden={active === 0}
+                label={t("Previous sentence", "ประโยคก่อนหน้า")}
+                onClick={() => goSentence(-1)}
+              />
+              <SentenceArrow
+                side="right"
+                hidden={active >= current.sentences.length - 1}
+                label={t("Next sentence", "ประโยคถัดไป")}
+                onClick={() => goSentence(1)}
+              />
+            </>
+          )}
+        </div>
+
+        <nav className="flex shrink-0 items-center justify-end gap-2 px-3 pb-[max(0.4rem,env(safe-area-inset-bottom))] pt-0.5">
+          <button
+            onClick={() => void speak(current.sentences[active]?.hanzi ?? "")}
+            className="press inline-flex items-center gap-1.5 rounded-full bg-secondary px-2.5 py-1 text-[11px] font-bold text-secondary-foreground"
+          >
+            <Play className="h-3 w-3" /> {t("Hear this line", "ฟังประโยคนี้")}
+          </button>
+
+          {current.sentences.length > 1 && (
+            <div className="flex items-center gap-1">
+              {current.sentences.map((_, i) => (
+                <span
+                  key={i}
+                  className={`h-1.5 rounded-full transition-all duration-200 motion-reduce:transition-none ${
+                    i === active ? "w-4 bg-gold" : "w-1.5 bg-muted-foreground/40"
+                  }`}
+                />
+              ))}
+            </div>
+          )}
+
           <button
             onClick={() => go(-1)}
             disabled={page === 0}
             aria-label={t("Previous page", "หน้าก่อนหน้า")}
-            className="press inline-flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-secondary-foreground disabled:opacity-40"
+            className="press group inline-flex h-8 items-center gap-1 rounded-full bg-secondary px-2 text-secondary-foreground transition-all duration-200 hover:pr-3 disabled:opacity-40 motion-reduce:transition-none"
           >
-            <ChevronLeft className="h-5 w-5" />
+            <ChevronLeft className="h-4 w-4 shrink-0" />
+            <span className="max-w-0 overflow-hidden whitespace-nowrap text-[11px] font-bold opacity-0 transition-all duration-200 group-hover:max-w-[7rem] group-hover:opacity-100 group-focus-visible:max-w-[7rem] group-focus-visible:opacity-100 motion-reduce:transition-none">
+              {t("Previous page", "หน้าก่อนหน้า")}
+            </span>
           </button>
-          <p className="text-[11px] text-muted-foreground">
-            {t(`Page ${page + 1} of ${pages.length}`, `หน้า ${page + 1} จาก ${pages.length}`)}
-          </p>
+
           {isLast ? (
             <Link
               to="/book/$bookId/chapter/$n/quiz"
               params={{ bookId, n }}
               onClick={() => stopAudio()}
               aria-label={t("Go to the quiz", "ไปที่แบบทดสอบ")}
-              className="press inline-flex h-9 items-center gap-1 rounded-full bg-primary px-3 text-sm font-bold text-primary-foreground"
+              className="press inline-flex h-8 items-center gap-1 rounded-full bg-primary px-3 text-[11px] font-bold text-primary-foreground"
             >
               {t("Quiz", "แบบทดสอบ")} <ChevronRight className="h-4 w-4" />
             </Link>
           ) : (
             <button
               onClick={() => go(1)}
-              aria-label={t("Next page", "หน้าถัดไป")}
-              className="press inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground"
+              aria-label={t(
+                `Next page. Page ${page + 1} of ${pages.length}`,
+                `หน้าถัดไป หน้า ${page + 1} จาก ${pages.length}`,
+              )}
+              className="press group inline-flex h-8 items-center gap-1 rounded-full bg-primary px-2 text-primary-foreground transition-all duration-200 hover:pl-3 motion-reduce:transition-none"
             >
-              <ChevronRight className="h-5 w-5" />
+              <span className="max-w-0 overflow-hidden whitespace-nowrap text-[11px] font-bold opacity-0 transition-all duration-200 group-hover:max-w-[9rem] group-hover:opacity-100 group-focus-visible:max-w-[9rem] group-focus-visible:opacity-100 motion-reduce:transition-none">
+                {t(
+                  `Next page · ${page + 1}/${pages.length}`,
+                  `หน้าถัดไป · ${page + 1}/${pages.length}`,
+                )}
+              </span>
+              <ChevronRight className="h-4 w-4 shrink-0" />
             </button>
           )}
         </nav>
       </section>
+
 
       {word && <WordPopup word={word} onClose={() => setWord(null)} />}
     </div>
