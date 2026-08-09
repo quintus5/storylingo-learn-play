@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import type { CharacterLook } from "./character";
 import { PRICES, REWARDS, STARTER_COINS, STREAK_BONUS } from "./economy";
+import { syllableTone } from "./pinyin";
 
-const KEY = "storylingo.progress.v1";
+const KEY = "storylingo.progress.v2";
+const LEGACY_KEY = "storylingo.progress.v1";
 
 export type BookProgress = {
   /** chapter idx -> stars earned (1-3) */
@@ -10,6 +12,19 @@ export type BookProgress = {
   /** chapter idx -> true once the reader reached the last page */
   read: Record<number, boolean>;
 };
+
+/** Practice counters for one tone bucket (0 = neutral, 1-4 = tones). */
+export type ToneStat = { attempts: number; correct: number };
+
+/** What we remember about a single word's practice history. */
+export type WordLogEntry = {
+  /** ISO days on which the word was answered correctly (deduped, max 8). */
+  correctDays: string[];
+  /** Last ISO day the word was seen at all. */
+  lastSeen: string;
+};
+
+export type AnswerKind = "match" | "listen" | "translate" | "read";
 
 export type Progress = {
   books: Record<string, BookProgress>;
@@ -29,6 +44,14 @@ export type Progress = {
   /** "bookId:chapterIdx" keys unlocked with coins instead of stars. */
   bought: Record<string, boolean>;
   character: CharacterLook | null;
+  /** Tone bucket ("0".."4") -> practice counters. */
+  toneStats: Record<string, ToneStat>;
+  /** Recent listening-round results, newest last, capped at 40. */
+  listenLog: number[];
+  /** hanzi -> practice history, for "words learned" and review reminders. */
+  wordLog: Record<string, WordLogEntry>;
+  /** ISO days the child practised, newest last, capped at 30. */
+  activeDays: string[];
 };
 
 const EMPTY: Progress = {
@@ -38,12 +61,18 @@ const EMPTY: Progress = {
   wordsMastered: [],
   lastDay: null,
   streak: 0,
-  coins: 2000,
+  // Same value a brand new reader really starts with, so the number shown
+  // before storage loads matches the number shown after.
+  coins: STARTER_COINS,
   earned: 0,
   owned: [],
   awarded: {},
   bought: {},
   character: null,
+  toneStats: {},
+  listenLog: [],
+  wordLog: {},
+  activeDays: [],
 };
 
 function today() {
@@ -53,7 +82,7 @@ function today() {
 function read(): Progress {
   if (typeof localStorage === "undefined") return EMPTY;
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(KEY) ?? localStorage.getItem(LEGACY_KEY);
     // A brand new reader gets a starter purse so they can make a first book.
     if (!raw) return { ...EMPTY, coins: STARTER_COINS, earned: STARTER_COINS };
     return { ...EMPTY, ...(JSON.parse(raw) as Progress) };
