@@ -472,7 +472,7 @@ function SentenceArrow({
       aria-label={label}
       tabIndex={hidden ? -1 : 0}
       className={`absolute top-1/2 z-10 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-border/30 bg-background/25 text-foreground/70 backdrop-blur-sm transition-all duration-200 hover:bg-background/50 hover:text-foreground active:scale-90 motion-reduce:transition-none ${
-        side === "left" ? "left-0.5" : "right-0.5"
+        side === "left" ? "left-1 sm:-left-12" : "right-1 sm:-right-12"
       } ${
         hidden
           ? "pointer-events-none opacity-0"
