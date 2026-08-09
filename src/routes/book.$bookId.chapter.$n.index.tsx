@@ -26,7 +26,7 @@ import { moodFor, setMusicDucked, startMusic, stopMusic } from "@/lib/music";
 import { useSpeakingProgress, useSpeakingText } from "@/hooks/use-speaking";
 import { useVoice } from "@/hooks/use-voice";
 import type { Sentence, Word } from "@/lib/types";
-import { useT } from "@/lib/i18n";
+import { useLocalText, useT } from "@/lib/i18n";
 import { normalizePinyin } from "@/lib/pinyin";
 
 export const Route = createFileRoute("/book/$bookId/chapter/$n/")({
@@ -68,6 +68,7 @@ function prefersReducedMotion() {
 
 function Reader() {
   const t = useT();
+  const local = useLocalText();
   const { bookId, n } = Route.useParams();
   const idx = Number(n);
   const { data } = useSuspenseQuery(bookQuery(bookId));
@@ -250,7 +251,7 @@ function Reader() {
           <ChevronLeft className="h-5 w-5" />
         </Link>
         <p className="glass-pill pointer-events-none min-w-0 flex-1 truncate rounded-full border border-border/40 px-4 py-2 text-sm font-bold text-foreground">
-          {t("Ch.", "บทที่")} {idx} · {chapter.title}
+          {t("Ch.", "บทที่")} {idx} · {local(chapter.title, chapter.title_th)}
         </p>
         <div className="pointer-events-auto flex shrink-0 items-center gap-2">
           <div className="relative">
