@@ -42,7 +42,9 @@ export const createBook = createServerFn({ method: "POST" })
       .from("books")
       .insert({
         title: outline.title || data.title,
+        title_th: outline.title_th ?? null,
         blurb: outline.blurb ?? null,
+        blurb_th: outline.blurb_th ?? null,
         source_url: data.url,
         chapter_count: chapters.length,
         art_style: data.artStyle ?? DEFAULT_ART_STYLE,
@@ -57,6 +59,7 @@ export const createBook = createServerFn({ method: "POST" })
       book_id: book.id,
       idx: i + 1,
       title: c.title || `Chapter ${i + 1}`,
+      title_th: c.title_th ?? null,
       // Key beats are kept with the chapter so regeneration stays faithful.
       summary: [
         c.summary,
