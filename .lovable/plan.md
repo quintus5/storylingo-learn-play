@@ -13,9 +13,13 @@
 ## 2. Narrator voices
 
 - Replace the emoji toggle with a clearly labelled "Voice" button showing the current name.
-- Tapping it opens a small dropdown with four choices: Wang, Kenshi, Hong, Lee.
-- Voice ids are left as clearly marked placeholders for you to fill in later; until an id is set, that voice falls back to the current working narrator so nothing breaks.
-- Switching voice stops any clip playing and the selection is remembered on the device.
+- Tapping it opens a small dropdown with four choices, each wired to its real voice id:
+  - Wang — `59cb5986671546eaa6ca8ae6f29f6d22`
+  - Kenshi — `5a88883c20a84f378db686ac6b0bba79`
+  - Hong — `5fc69411fe274f149bce4e743534ffa4`
+  - Lee — `626bb6d3f3364c9cbc3aa6a67300a664`
+- Wang becomes the default narrator; the old male/female setting is migrated to it so no one lands on a missing voice.
+- Switching voice stops any clip playing and the selection is remembered on the device. Each voice caches its own clips, so switching back is instant.
 
 ## 3. Hidden developer delete
 
