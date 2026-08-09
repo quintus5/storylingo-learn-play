@@ -104,7 +104,10 @@ const listeners = new Set<(p: Progress) => void>();
 
 function touchStreak(p: Progress): Progress {
   const day = today();
-  if (p.lastDay === day) return p;
+  const activeDays = p.activeDays.includes(day)
+    ? p.activeDays
+    : [...p.activeDays, day].slice(-30);
+  if (p.lastDay === day) return activeDays === p.activeDays ? p : { ...p, activeDays };
   const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
   const streak = p.lastDay === yesterday ? p.streak + 1 : 1;
   // Coming back on a new day always pays a small bonus.
@@ -112,6 +115,7 @@ function touchStreak(p: Progress): Progress {
     ...p,
     lastDay: day,
     streak,
+    activeDays,
     coins: p.coins + STREAK_BONUS,
     earned: p.earned + STREAK_BONUS,
   };
@@ -129,17 +133,28 @@ function give(p: Progress, amount: number, key?: string): Progress {
   };
 }
 
+/** Tone bucket of a word: the tone of its first syllable ("0".."4"). */
+function toneBucket(pinyin: string): string {
+  const first = pinyin.trim().split(/[\s'·-]+/)[0] ?? "";
+  return String(syllableTone(first));
+}
+
 export function useProgress() {
   const [progress, setProgress] = useState<Progress>(EMPTY);
+  // False until the device's saved purse/progress is in hand, so the UI can
+  // stay quiet instead of flashing a placeholder balance.
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     setProgress(read());
+    setLoaded(true);
     const listener = (p: Progress) => setProgress(p);
     listeners.add(listener);
     return () => {
       listeners.delete(listener);
     };
   }, []);
+
 
   const update = useCallback((fn: (p: Progress) => Progress) => {
     write(touchStreak(fn(read())));
