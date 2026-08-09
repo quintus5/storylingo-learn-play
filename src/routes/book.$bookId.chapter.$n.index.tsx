@@ -506,11 +506,11 @@ function SentenceCard({
   const active = speaking ? activeWordIndex(sentence, progress) : -1;
   return (
     <article
-      className={`px-6 text-center transition-opacity duration-300 motion-reduce:transition-none ${
+      className={`flex h-full flex-col justify-center px-5 py-3 text-center transition-opacity duration-300 motion-reduce:transition-none ${
         dimmed ? "opacity-45" : "opacity-100"
       }`}
     >
-      <div className="flex min-h-[2.75rem] flex-wrap items-end justify-center gap-x-1">
+      <div className="flex flex-wrap items-end justify-center gap-x-1">
         {sentence.words.length > 0
           ? sentence.words.map((w, i) => (
               <button
@@ -519,12 +519,12 @@ function SentenceCard({
                 className="press rounded-lg px-0.5 text-left"
               >
                 <span
-                  className={`block text-[10px] ${i === active ? "text-gold" : "text-primary"}`}
+                  className={`block text-xs ${i === active ? "text-gold" : "text-primary"}`}
                 >
                   {w.pinyin}
                 </span>
                 <span
-                  className={`han block origin-bottom text-xl font-bold leading-tight transition-transform duration-200 motion-reduce:transform-none motion-reduce:transition-none ${
+                  className={`han block origin-bottom text-2xl font-bold leading-tight transition-transform duration-200 motion-reduce:transform-none motion-reduce:transition-none ${
                     i === active ? "scale-[1.4] text-gold" : "text-sand"
                   }`}
                 >
@@ -534,13 +534,14 @@ function SentenceCard({
             ))
           : (
               <div>
-                <span className="block text-[10px] text-primary">{sentence.pinyin}</span>
-                <span className="han block text-xl font-bold text-sand">{sentence.hanzi}</span>
+                <span className="block text-xs text-primary">{sentence.pinyin}</span>
+                <span className="han block text-2xl font-bold text-sand">{sentence.hanzi}</span>
               </div>
             )}
       </div>
-      <p className="mt-0.5 text-xs text-muted-foreground">{sentence.native}</p>
+      <p className="mt-1 text-sm text-muted-foreground">{sentence.native}</p>
     </article>
+
   );
 }
 
