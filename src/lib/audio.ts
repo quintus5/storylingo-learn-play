@@ -132,7 +132,7 @@ export function onVoiceChange(listener: (v: VoiceId) => void): () => void {
 }
 
 /** Bump when the TTS backend or voices change, so stale clips are ignored. */
-const CACHE_VERSION = "v6";
+const CACHE_VERSION = "v7";
 
 function cacheKey(text: string, slow: boolean) {
   return `${CACHE_VERSION}:fish-${VOICE_IDS[voice]}:${slow ? "slow" : "normal"}:${text}`;
