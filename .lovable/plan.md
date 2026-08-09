@@ -9,7 +9,8 @@ The bottom area becomes one row instead of a stacked panel:
 [ • • • ]                                            page arrows
 ```
 
-- The glass box shrinks to fit the sentence only: no fixed tall panel, height driven by the text, narrower width (roughly 60-70% of the screen, centred), sitting at the very bottom.
+- The glass box shrinks to fit the sentence only: no fixed or minimum height, no leftover empty space above or below the three lines — the box hugs the tallest sentence on the page with even, tight padding, so it never looks like a half-empty rectangle. Narrower width too (roughly 60-70% of the screen, centred), sitting at the very bottom.
+- Height stays steady while swiping between sentences on a page (sized to the tallest card), so the box doesn't jump as lines change length.
 - "Hear this line" moves out of the box to the bottom-left, with the sentence dots directly beside it.
 - Page arrows move out of the box to the bottom-right, transparent (no pill background), still expanding on hover to show "Next page · 1/3"; the Quiz link keeps its filled style on the last page.
 - Left/right sentence chevrons pull inward off the very edge so they have breathing room beside the box.
@@ -24,6 +25,7 @@ The bottom area becomes one row instead of a stacked panel:
 ## Technical notes
 
 - `src/routes/book.$bookId.chapter.$n.index.tsx`: restructure the bottom `<section>` from a glass panel wrapping everything into a bottom bar (`absolute inset-x-0 bottom-0 flex items-end justify-between`). Only the sentence track keeps the `glass-subtitle` surface, sized `w-[min(38rem,68%)] mx-auto`, height auto. Hear button + dots become a left cluster, page nav a right cluster with `bg-transparent`. `SentenceArrow` offsets change from `left-0.5/right-0.5` to a negative outside offset with side margin.
+- Box height: drop any `min-h`/`h-*` and vertical-centring spacers on the panel and cards; the track uses `items-stretch` with cards `h-auto`, and padding is a single tight `py-3`. Since flex track children stretch to the tallest card, the box height stays constant across sentences without a hardcoded value.
 - Text sizes in `SentenceCard` bumped one Tailwind step each.
 - `src/routes/api/tts.ts`: lower the `speed`/`prosody.speed` values for both the Fish and OpenAI paths.
 - `src/lib/audio.ts`: `speakSequence` awaits a cancellable ~700ms delay between clips; bump `CACHE_VERSION` to `v7` so old faster clips are dropped.
