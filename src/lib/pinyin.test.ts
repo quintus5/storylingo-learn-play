@@ -69,3 +69,22 @@ describe("applySandhi", () => {
     expect(applySandhi("好不", "hǎo bù")).toBe("hǎo bù");
   });
 });
+
+describe("normalizePinyin", () => {
+  it("splits clumped syllables so both screens agree", () => {
+    expect(normalizePinyin("bǎojiàn")).toBe("bǎo jiàn");
+    expect(normalizePinyin("bǎo  jiàn")).toBe("bǎo jiàn");
+  });
+
+  it("drops apostrophes and hyphens", () => {
+    expect(normalizePinyin("xī'ān")).toBe("xī ān");
+  });
+
+  it("applies sandhi when hanzi is given", () => {
+    expect(normalizePinyin("bùduì", "不对")).toBe("bú duì");
+  });
+
+  it("leaves an unknown chunk alone rather than mangling it", () => {
+    expect(normalizePinyin("hmm")).toBe("hmm");
+  });
+});
