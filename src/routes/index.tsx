@@ -201,7 +201,9 @@ function Bookshelf() {
                   </p>
                 </div>
               </Link>
+              </div>
             );
+
           })}
         </div>
       )}
