@@ -289,15 +289,72 @@ export function useProgress() {
 
   return {
     progress,
+    loaded,
     markRead,
     awardStars,
     seeWords,
+    recordAnswer,
     missWord,
     masterWord,
     spend,
     buyItem,
     buyChapter,
     saveCharacter,
+  };
+}
+
+/** Learning summary derived from the stored counters, for the progress page. */
+export type LearningStats = {
+  learned: number;
+  meeting: number;
+  dueForReview: number;
+  listenAccuracy: number | null;
+  listenTrend: number;
+  listenCount: number;
+  activeLast7: number;
+  tones: { tone: string; attempts: number; correct: number; rate: number | null }[];
+};
+
+const DAY = 86400000;
+
+export function learningStats(p: Progress): LearningStats {
+  const entries = Object.entries(p.wordLog);
+  // Two correct answers on different days is our bar for "learned".
+  const learnedWords = entries.filter(([, e]) => e.correctDays.length >= 2);
+  const now = Date.now();
+  const dueForReview = learnedWords.filter(
+    ([, e]) => now - new Date(`${e.lastSeen}T00:00:00Z`).getTime() >= 5 * DAY,
+  ).length;
+
+  const log = p.listenLog;
+  const recent = log.slice(-20);
+  const older = log.slice(-40, -20);
+  const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
+  const recentAvg = avg(recent);
+  const olderAvg = avg(older);
+
+  const week = new Set(
+    Array.from({ length: 7 }, (_, i) => new Date(now - i * DAY).toISOString().slice(0, 10)),
+  );
+
+  return {
+    learned: learnedWords.length,
+    meeting: entries.length - learnedWords.length,
+    dueForReview,
+    listenAccuracy: recentAvg === null ? null : Math.round(recentAvg * 100),
+    listenTrend:
+      recentAvg === null || olderAvg === null ? 0 : Math.round((recentAvg - olderAvg) * 100),
+    listenCount: recent.length,
+    activeLast7: p.activeDays.filter((d) => week.has(d)).length,
+    tones: ["1", "2", "3", "4", "0"].map((tone) => {
+      const s = p.toneStats[tone] ?? { attempts: 0, correct: 0 };
+      return {
+        tone,
+        attempts: s.attempts,
+        correct: s.correct,
+        rate: s.attempts ? Math.round((s.correct / s.attempts) * 100) : null,
+      };
+    }),
   };
 }
 
