@@ -7,6 +7,8 @@
 - Make the panel much shorter — roughly a sixth of the screen instead of two fifths. Tighter padding, smaller Thai line, and the strip sized to the sentence itself.
 - Move the small controls to the right edge of the panel on one row: "Hear this line", the sentence dots, and page position. The sentence text keeps the centre.
 - The next arrow expands on hover/focus to read "Next page" so it can't be mistaken for "next sentence". The current page ("Page 1 of 3") is folded into that arrow and appears on hover instead of taking its own line.
+- Big translucent chevrons sit on the left and right of the sentence itself for previous/next sentence — soft frosted circles that stay faint over the artwork, brighten and nudge sideways on hover, and press in with a small squeeze on tap. They fade out at the first/last sentence and are hidden when a page has only one sentence. Reduced-motion users get the brightness change without the movement.
+
 
 ## 2. Narrator voices
 
