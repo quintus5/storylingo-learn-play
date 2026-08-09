@@ -440,6 +440,13 @@ function CreatePage() {
                 `คุณต้องการเหรียญเพิ่มอีก 🪙 ${PRICES.book - progress.coins} เหรียญ อ่านบทหรือเล่นแบบทดสอบเพื่อสะสมเหรียญนะ!`,
               )}
         </p>
+        <p className="text-center text-xs text-muted-foreground">
+          {t(
+            "Coins are pretend money kept on this device. You earn them by reading and by playing the games.",
+            "เหรียญเป็นเงินสมมติที่เก็บไว้ในเครื่องนี้ ได้มาจากการอ่านและการเล่นเกม",
+          )}
+        </p>
+
 
         {log.length > 0 && (
           <ul className="space-y-1 rounded-2xl border border-border bg-card/70 p-4 text-sm">
