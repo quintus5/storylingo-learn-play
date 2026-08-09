@@ -6,7 +6,7 @@ import { getVoice, onVoiceChange, setVoice, type VoiceId } from "@/lib/audio";
  * Starts at the SSR-safe default and syncs to the stored choice after mount.
  */
 export function useVoice(): [VoiceId, (v: VoiceId) => void] {
-  const [voice, setLocal] = useState<VoiceId>("female");
+  const [voice, setLocal] = useState<VoiceId>("wang");
   useEffect(() => onVoiceChange(setLocal), []);
   return [voice, setVoice];
 }
