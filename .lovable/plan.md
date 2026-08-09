@@ -9,7 +9,8 @@ The bottom area becomes one row instead of a stacked panel:
 [ • • • ]                                            page arrows
 ```
 
-- The glass box shrinks to fit the sentence only: no fixed tall panel, height driven by the text, narrower width (roughly 60-70% of the screen, centred), sitting at the very bottom.
+- The glass box shrinks to fit the sentence only: no fixed or minimum height, no leftover empty space above or below the three lines — the box hugs the tallest sentence on the page with even, tight padding, so it never looks like a half-empty rectangle. Narrower width too (roughly 60-70% of the screen, centred), sitting at the very bottom.
+- Height stays steady while swiping between sentences on a page (sized to the tallest card), so the box doesn't jump as lines change length.
 - "Hear this line" moves out of the box to the bottom-left, with the sentence dots directly beside it.
 - Page arrows move out of the box to the bottom-right, transparent (no pill background), still expanding on hover to show "Next page · 1/3"; the Quiz link keeps its filled style on the last page.
 - Left/right sentence chevrons pull inward off the very edge so they have breathing room beside the box.
