@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applySandhi, isToneMarked, syllableTone } from "./pinyin";
+import { applySandhi, isToneMarked, normalizePinyin, syllableTone } from "./pinyin";
 
 describe("isToneMarked", () => {
   it("accepts tone-marked pinyin", () => {
