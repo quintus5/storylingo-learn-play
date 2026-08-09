@@ -160,12 +160,23 @@ function Bookshelf() {
           {books.map((book) => {
             const stars = Object.values(progress.books[book.id]?.stars ?? {}).length;
             return (
+              <div key={book.id} className="relative">
+              {dev && (
+                <button
+                  onClick={() => void removeBook(book.id, book.title)}
+                  disabled={removing === book.id}
+                  aria-label={`Delete ${book.title}`}
+                  className="press absolute -right-2 -top-2 z-10 grid h-8 w-8 place-items-center rounded-full bg-destructive text-destructive-foreground shadow-lg disabled:opacity-50"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
               <Link
-                key={book.id}
                 to="/book/$bookId"
                 params={{ bookId: book.id }}
-                className="press group overflow-hidden rounded-3xl border border-border bg-card shadow-[0_18px_40px_-18px_oklch(0_0_0/0.75)]"
+                className="press group block overflow-hidden rounded-3xl border border-border bg-card shadow-[0_18px_40px_-18px_oklch(0_0_0/0.75)]"
               >
+
                 <div className="aspect-[3/4] w-full overflow-hidden bg-secondary">
                   {book.cover_url ? (
                     <img
