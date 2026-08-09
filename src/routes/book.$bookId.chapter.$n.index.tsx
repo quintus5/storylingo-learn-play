@@ -349,7 +349,7 @@ function Reader() {
               onClick={() => go(-1)}
               disabled={page === 0}
               aria-label={t("Previous page", "หน้าก่อนหน้า")}
-              className="press group inline-flex h-9 items-center gap-1 rounded-full px-1.5 text-foreground/70 transition-all duration-200 hover:text-foreground disabled:opacity-30 motion-reduce:transition-none"
+              className="press group inline-flex h-9 items-center gap-1 rounded-full border border-border/30 bg-secondary/70 px-2.5 text-secondary-foreground backdrop-blur-sm transition-all duration-200 hover:bg-secondary disabled:opacity-30 motion-reduce:transition-none"
             >
               <ChevronLeft className="h-5 w-5 shrink-0" />
               <span className="max-w-0 overflow-hidden whitespace-nowrap text-[11px] font-bold opacity-0 transition-all duration-200 group-hover:max-w-[7rem] group-hover:opacity-100 group-focus-visible:max-w-[7rem] group-focus-visible:opacity-100 motion-reduce:transition-none">
@@ -374,7 +374,7 @@ function Reader() {
                   `Next page. Page ${page + 1} of ${pages.length}`,
                   `หน้าถัดไป หน้า ${page + 1} จาก ${pages.length}`,
                 )}
-                className="press group inline-flex h-9 items-center gap-1 rounded-full px-1.5 text-foreground/80 transition-all duration-200 hover:text-foreground motion-reduce:transition-none"
+                className="press group inline-flex h-9 items-center gap-1 rounded-full border border-primary/40 bg-primary/80 px-2.5 text-primary-foreground backdrop-blur-sm transition-all duration-200 hover:bg-primary motion-reduce:transition-none"
               >
                 <span className="max-w-0 overflow-hidden whitespace-nowrap text-[11px] font-bold opacity-0 transition-all duration-200 group-hover:max-w-[9rem] group-hover:opacity-100 group-focus-visible:max-w-[9rem] group-focus-visible:opacity-100 motion-reduce:transition-none">
                   {t(
@@ -473,14 +473,14 @@ function SentenceArrow({
       onClick={onClick}
       aria-label={label}
       tabIndex={hidden ? -1 : 0}
-      className={`absolute top-1/2 z-10 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-border/30 bg-background/25 text-foreground/70 backdrop-blur-sm transition-all duration-200 hover:bg-background/50 hover:text-foreground active:scale-90 motion-reduce:transition-none ${
+      className={`absolute top-1/2 z-10 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-border/40 bg-background/45 text-foreground/80 backdrop-blur-sm transition-all duration-200 hover:bg-background/70 hover:text-foreground active:scale-90 motion-reduce:transition-none ${
         side === "left" ? "left-1 sm:-left-12" : "right-1 sm:-right-12"
       } ${
         hidden
           ? "pointer-events-none opacity-0"
           : side === "left"
-            ? "opacity-45 hover:-translate-x-0.5 motion-reduce:hover:translate-x-0"
-            : "opacity-45 hover:translate-x-0.5 motion-reduce:hover:translate-x-0"
+            ? "opacity-80 hover:-translate-x-0.5 motion-reduce:hover:translate-x-0"
+            : "opacity-80 hover:translate-x-0.5 motion-reduce:hover:translate-x-0"
       }`}
     >
       {side === "left" ? (
