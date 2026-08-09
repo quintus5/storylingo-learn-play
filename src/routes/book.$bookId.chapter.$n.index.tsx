@@ -473,14 +473,14 @@ function SentenceArrow({
       onClick={onClick}
       aria-label={label}
       tabIndex={hidden ? -1 : 0}
-      className={`absolute top-1/2 z-10 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-border/30 bg-background/25 text-foreground/70 backdrop-blur-sm transition-all duration-200 hover:bg-background/50 hover:text-foreground active:scale-90 motion-reduce:transition-none ${
+      className={`absolute top-1/2 z-10 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-border/40 bg-background/45 text-foreground/80 backdrop-blur-sm transition-all duration-200 hover:bg-background/70 hover:text-foreground active:scale-90 motion-reduce:transition-none ${
         side === "left" ? "left-1 sm:-left-12" : "right-1 sm:-right-12"
       } ${
         hidden
           ? "pointer-events-none opacity-0"
           : side === "left"
-            ? "opacity-45 hover:-translate-x-0.5 motion-reduce:hover:translate-x-0"
-            : "opacity-45 hover:translate-x-0.5 motion-reduce:hover:translate-x-0"
+            ? "opacity-80 hover:-translate-x-0.5 motion-reduce:hover:translate-x-0"
+            : "opacity-80 hover:translate-x-0.5 motion-reduce:hover:translate-x-0"
       }`}
     >
       {side === "left" ? (
