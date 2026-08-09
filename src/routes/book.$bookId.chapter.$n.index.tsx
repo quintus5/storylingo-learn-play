@@ -233,18 +233,46 @@ function Reader() {
           {t("Ch.", "บทที่")} {idx} · {chapter.title}
         </p>
         <div className="pointer-events-auto flex shrink-0 items-center gap-2">
-          <button
-            onClick={() => {
-              chooseVoice(voice === "female" ? "male" : "female");
-              stopAudio();
-              setPlaying(false);
-            }}
-            aria-label={voice === "female" ? t("Narrator: female. Tap to switch.", "เสียงผู้บรรยาย: หญิง แตะเพื่อเปลี่ยน") : t("Narrator: male. Tap to switch.", "เสียงผู้บรรยาย: ชาย แตะเพื่อเปลี่ยน")}
-            title={t("Switch narrator", "เปลี่ยนเสียงผู้บรรยาย")}
-            className="press glass-pill inline-flex h-10 items-center gap-2 rounded-full border border-border/50 px-3 text-sm font-bold text-foreground"
-          >
-            <span aria-hidden>{voice === "female" ? "👩" : "👨"}</span>
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setVoiceOpen((v) => !v)}
+              aria-haspopup="menu"
+              aria-expanded={voiceOpen}
+              aria-label={t("Choose the narrator voice", "เลือกเสียงผู้บรรยาย")}
+              className="press glass-pill inline-flex h-10 items-center gap-1.5 rounded-full border border-border/50 px-3 text-sm font-bold text-foreground"
+            >
+              <span className="hidden text-muted-foreground sm:inline">{t("Voice", "เสียง")}</span>
+              <span>{VOICE_NAMES[voice]}</span>
+              <ChevronDown className="h-3.5 w-3.5" />
+            </button>
+            {voiceOpen && (
+              <div
+                role="menu"
+                className="glass-subtitle absolute right-0 top-12 z-30 w-36 overflow-hidden rounded-2xl border border-border/50 p-1 animate-[fade-in_.15s_ease-out]"
+              >
+                {VOICE_LIST.map((id) => (
+                  <button
+                    key={id}
+                    role="menuitemradio"
+                    aria-checked={voice === id}
+                    onClick={() => {
+                      chooseVoice(id);
+                      stopAudio();
+                      setPlaying(false);
+                      setVoiceOpen(false);
+                    }}
+                    className={`block w-full rounded-xl px-3 py-2 text-left text-sm font-bold transition-colors ${
+                      voice === id
+                        ? "bg-primary text-primary-foreground"
+                        : "text-foreground hover:bg-secondary"
+                    }`}
+                  >
+                    {VOICE_NAMES[id]}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <button
             onClick={() => {
               if (music) {
