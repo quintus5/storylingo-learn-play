@@ -3,6 +3,7 @@ import { X, Volume2 } from "lucide-react";
 import type { Word } from "@/lib/types";
 import { speak, stopAudio } from "@/lib/audio";
 import { useT } from "@/lib/i18n";
+import { normalizePinyin } from "@/lib/pinyin";
 
 export function WordPopup({ word, onClose }: { word: Word; onClose: () => void }) {
   const panelRef = useRef<HTMLDivElement>(null);
@@ -68,7 +69,7 @@ export function WordPopup({ word, onClose }: { word: Word; onClose: () => void }
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="han text-5xl font-bold leading-tight text-sand">{word.hanzi}</p>
-            <p className="mt-1 text-lg font-semibold text-primary">{word.pinyin}</p>
+            <p className="mt-1 text-lg font-semibold text-primary">{normalizePinyin(word.pinyin, word.hanzi)}</p>
           </div>
           <button
             ref={closeRef}

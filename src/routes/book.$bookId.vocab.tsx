@@ -6,6 +6,7 @@ import { bookQuery } from "@/lib/books";
 import { useProgress } from "@/lib/progress";
 import { speak } from "@/lib/audio";
 import { useT } from "@/lib/i18n";
+import { normalizePinyin } from "@/lib/pinyin";
 
 export const Route = createFileRoute("/book/$bookId/vocab")({
   loader: ({ context, params }) => context.queryClient.ensureQueryData(bookQuery(params.bookId)),
@@ -61,7 +62,7 @@ function VocabPage() {
                     >
                       <div className="min-w-0">
                         <p className="han text-2xl font-bold text-sand">{word.hanzi}</p>
-                        <p className="text-xs text-primary">{word.pinyin}</p>
+                        <p className="text-xs text-primary">{normalizePinyin(word.pinyin, word.hanzi)}</p>
                         <p className="truncate text-sm text-muted-foreground">{word.dict}</p>
                       </div>
                       <div className="flex shrink-0 items-center gap-2">

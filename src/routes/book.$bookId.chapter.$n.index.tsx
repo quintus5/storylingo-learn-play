@@ -27,6 +27,7 @@ import { useSpeakingProgress, useSpeakingText } from "@/hooks/use-speaking";
 import { useVoice } from "@/hooks/use-voice";
 import type { Sentence, Word } from "@/lib/types";
 import { useT } from "@/lib/i18n";
+import { normalizePinyin } from "@/lib/pinyin";
 
 export const Route = createFileRoute("/book/$bookId/chapter/$n/")({
   loader: ({ context, params }) => context.queryClient.ensureQueryData(bookQuery(params.bookId)),
@@ -521,7 +522,7 @@ function SentenceCard({
                 <span
                   className={`block text-xs ${i === active ? "text-gold" : "text-primary"}`}
                 >
-                  {w.pinyin}
+                  {normalizePinyin(w.pinyin, w.hanzi)}
                 </span>
                 <span
                   className={`han block origin-bottom text-2xl font-bold leading-tight transition-transform duration-200 motion-reduce:transform-none motion-reduce:transition-none ${
@@ -534,7 +535,7 @@ function SentenceCard({
             ))
           : (
               <div>
-                <span className="block text-xs text-primary">{sentence.pinyin}</span>
+                <span className="block text-xs text-primary">{normalizePinyin(sentence.pinyin, sentence.hanzi)}</span>
                 <span className="han block text-2xl font-bold text-sand">{sentence.hanzi}</span>
               </div>
             )}
