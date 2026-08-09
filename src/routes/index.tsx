@@ -53,9 +53,10 @@ function Bookshelf() {
   const queryClient = useQueryClient();
   const [removing, setRemoving] = useState<string | null>(null);
   const t = useT();
+  const local = useLocalText();
 
   async function removeBook(bookId: string, title: string) {
-    if (!window.confirm(`Delete "${title}"? This cannot be undone.`)) return;
+    if (!window.confirm(t(`Delete "${title}"? This cannot be undone.`, `ลบ "${title}" ใช่ไหม ลบแล้วกู้คืนไม่ได้`))) return;
     setRemoving(bookId);
     try {
       await deleteBook({ data: { bookId } });
