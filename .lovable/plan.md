@@ -1,44 +1,28 @@
-# Real learning progress, one honest coin balance, consistent vocabulary
+# Thai-first child experience
 
-## 1. Coins that never disagree
+Right now the app chrome is bilingual, but the story content itself is not: book titles, blurbs and chapter titles are only ever saved in English, so a Thai child on a Thai interface still reads "How the Tiger Got His Stripes". The Thai versions are generated during the preview step and then thrown away. A few navigation and system strings are also still English-only.
 
-Two confirmed causes of the balance jumping between screens:
+## 1. Store Thai story text, not just English
 
-- The purse falls back to a placeholder of 2,000 coins before the device's saved balance is read (`EMPTY.coins = 2000` in `src/lib/progress.ts`), while a genuinely new reader starts on 150. So the first paint of any page can show 2,000 and then snap to the real number.
-- The test switch (`?unlockAll=1`) tops the purse up to 99,999 for the session, and that flag lives in session storage, so some tabs/pages show test money and others don't.
+- Books gain a Thai title and Thai blurb; chapters gain a Thai title.
+- The Thai text the preview already produces is saved with the book instead of discarded, and chapter generation returns a Thai chapter title alongside the English one.
+- Everywhere a title or blurb is shown — bookshelf, book page, chapter list, reader header, quiz, vocabulary, progress, share/preview text — it uses the Thai version when the interface is Thai, falling back to English only if Thai is missing.
 
-Fix:
+## 2. Existing books
 
-- The placeholder balance becomes the real starter amount (150), so the value shown before and after loading is the same number.
-- The purse renders a quiet placeholder (no number) until the saved balance is loaded, so children never see a figure that then changes.
-- Coins are read from one shared store for every screen — header, shop, book page, progress — so language switches and navigation can't produce different numbers.
-- When the test switch is on, the purse is clearly marked as test money so a parent isn't confused by 99,999.
+Books already created have no Thai titles. On the book page and bookshelf they keep working, and a small one-time translation runs per book the first time it is opened while the interface is Thai: it translates the book title, blurb and all chapter titles in a single quick pass and saves them, so the next visit is instant. This costs a fraction of a credit per book and never re-runs.
 
-## 2. Progress that measures learning
+## 3. Thai-first defaults and sweep
 
-The progress page currently shows stars, day streak and mastered-word count only. It gains real learning signal:
-
-- **Words learned** — a word counts as learned after it is answered correctly in a quiz twice on different days; words seen but not yet learned are shown separately as "meeting" words.
-- **Tones practised** — every quiz answer and every word tapped in the reader is bucketed by its pinyin tone (1-4 and neutral). A small five-bar chart shows how much practice each tone has had and the success rate per tone, so "third tone is shaky" becomes visible.
-- **Listening accuracy** — the listening round already exists; its answers are recorded separately from matching/translation, giving a percentage over the last 20 listening questions plus a trend arrow.
-- **Review streak** — alongside the day streak, a "practised on N of the last 7 days" strip, plus a "due for review" count of learned words not seen in 5+ days.
-
-These appear as a summary row plus three cards on the book progress page, all in Thai/English through the existing `useT`. Everything stays on the device, same as today's progress.
-
-## 3. Vocabulary consistency
-
-Chapter word lists and the words inside sentences are generated in two separate AI passes, so the same word can arrive with different pinyin spacing ("bǎojiàn" vs "bǎo jiàn") and slightly different Thai meanings.
-
-- One canonical word entry per chapter: entries are merged by the Chinese characters, and the chapter word list is the single source of truth for pinyin and Thai meaning.
-- Pinyin is normalised the same way everywhere: one space between syllables, sandhi applied, no stray punctuation — so the reader, the word popup, the quiz and the word list always print the identical string.
-- Where a sentence word and a chapter word disagree on meaning, the chapter entry wins and the sentence copy is rewritten to match at load time, so existing books are fixed without regeneration.
+- Thai stays the default language (it already is), and the language toggle is moved to a clearer, larger control so a parent can find it but a child won't flip it by accident.
+- Full sweep of every route and component for English-only strings, including: "Page not found" and other error/empty states, the root not-found and error boundaries, browser tab titles and descriptions for each route, `aria-label`s and toast messages, and button text inside the reader, quiz, shop, character creator and create flow.
+- Thai renders in Noto Sans Thai with slightly looser line height in child-facing text so tone marks aren't clipped.
 
 ## Technical notes
 
-- `src/lib/progress.ts`: `EMPTY.coins` → `STARTER_COINS`; add a `loaded` flag to `useProgress` for the purse placeholder; extend `Progress` with `toneStats` (per-tone attempts/correct), `listenLog` (bounded array of recent listening results), `wordLog` (`hanzi -> { correctDays: string[], lastSeen: string }`) and `activeDays` (bounded list of ISO days). Bump the storage key to `storylingo.progress.v2` with a migration that carries over v1 fields.
-- `src/components/CoinPurse.tsx`: use the shared store's `loaded` flag; show a dash until loaded; show a "test" badge when `useTestUnlock()` is on.
-- `src/routes/book.$bookId.chapter.$n.quiz.tsx`: record per-question tone and round kind through new `recordAnswer(word, kind, correct)` instead of the current `missWord`/`masterWord` pair (both kept as thin wrappers).
-- `src/routes/book.$bookId.chapter.$n.index.tsx`: word taps also call `recordAnswer(word, "read", true)` for tone exposure.
-- `src/routes/book.$bookId.progress.tsx`: new stat cards and the tone bar chart (plain divs, existing tokens — no chart library).
-- Pinyin normalisation: add `normalizePinyin()` to `src/lib/pinyin.ts` (collapse whitespace, one space per syllable, keep tone marks) with unit tests in `src/lib/pinyin.test.ts`; apply it in `src/lib/story-schema.ts` transforms so new books are consistent, and in `src/lib/books.ts` when a book is loaded so existing books are reconciled (sentence words inherit chapter-list pinyin and `dict`).
-- No database or generation-pipeline changes; all reconciliation happens in the loader.
+- Migration: `ALTER TABLE public.books ADD COLUMN title_th text, ADD COLUMN blurb_th text;` and `ALTER TABLE public.chapters ADD COLUMN title_th text;` — nullable, no grant or policy changes needed (existing public-read policies cover them).
+- `src/lib/story.server.ts`: `createBook` persists `preview.th.title/blurb` into `title_th`/`blurb_th` and the Thai chapter titles into each chapter row; the chapter-generation prompt/schema (`src/lib/story-schema.ts`) gains a required `title_th` field with the same length limits as `title`.
+- New server fn `backfillThaiTitles({ bookId })` in `src/lib/story.functions.ts`: no-op if `title_th` is already set; one AI call returning `{ title_th, blurb_th, chapters: [{ idx, title_th }] }`, validated with Zod, written with the service-role client. Called from the book route component via `useServerFn` (never from a loader) and only when `lang === "th"`.
+- `src/lib/books.ts`: the book/chapter types gain `titleTh`/`blurbTh`; add a `useStoryText()` helper (or `pickTitle(book, lang)`) so components never hand-pick fields.
+- Regenerate `src/integrations/supabase/types.ts` after the migration.
+- No change to the coin, progress or audio systems.
