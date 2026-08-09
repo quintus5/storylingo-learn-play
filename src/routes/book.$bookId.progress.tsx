@@ -3,7 +3,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/AppShell";
 import { StarRow } from "@/components/StarRow";
 import { bookQuery } from "@/lib/books";
-import { useProgress } from "@/lib/progress";
+import { learningStats, useProgress } from "@/lib/progress";
 import { useT } from "@/lib/i18n";
 
 export const Route = createFileRoute("/book/$bookId/progress")({
