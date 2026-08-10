@@ -102,8 +102,12 @@ export function StrokeWriter({
   const [splashes, setSplashes] = useState<Splash[]>([]);
   const [celebrate, setCelebrate] = useState(false);
   const [unavailable, setUnavailable] = useState(false);
+  /** Characters finished during this session, by target index. */
+  const [doneIdx, setDoneIdx] = useState<number[]>([]);
 
   const target = targets[index];
+  const indexRef = useRef(index);
+  indexRef.current = index;
   const soft = reducedMotion();
   const written = useMemo(() => new Set(progress.charsWritten), [progress.charsWritten]);
 
