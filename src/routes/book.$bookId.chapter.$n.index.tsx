@@ -531,6 +531,7 @@ function Reader() {
           targets={writing.targets}
           bonusKey={writing.key}
           title={writing.title}
+          sentence={writing.sentence}
           onClose={() => setWriting(null)}
         />
       )}
