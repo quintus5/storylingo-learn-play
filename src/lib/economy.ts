@@ -26,7 +26,12 @@ export const REWARDS = {
   newWord: 2,
   /** A perfect quiz round. */
   perfectQuiz: 30,
+  /** First time a character is written all the way through. */
+  character: 8,
+  /** Finishing every character in one writing round. */
+  writingSet: 20,
 } as const;
+
 
 /** Coins for keeping a daily reading streak alive. */
 export const STREAK_BONUS = 10;
