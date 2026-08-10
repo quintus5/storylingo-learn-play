@@ -7,9 +7,11 @@ import {
   ChevronRight,
   Music,
   Pause,
+  PenLine,
   Play,
   VolumeX,
 } from "lucide-react";
+
 import { AppShell } from "@/components/AppShell";
 import { WordPopup } from "@/components/WordPopup";
 import { StrokeWriter, type WriteTarget } from "@/components/StrokeWriter";
