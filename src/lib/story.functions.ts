@@ -96,13 +96,19 @@ export const generateChapter = createServerFn({ method: "POST" })
 
     const { data: book } = await supabaseAdmin
       .from("books")
-      .select("id, title, chapter_count, art_style, source_url, character_prompt")
+      .select("id, title, chapter_count, art_style, source_url, character_prompt, cast_bible, places")
       .eq("id", data.bookId)
       .single();
     if (!book) throw new Error("Book not found");
 
     const styleId = book.art_style ?? null;
     const characterPrompt = book.character_prompt ?? null;
+    // Written once when the book was created; reused by every picture here.
+    const bible = {
+      cast: parseBibleEntries(book.cast_bible, 12),
+      places: parseBibleEntries(book.places, 8),
+    };
+
 
     const { data: chapters } = await supabaseAdmin
       .from("chapters")
