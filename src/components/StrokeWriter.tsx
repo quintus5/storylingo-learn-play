@@ -276,6 +276,40 @@ export function StrokeWriter({
           </button>
         </div>
 
+        {/* The whole line, so the meaning of what you are writing stays visible. */}
+        {sentence && sentence.chars.length > 0 && (
+          <div className="mt-3 rounded-2xl bg-secondary/30 px-3 py-2">
+            <div className="flex flex-wrap items-center justify-center gap-1.5">
+              {sentence.chars.map((ch, i) => {
+                const isNow = i === index;
+                const isDone = doneIdx.includes(i);
+                return (
+                  <span
+                    key={`${ch}-${i}`}
+                    className={`han relative inline-flex h-9 min-w-9 items-center justify-center rounded-lg px-1.5 text-xl font-bold transition-colors duration-200 motion-reduce:transition-none ${
+                      isNow
+                        ? "bg-gold/20 text-gold ring-1 ring-gold/60"
+                        : isDone
+                          ? "bg-gold/10 text-gold"
+                          : "text-muted-foreground/60"
+                    }`}
+                  >
+                    {ch}
+                    {isDone && !isNow && (
+                      <span className="absolute -right-0.5 -top-1 text-[10px] leading-none">✓</span>
+                    )}
+                  </span>
+                );
+              })}
+            </div>
+            {sentence.native && (
+              <p className="mt-1 text-center text-xs text-muted-foreground">{sentence.native}</p>
+            )}
+          </div>
+        )}
+
+
+
         <div className="mt-3 flex items-center gap-3">
           {/* The buddy cheers from the side of the card. */}
           {progress.character && (
