@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
-import { BookOpen, Plus, Sparkles, X } from "lucide-react";
+import { BookOpen, Paintbrush, Plus, Sparkles, X } from "lucide-react";
 import { useState } from "react";
 import { booksQuery } from "@/lib/books";
 import { deleteBook, repaintBook } from "@/lib/story.functions";
