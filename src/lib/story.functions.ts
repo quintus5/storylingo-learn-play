@@ -334,7 +334,7 @@ export const repaintBook = createServerFn({ method: "POST" })
     for (const chapter of chapters ?? []) {
       const pages = ((chapter.pages ?? []) as Page[]).filter((p) => p?.sentences?.length);
       if (!pages.length) continue;
-      const painted = await illustratePages(
+      const repainted = await illustratePages(
         data.bookId,
         chapter.idx as number,
         chapter.title as string,
@@ -343,10 +343,16 @@ export const repaintBook = createServerFn({ method: "POST" })
         book.character_prompt ?? null,
         bible,
       );
+      // Paths are reused, so add a version so browsers fetch the new picture.
+      const stamp = Date.now();
+      const painted = repainted.map((p) =>
+        p.image_url ? { ...p, image_url: `${p.image_url}?v=${stamp}` } : p,
+      );
       await supabaseAdmin
         .from("chapters")
         .update({ pages: painted, image_url: painted.find((p) => p.image_url)?.image_url ?? null })
         .eq("id", chapter.id);
+
     }
 
     const cover = await makeArt(
