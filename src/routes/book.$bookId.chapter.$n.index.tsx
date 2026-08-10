@@ -77,7 +77,7 @@ function Reader() {
   const { bookId, n } = Route.useParams();
   const idx = Number(n);
   const { data } = useSuspenseQuery(bookQuery(bookId));
-  const { markRead, seeWords } = useProgress();
+  const { markRead, seeWords, progress: saved } = useProgress();
   const speaking = useSpeakingText();
   const progress = useSpeakingProgress();
   const [voice, chooseVoice] = useVoice();
