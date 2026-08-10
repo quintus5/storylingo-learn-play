@@ -517,7 +517,7 @@ function Reader() {
       {writing && (
         <StrokeWriter
           targets={writing.targets}
-          setKey={writing.key}
+          bonusKey={writing.key}
           title={writing.title}
           onClose={() => setWriting(null)}
         />
