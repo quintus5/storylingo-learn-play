@@ -20,7 +20,7 @@ export const createBook = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => CreateBookInput.parse(input))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { getSourceText, buildOutline } = await import("./story.server");
+    const { getSourceText, buildOutline, buildStoryBible } = await import("./story.server");
 
     const since = new Date(Date.now() - 3600_000).toISOString();
     const { count } = await supabaseAdmin
@@ -32,7 +32,11 @@ export const createBook = createServerFn({ method: "POST" })
     }
 
     const storyText = await getSourceText(data.url);
-    const outline = await buildOutline(storyText, data.title, data.chapterCount);
+    // The bible is written once here and reused by every picture in this book.
+    const [outline, bible] = await Promise.all([
+      buildOutline(storyText, data.title, data.chapterCount),
+      buildStoryBible(storyText),
+    ]);
 
     const chapters = (outline.chapters ?? []).slice(0, data.chapterCount);
     if (chapters.length < 1) throw new Error("Could not split that story into chapters.");
@@ -49,11 +53,14 @@ export const createBook = createServerFn({ method: "POST" })
         chapter_count: chapters.length,
         art_style: data.artStyle ?? DEFAULT_ART_STYLE,
         character_prompt: data.characterPrompt || null,
+        cast_bible: bible.cast,
+        places: bible.places,
         status: "generating",
       })
       .select("id")
       .single();
     if (error || !book) throw new Error(error?.message ?? "Could not save the book.");
+
 
     const rows = chapters.map((c, i) => ({
       book_id: book.id,
