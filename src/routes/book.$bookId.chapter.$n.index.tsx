@@ -86,7 +86,12 @@ function Reader() {
   const pages = chapter?.pages ?? [];
   const [page, setPage] = useState(0);
   const [word, setWord] = useState<Word | null>(null);
-  const [writing, setWriting] = useState<{ targets: WriteTarget[]; key: string; title: string } | null>(null);
+  const [writing, setWriting] = useState<{
+    targets: WriteTarget[];
+    key: string;
+    title: string;
+    sentence?: { chars: string[]; native?: string };
+  } | null>(null);
 
   const [playing, setPlaying] = useState(false);
   const [music, setMusic] = useState(false);
@@ -103,8 +108,14 @@ function Reader() {
     () => (current?.sentences ?? []).flatMap((s) => s.words ?? []),
     [current],
   );
-  const pageChars = useWritableChars(pageWords);
   const chapterChars = useWritableChars(chapter?.words ?? []);
+  // Only the line the reader is looking at right now, in reading order.
+  const activeSentence = current?.sentences?.[active];
+  const sentenceWords = useMemo(
+    () => (activeSentence ? [{ hanzi: activeSentence.hanzi }] : []),
+    [activeSentence],
+  );
+  const sentenceChars = useWritableChars(sentenceWords);
   const lookUp = useCallback(
     (hanzi: string): WriteTarget => {
       const hit = (chapter?.words ?? [])
@@ -358,20 +369,21 @@ function Reader() {
             >
               <Play className="h-3.5 w-3.5" /> {t("Hear", "ฟัง")}
             </button>
-            {pageChars.length > 0 && (
+            {sentenceChars.length > 0 && (
               <button
                 onClick={() => {
                   stopAudio();
                   setPlaying(false);
                   setWriting({
-                    targets: pageChars.map(lookUp),
-                    key: `${chapter.id}:page:${page}`,
-                    title: t("Write this page", "หัดเขียนหน้านี้"),
+                    targets: sentenceChars.map(lookUp),
+                    key: `${chapter.id}:page:${page}:sentence:${active}`,
+                    title: t("Write this line", "หัดเขียนบรรทัดนี้"),
+                    sentence: { chars: sentenceChars, native: activeSentence?.native },
                   });
                 }}
                 aria-label={t(
-                  `Write the ${pageChars.length} characters on this page`,
-                  `หัดเขียน ${pageChars.length} ตัวอักษรในหน้านี้`,
+                  `Write the ${sentenceChars.length} characters in this line`,
+                  `หัดเขียน ${sentenceChars.length} ตัวอักษรในบรรทัดนี้`,
                 )}
                 className="press relative inline-flex shrink-0 items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-xs font-bold text-secondary-foreground"
               >
@@ -379,12 +391,12 @@ function Reader() {
                 {/* Tiny badge: turns gold once every character here is written. */}
                 <span
                   className={`absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold ${
-                    pageChars.every((c) => saved.charsWritten.includes(c))
+                    sentenceChars.every((c) => saved.charsWritten.includes(c))
                       ? "bg-gold text-background"
                       : "bg-primary text-primary-foreground"
                   }`}
                 >
-                  {pageChars.length}
+                  {sentenceChars.length}
                 </span>
               </button>
             )}
@@ -519,6 +531,7 @@ function Reader() {
           targets={writing.targets}
           bonusKey={writing.key}
           title={writing.title}
+          sentence={writing.sentence}
           onClose={() => setWriting(null)}
         />
       )}

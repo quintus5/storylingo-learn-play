@@ -79,12 +79,15 @@ export function StrokeWriter({
   onClose,
   bonusKey,
   title,
+  sentence,
 }: {
   targets: WriteTarget[];
   onClose: () => void;
   /** When given, a one-off bonus is paid for finishing every character. */
   bonusKey?: string;
   title?: string;
+  /** The whole line being practised, shown across the top for context. */
+  sentence?: { chars: string[]; native?: string };
 }) {
   const t = useT();
   const { progress, writeChar, finishWritingSet } = useProgress();
@@ -99,8 +102,12 @@ export function StrokeWriter({
   const [splashes, setSplashes] = useState<Splash[]>([]);
   const [celebrate, setCelebrate] = useState(false);
   const [unavailable, setUnavailable] = useState(false);
+  /** Characters finished during this session, by target index. */
+  const [doneIdx, setDoneIdx] = useState<number[]>([]);
 
   const target = targets[index];
+  const indexRef = useRef(index);
+  indexRef.current = index;
   const soft = reducedMotion();
   const written = useMemo(() => new Set(progress.charsWritten), [progress.charsWritten]);
 
@@ -204,6 +211,9 @@ export function StrokeWriter({
             }
             setStage("done");
             setCelebrate(true);
+            setDoneIdx((list) =>
+              list.includes(indexRef.current) ? list : [...list, indexRef.current],
+            );
             writeChar(target.hanzi);
             void speak(target.hanzi, true);
           },
@@ -265,6 +275,40 @@ export function StrokeWriter({
             <X className="h-5 w-5" />
           </button>
         </div>
+
+        {/* The whole line, so the meaning of what you are writing stays visible. */}
+        {sentence && sentence.chars.length > 0 && (
+          <div className="mt-3 rounded-2xl bg-secondary/30 px-3 py-2">
+            <div className="flex flex-wrap items-center justify-center gap-1.5">
+              {sentence.chars.map((ch, i) => {
+                const isNow = i === index;
+                const isDone = doneIdx.includes(i);
+                return (
+                  <span
+                    key={`${ch}-${i}`}
+                    className={`han relative inline-flex h-9 min-w-9 items-center justify-center rounded-lg px-1.5 text-xl font-bold transition-colors duration-200 motion-reduce:transition-none ${
+                      isNow
+                        ? "bg-gold/20 text-gold ring-1 ring-gold/60"
+                        : isDone
+                          ? "bg-gold/10 text-gold"
+                          : "text-muted-foreground/60"
+                    }`}
+                  >
+                    {ch}
+                    {isDone && !isNow && (
+                      <span className="absolute -right-0.5 -top-1 text-[10px] leading-none">✓</span>
+                    )}
+                  </span>
+                );
+              })}
+            </div>
+            {sentence.native && (
+              <p className="mt-1 text-center text-xs text-muted-foreground">{sentence.native}</p>
+            )}
+          </div>
+        )}
+
+
 
         <div className="mt-3 flex items-center gap-3">
           {/* The buddy cheers from the side of the card. */}
@@ -376,7 +420,12 @@ export function StrokeWriter({
           </button>
 
           <p className="text-xs text-muted-foreground">
-            {t(`${index + 1} of ${targets.length}`, `${index + 1} จาก ${targets.length}`)}
+            {sentence
+              ? t(
+                  `${index + 1} of ${targets.length} in this line`,
+                  `${index + 1} จาก ${targets.length} ในบรรทัดนี้`,
+                )
+              : t(`${index + 1} of ${targets.length}`, `${index + 1} จาก ${targets.length}`)}
           </p>
 
           <button
