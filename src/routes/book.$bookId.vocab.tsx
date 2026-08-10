@@ -1,12 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Volume2 } from "lucide-react";
+import { useState } from "react";
+import { PenLine, Volume2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { StrokeWriter, type WriteTarget } from "@/components/StrokeWriter";
 import { bookQuery } from "@/lib/books";
 import { useProgress } from "@/lib/progress";
-import { speak } from "@/lib/audio";
+import { speak, stopAudio } from "@/lib/audio";
+import { writableChars } from "@/lib/hanzi-data";
 import { useT } from "@/lib/i18n";
 import { normalizePinyin } from "@/lib/pinyin";
+
 
 export const Route = createFileRoute("/book/$bookId/vocab")({
   loader: ({ context, params }) => context.queryClient.ensureQueryData(bookQuery(params.bookId)),
