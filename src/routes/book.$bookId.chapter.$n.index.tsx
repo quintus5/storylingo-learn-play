@@ -358,6 +358,37 @@ function Reader() {
             >
               <Play className="h-3.5 w-3.5" /> {t("Hear", "ฟัง")}
             </button>
+            {pageChars.length > 0 && (
+              <button
+                onClick={() => {
+                  stopAudio();
+                  setPlaying(false);
+                  setWriting({
+                    targets: pageChars.map(lookUp),
+                    key: `${chapter.id}:page:${page}`,
+                    title: t("Write this page", "หัดเขียนหน้านี้"),
+                  });
+                }}
+                aria-label={t(
+                  `Write the ${pageChars.length} characters on this page`,
+                  `หัดเขียน ${pageChars.length} ตัวอักษรในหน้านี้`,
+                )}
+                className="press relative inline-flex shrink-0 items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-xs font-bold text-secondary-foreground"
+              >
+                <PenLine className="h-3.5 w-3.5" /> {t("Write", "เขียน")}
+                {/* Tiny badge: turns gold once every character here is written. */}
+                <span
+                  className={`absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold ${
+                    pageChars.every((c) => saved.charsWritten.includes(c))
+                      ? "bg-gold text-background"
+                      : "bg-primary text-primary-foreground"
+                  }`}
+                >
+                  {pageChars.length}
+                </span>
+              </button>
+            )}
+
             {current.sentences.length > 1 && (
               <div className="flex items-center gap-1">
                 {current.sentences.map((_, i) => (
