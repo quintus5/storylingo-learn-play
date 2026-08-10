@@ -1,14 +1,19 @@
-import { useEffect, useRef } from "react";
-import { X, Volume2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { X, Volume2, PenLine } from "lucide-react";
 import type { Word } from "@/lib/types";
 import { speak, stopAudio } from "@/lib/audio";
 import { useT } from "@/lib/i18n";
 import { normalizePinyin } from "@/lib/pinyin";
+import { StrokeWriter } from "@/components/StrokeWriter";
+import { useWritableChars } from "@/hooks/use-writable";
 
 export function WordPopup({ word, onClose }: { word: Word; onClose: () => void }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const t = useT();
+  const [writing, setWriting] = useState(false);
+  const chars = useWritableChars([word]);
+
 
   useEffect(() => {
     void speak(word.hanzi, true);
