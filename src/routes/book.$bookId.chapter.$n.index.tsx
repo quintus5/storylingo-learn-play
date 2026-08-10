@@ -86,7 +86,12 @@ function Reader() {
   const pages = chapter?.pages ?? [];
   const [page, setPage] = useState(0);
   const [word, setWord] = useState<Word | null>(null);
-  const [writing, setWriting] = useState<{ targets: WriteTarget[]; key: string; title: string } | null>(null);
+  const [writing, setWriting] = useState<{
+    targets: WriteTarget[];
+    key: string;
+    title: string;
+    sentence?: { chars: string[]; native?: string };
+  } | null>(null);
 
   const [playing, setPlaying] = useState(false);
   const [music, setMusic] = useState(false);
