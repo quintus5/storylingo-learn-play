@@ -153,6 +153,22 @@ export function parseChapterContent(raw: unknown): { pages: Page[]; words: Word[
   return { pages: result.data.pages, words: result.data.words };
 }
 
+/** Keep only usable bible entries; a malformed one is dropped, never fatal. */
+export function parseBibleEntries(raw: unknown, max = 12): { name: string; description: string }[] {
+  const seen = new Set<string>();
+  const out: { name: string; description: string }[] = [];
+  for (const entry of keepValid(BibleEntrySchema, raw)) {
+    const key = entry.name.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(entry);
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
+
+
 /** Keep only usable short strings from a possibly-malformed list. */
 function stringList(value: unknown, max = 300): string[] {
   if (!Array.isArray(value)) return [];
