@@ -108,8 +108,14 @@ function Reader() {
     () => (current?.sentences ?? []).flatMap((s) => s.words ?? []),
     [current],
   );
-  const pageChars = useWritableChars(pageWords);
   const chapterChars = useWritableChars(chapter?.words ?? []);
+  // Only the line the reader is looking at right now, in reading order.
+  const activeSentence = current?.sentences?.[active];
+  const sentenceWords = useMemo(
+    () => (activeSentence ? [{ hanzi: activeSentence.hanzi }] : []),
+    [activeSentence],
+  );
+  const sentenceChars = useWritableChars(sentenceWords);
   const lookUp = useCallback(
     (hanzi: string): WriteTarget => {
       const hit = (chapter?.words ?? [])
