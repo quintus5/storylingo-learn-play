@@ -52,7 +52,10 @@ export type Progress = {
   wordLog: Record<string, WordLogEntry>;
   /** ISO days the child practised, newest last, capped at 30. */
   activeDays: string[];
+  /** Characters the child has written stroke by stroke at least once. */
+  charsWritten: string[];
 };
+
 
 const EMPTY: Progress = {
   books: {},
