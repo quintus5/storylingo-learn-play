@@ -41,8 +41,19 @@ export const PageSchema = z.object({
   sentences: z.array(SentenceSchema).min(1),
   /** English description of one scene to illustrate for this page. */
   scene: z.string().trim().max(600).optional(),
+  /** Story characters visible on this page, matched to the book's bible. */
+  cast: z.array(nonEmpty(120)).max(8).optional(),
+  /** Where this page happens, matched to the book's bible. */
+  place: z.string().trim().max(120).optional(),
   image_url: z.string().trim().max(500).nullable().optional(),
 });
+
+/** One character or place with a fixed look, written once per book. */
+export const BibleEntrySchema = z.object({
+  name: nonEmpty(120),
+  description: nonEmpty(600),
+});
+
 
 export const ChapterContentSchema = z.object({
   pages: z.array(PageSchema).min(1),
@@ -116,7 +127,17 @@ export function parseChapterContent(raw: unknown): { pages: Page[]; words: Word[
     }
     const sceneRaw = (p as { scene?: unknown }).scene;
     const scene = typeof sceneRaw === "string" && sceneRaw.trim() ? sceneRaw.trim().slice(0, 600) : undefined;
-    if (sentences.length) pages.push({ sentences, scene });
+    const castRaw = (p as { cast?: unknown }).cast;
+    const cast = Array.isArray(castRaw)
+      ? castRaw
+          .filter((c): c is string => typeof c === "string" && c.trim().length > 0)
+          .map((c) => c.trim().slice(0, 120))
+          .slice(0, 8)
+      : [];
+    const placeRaw = (p as { place?: unknown }).place;
+    const place = typeof placeRaw === "string" && placeRaw.trim() ? placeRaw.trim().slice(0, 120) : undefined;
+    if (sentences.length) pages.push({ sentences, scene, cast: cast.length ? cast : undefined, place });
+
   }
 
 
@@ -131,6 +152,22 @@ export function parseChapterContent(raw: unknown): { pages: Page[]; words: Word[
   }
   return { pages: result.data.pages, words: result.data.words };
 }
+
+/** Keep only usable bible entries; a malformed one is dropped, never fatal. */
+export function parseBibleEntries(raw: unknown, max = 12): { name: string; description: string }[] {
+  const seen = new Set<string>();
+  const out: { name: string; description: string }[] = [];
+  for (const entry of keepValid(BibleEntrySchema, raw)) {
+    const key = entry.name.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(entry);
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
+
 
 /** Keep only usable short strings from a possibly-malformed list. */
 function stringList(value: unknown, max = 300): string[] {

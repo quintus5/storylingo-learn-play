@@ -18,9 +18,20 @@ export type Page = {
   sentences: Sentence[];
   /** English description of the scene painted for this page. */
   scene?: string;
+  /** Names of the story's characters that appear in this page's picture. */
+  cast?: string[];
+  /** Name of the place this page's picture is set in. */
+  place?: string;
   /** URL of this page's illustration, when one was generated. */
   image_url?: string | null;
 };
+
+/** One locked visual description reused for every picture in a book. */
+export type BibleEntry = {
+  name: string;
+  description: string;
+};
+
 
 export type ChapterRow = {
   id: string;

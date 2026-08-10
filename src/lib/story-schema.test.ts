@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   StoryValidationError,
+  parseBibleEntries,
   parseChapterContent,
   parseOutline,
 } from "./story-schema";
+
 
 const word = (hanzi = "小猫") => ({
   hanzi,
@@ -230,3 +232,44 @@ describe("parseOutline", () => {
   });
 });
 
+
+describe("page cast and place tags", () => {
+  const page = (extra: Record<string, unknown>) => ({
+    pages: [
+      {
+        sentences: [
+          {
+            hanzi: "小虎跑了",
+            pinyin: "xiǎo hǔ pǎo le",
+            native: "เสือน้อยวิ่ง",
+            words: [{ hanzi: "跑", pinyin: "pǎo", dict: "วิ่ง" }],
+          },
+        ],
+        ...extra,
+      },
+    ],
+    words: [{ hanzi: "跑", pinyin: "pǎo", dict: "วิ่ง" }],
+  });
+
+  it("keeps cast and place when present", () => {
+    const out = parseChapterContent(page({ cast: ["Tiger", " Boy "], place: "The village" }));
+    expect(out.pages[0].cast).toEqual(["Tiger", "Boy"]);
+    expect(out.pages[0].place).toBe("The village");
+  });
+
+  it("drops malformed tags instead of failing", () => {
+    const out = parseChapterContent(page({ cast: [1, "", null], place: 5 }));
+    expect(out.pages[0].cast).toBeUndefined();
+    expect(out.pages[0].place).toBeUndefined();
+  });
+
+  it("keeps only well-formed bible entries", () => {
+    const entries = parseBibleEntries([
+      { name: "Tiger", description: "An orange tiger with a torn left ear." },
+      { name: "Tiger", description: "duplicate" },
+      { name: "", description: "no name" },
+      "nonsense",
+    ]);
+    expect(entries).toEqual([{ name: "Tiger", description: "An orange tiger with a torn left ear." }]);
+  });
+});

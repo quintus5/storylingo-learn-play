@@ -19,6 +19,7 @@ export type Database = {
           art_style: string
           blurb: string | null
           blurb_th: string | null
+          cast_bible: Json
           chapter_count: number
           character_prompt: string | null
           cover_url: string | null
@@ -26,6 +27,7 @@ export type Database = {
           generation_error: string | null
           id: string
           native_lang: string
+          places: Json
           source_url: string | null
           status: string
           target_lang: string
@@ -36,6 +38,7 @@ export type Database = {
           art_style?: string
           blurb?: string | null
           blurb_th?: string | null
+          cast_bible?: Json
           chapter_count?: number
           character_prompt?: string | null
           cover_url?: string | null
@@ -43,6 +46,7 @@ export type Database = {
           generation_error?: string | null
           id?: string
           native_lang?: string
+          places?: Json
           source_url?: string | null
           status?: string
           target_lang?: string
@@ -53,6 +57,7 @@ export type Database = {
           art_style?: string
           blurb?: string | null
           blurb_th?: string | null
+          cast_bible?: Json
           chapter_count?: number
           character_prompt?: string | null
           cover_url?: string | null
@@ -60,6 +65,7 @@ export type Database = {
           generation_error?: string | null
           id?: string
           native_lang?: string
+          places?: Json
           source_url?: string | null
           status?: string
           target_lang?: string

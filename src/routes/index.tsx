@@ -1,9 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
-import { BookOpen, Plus, Sparkles, X } from "lucide-react";
+import { BookOpen, Paintbrush, Plus, Sparkles, X } from "lucide-react";
 import { useState } from "react";
 import { booksQuery } from "@/lib/books";
-import { deleteBook } from "@/lib/story.functions";
+import { deleteBook, repaintBook } from "@/lib/story.functions";
 import { AppShell } from "@/components/AppShell";
 import { useProgress } from "@/lib/progress";
 import { CoinPurse } from "@/components/CoinPurse";
@@ -52,6 +52,8 @@ function Bookshelf() {
   const dev = useDevMode();
   const queryClient = useQueryClient();
   const [removing, setRemoving] = useState<string | null>(null);
+  const [repainting, setRepainting] = useState<string | null>(null);
+
   const t = useT();
   const local = useLocalText();
 
@@ -65,6 +67,26 @@ function Bookshelf() {
       setRemoving(null);
     }
   }
+
+  async function repaint(bookId: string, title: string) {
+    if (
+      !window.confirm(
+        t(
+          `Repaint every picture in "${title}" so the characters stay the same? This takes a few minutes.`,
+          `วาดภาพใหม่ทั้งเล่มของ "${title}" เพื่อให้ตัวละครเหมือนกันทุกบท? ใช้เวลาสักครู่`,
+        ),
+      )
+    )
+      return;
+    setRepainting(bookId);
+    try {
+      await repaintBook({ data: { bookId } });
+      await queryClient.invalidateQueries({ queryKey: ["books"] });
+    } finally {
+      setRepainting(null);
+    }
+  }
+
 
 
 
@@ -163,6 +185,7 @@ function Bookshelf() {
             return (
               <div key={book.id} className="relative">
               {dev && (
+                <>
                 <button
                   onClick={() => void removeBook(book.id, book.title)}
                   disabled={removing === book.id}
@@ -171,7 +194,18 @@ function Bookshelf() {
                 >
                   <X className="h-4 w-4" />
                 </button>
+                <button
+                  onClick={() => void repaint(book.id, book.title)}
+                  disabled={repainting === book.id}
+                  aria-label={`Repaint pictures for ${book.title}`}
+                  title="Repaint pictures"
+                  className="press absolute -left-2 -top-2 z-10 grid h-8 w-8 place-items-center rounded-full bg-secondary text-secondary-foreground shadow-lg disabled:opacity-50"
+                >
+                  <Paintbrush className={`h-4 w-4 ${repainting === book.id ? "animate-pulse" : ""}`} />
+                </button>
+                </>
               )}
+
               <Link
                 to="/book/$bookId"
                 params={{ bookId: book.id }}

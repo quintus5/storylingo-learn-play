@@ -1,6 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { ART_STYLES, DEFAULT_ART_STYLE } from "./art-styles";
+import { parseBibleEntries } from "./story-schema";
+import type { Page } from "./types";
+
+
 
 const ART_STYLE_IDS = ART_STYLES.map((s) => s.id) as [string, ...string[]];
 
@@ -20,7 +24,7 @@ export const createBook = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => CreateBookInput.parse(input))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { getSourceText, buildOutline } = await import("./story.server");
+    const { getSourceText, buildOutline, buildStoryBible } = await import("./story.server");
 
     const since = new Date(Date.now() - 3600_000).toISOString();
     const { count } = await supabaseAdmin
@@ -32,7 +36,11 @@ export const createBook = createServerFn({ method: "POST" })
     }
 
     const storyText = await getSourceText(data.url);
-    const outline = await buildOutline(storyText, data.title, data.chapterCount);
+    // The bible is written once here and reused by every picture in this book.
+    const [outline, bible] = await Promise.all([
+      buildOutline(storyText, data.title, data.chapterCount),
+      buildStoryBible(storyText),
+    ]);
 
     const chapters = (outline.chapters ?? []).slice(0, data.chapterCount);
     if (chapters.length < 1) throw new Error("Could not split that story into chapters.");
@@ -49,11 +57,14 @@ export const createBook = createServerFn({ method: "POST" })
         chapter_count: chapters.length,
         art_style: data.artStyle ?? DEFAULT_ART_STYLE,
         character_prompt: data.characterPrompt || null,
+        cast_bible: bible.cast,
+        places: bible.places,
         status: "generating",
       })
       .select("id")
       .single();
     if (error || !book) throw new Error(error?.message ?? "Could not save the book.");
+
 
     const rows = chapters.map((c, i) => ({
       book_id: book.id,
@@ -89,13 +100,19 @@ export const generateChapter = createServerFn({ method: "POST" })
 
     const { data: book } = await supabaseAdmin
       .from("books")
-      .select("id, title, chapter_count, art_style, source_url, character_prompt")
+      .select("id, title, chapter_count, art_style, source_url, character_prompt, cast_bible, places")
       .eq("id", data.bookId)
       .single();
     if (!book) throw new Error("Book not found");
 
     const styleId = book.art_style ?? null;
     const characterPrompt = book.character_prompt ?? null;
+    // Written once when the book was created; reused by every picture here.
+    const bible = {
+      cast: parseBibleEntries(book.cast_bible, 12),
+      places: parseBibleEntries(book.places, 8),
+    };
+
 
     const { data: chapters } = await supabaseAdmin
       .from("chapters")
@@ -142,6 +159,7 @@ export const generateChapter = createServerFn({ method: "POST" })
       known,
       keyEvents,
       sourceExcerpt,
+      bible,
     );
 
 
@@ -154,6 +172,7 @@ export const generateChapter = createServerFn({ method: "POST" })
         content.pages,
         styleId,
         characterPrompt,
+        bible,
       ),
       data.idx === 1
         ? makeArt(
@@ -162,7 +181,9 @@ export const generateChapter = createServerFn({ method: "POST" })
             `Book cover scene for the children's story "${book.title}". ${scene}`,
             styleId,
             characterPrompt,
+            [...bible.cast.slice(0, 3), ...bible.places.slice(0, 1)],
           ).catch((err) => {
+
             console.error("Cover failed", err);
             return null;
           })
@@ -270,3 +291,86 @@ export const deleteBook = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+/**
+ * Developer-only: write the book's visual bible (if it has none) and repaint
+ * every page with it, so an older, inconsistent book becomes consistent.
+ * The story text is untouched.
+ */
+export const repaintBook = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => DeleteBookInput.parse(input))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { getSourceText, buildStoryBible, illustratePages, makeArt } = await import(
+      "./story.server"
+    );
+
+    const { data: book } = await supabaseAdmin
+      .from("books")
+      .select("id, title, art_style, source_url, character_prompt, cast_bible, places")
+      .eq("id", data.bookId)
+      .single();
+    if (!book) throw new Error("Book not found");
+
+    let bible = {
+      cast: parseBibleEntries(book.cast_bible, 12),
+      places: parseBibleEntries(book.places, 8),
+    };
+    if (!bible.cast.length && book.source_url) {
+      const storyText = await getSourceText(book.source_url);
+      bible = await buildStoryBible(storyText);
+      await supabaseAdmin
+        .from("books")
+        .update({ cast_bible: bible.cast, places: bible.places })
+        .eq("id", data.bookId);
+    }
+
+    const { data: chapters } = await supabaseAdmin
+      .from("chapters")
+      .select("id, idx, title, pages")
+      .eq("book_id", data.bookId)
+      .order("idx");
+
+    for (const chapter of chapters ?? []) {
+      const pages = ((chapter.pages ?? []) as Page[]).filter((p) => p?.sentences?.length);
+      if (!pages.length) continue;
+      const repainted = await illustratePages(
+        data.bookId,
+        chapter.idx as number,
+        chapter.title as string,
+        pages,
+        book.art_style ?? null,
+        book.character_prompt ?? null,
+        bible,
+      );
+      // Paths are reused, so add a version so browsers fetch the new picture.
+      const stamp = Date.now();
+      const painted = repainted.map((p) =>
+        p.image_url ? { ...p, image_url: `${p.image_url}?v=${stamp}` } : p,
+      );
+      await supabaseAdmin
+        .from("chapters")
+        .update({ pages: painted, image_url: painted.find((p) => p.image_url)?.image_url ?? null })
+        .eq("id", chapter.id);
+
+    }
+
+    const cover = await makeArt(
+      data.bookId,
+      "cover",
+      `Book cover scene for the children's story "${book.title}".`,
+      book.art_style ?? null,
+      book.character_prompt ?? null,
+      [...bible.cast.slice(0, 3), ...bible.places.slice(0, 1)],
+    ).catch(() => null);
+    if (cover) {
+      // Bust the browser cache for the replaced cover image.
+      await supabaseAdmin
+        .from("books")
+        .update({ cover_url: `${cover}?v=${Date.now()}` })
+        .eq("id", data.bookId);
+    }
+
+    return { ok: true, chapters: (chapters ?? []).length };
+  });
+
