@@ -98,7 +98,28 @@ function Reader() {
   const current = pages[page];
   const isLast = page >= pages.length - 1;
 
+  // Characters worth practising on this page, and across the whole chapter.
+  const pageWords = useMemo(
+    () => (current?.sentences ?? []).flatMap((s) => s.words ?? []),
+    [current],
+  );
+  const pageChars = useWritableChars(pageWords);
+  const chapterChars = useWritableChars(chapter?.words ?? []);
+  const lookUp = useCallback(
+    (hanzi: string): WriteTarget => {
+      const hit = (chapter?.words ?? [])
+        .concat(pageWords)
+        .find((w) => w.hanzi === hanzi);
+      return hit && hit.hanzi.length === 1
+        ? { hanzi, pinyin: hit.pinyin, dict: hit.dict }
+        : { hanzi };
+    },
+    [chapter?.words, pageWords],
+  );
+
   const nextChapter = data.chapters.find((c) => c.idx === idx + 1);
+
+
 
   const sentenceTexts = useMemo(
     () => (current?.sentences ?? []).map((s) => s.hanzi),
