@@ -417,16 +417,35 @@ function Reader() {
             </button>
 
             {isLast ? (
-              <Link
-                to="/book/$bookId/chapter/$n/quiz"
-                params={{ bookId, n }}
-                onClick={() => stopAudio()}
-                aria-label={t("Go to the quiz", "ไปที่แบบทดสอบ")}
-                className="press inline-flex h-9 items-center gap-1 rounded-full bg-primary px-3 text-xs font-bold text-primary-foreground"
-              >
-                {t("Quiz", "แบบทดสอบ")} <ChevronRight className="h-4 w-4" />
-              </Link>
+              <>
+                {chapterChars.length > 0 && (
+                  <button
+                    onClick={() => {
+                      stopAudio();
+                      setPlaying(false);
+                      setWriting({
+                        targets: chapterChars.slice(0, 12).map(lookUp),
+                        key: `${chapter.id}:chapter`,
+                        title: t("Practice writing", "ฝึกเขียน"),
+                      });
+                    }}
+                    className="press inline-flex h-9 items-center gap-1 rounded-full border border-border/30 bg-secondary/70 px-3 text-xs font-bold text-secondary-foreground backdrop-blur-sm"
+                  >
+                    <PenLine className="h-4 w-4" /> {t("Practice writing", "ฝึกเขียน")}
+                  </button>
+                )}
+                <Link
+                  to="/book/$bookId/chapter/$n/quiz"
+                  params={{ bookId, n }}
+                  onClick={() => stopAudio()}
+                  aria-label={t("Go to the quiz", "ไปที่แบบทดสอบ")}
+                  className="press inline-flex h-9 items-center gap-1 rounded-full bg-primary px-3 text-xs font-bold text-primary-foreground"
+                >
+                  {t("Quiz", "แบบทดสอบ")} <ChevronRight className="h-4 w-4" />
+                </Link>
+              </>
             ) : (
+
               <button
                 onClick={() => go(1)}
                 aria-label={t(
