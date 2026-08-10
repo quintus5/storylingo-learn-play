@@ -185,6 +185,7 @@ function Bookshelf() {
             return (
               <div key={book.id} className="relative">
               {dev && (
+                <>
                 <button
                   onClick={() => void removeBook(book.id, book.title)}
                   disabled={removing === book.id}
@@ -193,7 +194,18 @@ function Bookshelf() {
                 >
                   <X className="h-4 w-4" />
                 </button>
+                <button
+                  onClick={() => void repaint(book.id, book.title)}
+                  disabled={repainting === book.id}
+                  aria-label={`Repaint pictures for ${book.title}`}
+                  title="Repaint pictures"
+                  className="press absolute -left-2 -top-2 z-10 grid h-8 w-8 place-items-center rounded-full bg-secondary text-secondary-foreground shadow-lg disabled:opacity-50"
+                >
+                  <Paintbrush className={`h-4 w-4 ${repainting === book.id ? "animate-pulse" : ""}`} />
+                </button>
+                </>
               )}
+
               <Link
                 to="/book/$bookId"
                 params={{ bookId: book.id }}
