@@ -328,6 +328,9 @@ export function useProgress() {
     spend,
     buyItem,
     buyChapter,
+    writeChar,
+    finishWritingSet,
+
     saveCharacter,
   };
 }
