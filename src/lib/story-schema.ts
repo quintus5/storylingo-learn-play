@@ -41,8 +41,19 @@ export const PageSchema = z.object({
   sentences: z.array(SentenceSchema).min(1),
   /** English description of one scene to illustrate for this page. */
   scene: z.string().trim().max(600).optional(),
+  /** Story characters visible on this page, matched to the book's bible. */
+  cast: z.array(nonEmpty(120)).max(8).optional(),
+  /** Where this page happens, matched to the book's bible. */
+  place: z.string().trim().max(120).optional(),
   image_url: z.string().trim().max(500).nullable().optional(),
 });
+
+/** One character or place with a fixed look, written once per book. */
+export const BibleEntrySchema = z.object({
+  name: nonEmpty(120),
+  description: nonEmpty(600),
+});
+
 
 export const ChapterContentSchema = z.object({
   pages: z.array(PageSchema).min(1),
