@@ -44,6 +44,7 @@ function VocabPage() {
   const { bookId } = Route.useParams();
   const { data } = useSuspenseQuery(bookQuery(bookId));
   const { progress } = useProgress();
+  const [writing, setWriting] = useState<WriteTarget[] | null>(null);
 
   return (
     <AppShell title={t("Word list", "คลังคำศัพท์")} back={{ to: "/book/$bookId", params: { bookId } }}>
@@ -59,6 +60,7 @@ function VocabPage() {
               <ul className="grid gap-3 sm:grid-cols-2">
                 {words.map((word) => {
                   const mastered = progress.wordsMastered.includes(word.hanzi);
+                  const chars = writableChars([word]);
                   return (
                     <li
                       key={`${chapter.id}-${word.hanzi}`}
@@ -78,6 +80,24 @@ function VocabPage() {
                         >
                           <Volume2 className="h-5 w-5" />
                         </button>
+                        {chars.length > 0 && (
+                          <button
+                            onClick={() => {
+                              stopAudio();
+                              setWriting(
+                                chars.map((hanzi) => ({
+                                  hanzi,
+                                  pinyin: chars.length === 1 ? word.pinyin : undefined,
+                                  dict: chars.length === 1 ? word.dict : undefined,
+                                })),
+                              );
+                            }}
+                            aria-label={t(`Write ${word.hanzi}`, `หัดเขียน ${word.hanzi}`)}
+                            className="press inline-flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-secondary-foreground"
+                          >
+                            <PenLine className="h-5 w-5" />
+                          </button>
+                        )}
                       </div>
                     </li>
                   );
@@ -87,6 +107,9 @@ function VocabPage() {
           );
         })}
       </div>
+
+      {writing && <StrokeWriter targets={writing} onClose={() => setWriting(null)} />}
     </AppShell>
   );
+
 }
