@@ -227,6 +227,7 @@ export async function buildChapterContent(
   knownWords: string[],
   keyEvents: string[] = [],
   sourceExcerpt = "",
+  bible?: { cast: BibleEntry[]; places: BibleEntry[] } | null,
 ): Promise<ChapterContent> {
   const beats = keyEvents.length
     ? `Beats from the real story this chapter MUST cover, in order:\n${keyEvents
@@ -236,6 +237,14 @@ export async function buildChapterContent(
   const source = sourceExcerpt.trim()
     ? `Original source (for facts only — do not copy its wording):\n"""${sourceExcerpt.trim().slice(0, 6000)}"""\n\n`
     : "";
+  const castNames = (bible?.cast ?? []).map((c) => c.name);
+  const placeNames = (bible?.places ?? []).map((p) => p.name);
+  const bibleNames =
+    castNames.length || placeNames.length
+      ? `This book's characters: ${castNames.join("; ") || "(none)"}\n` +
+        `This book's places: ${placeNames.join("; ") || "(none)"}\n` +
+        `For every page, tag which of these characters and which place the picture shows, using these EXACT names.\n`
+      : "";
 
   const ask = () =>
     chatJson<unknown>(
@@ -246,15 +255,19 @@ export async function buildChapterContent(
     source +
       `Book: ${bookTitle}\nChapter ${chapterIdx}: ${chapterTitle}\nWhat happens: ${chapterSummary}\n` +
       beats +
+      bibleNames +
       `Words already taught (reuse some of these): ${knownWords.slice(0, 60).join(", ") || "none yet"}\n\n` +
       `${FIDELITY_RULES}\n\n` +
       `Write this chapter as 2 or 3 pages. Each page has 5 to 8 very short sentences (4-10 characters each). ` +
       `Every listed beat must actually appear in the sentences.\n` +
       `Return JSON:\n` +
-      `{"pages":[{"scene":"a vivid English description of one picture to paint for this page (no text in image)","sentences":[{"hanzi":"简体中文句子","pinyin":"jiǎn tǐ zhōng wén jù zi","native":"ประโยคภาษาไทย",` +
+      `{"pages":[{"scene":"a vivid English description of one picture to paint for this page (no text in image)",` +
+      `"cast":["character names from the list above that appear in this picture"],"place":"the place name from the list above",` +
+      `"sentences":[{"hanzi":"简体中文句子","pinyin":"jiǎn tǐ zhōng wén jù zi","native":"ประโยคภาษาไทย",` +
       `"words":[{"hanzi":"词","pinyin":"cí","dict":"ความหมายทั่วไปในพจนานุกรม (Thai)","context":"ความหมายในประโยคนี้ (Thai)"}]}]}],` +
       `"words":[{"hanzi":"词","pinyin":"cí","dict":"ความหมายทั่วไป (Thai)"}]}\n\n` +
       `Every page MUST include its own "scene" description matching what happens on that page. ` +
+
       `Rules: split every sentence into its real words (1-3 characters each, no punctuation as a word). ` +
       `"dict" is the GENERAL dictionary meaning of the word on its own; "context" is what it means in that sentence. ` +
       `The top-level "words" array holds 6 to 10 key vocabulary words for this chapter's quiz. ` +
