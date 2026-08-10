@@ -12,6 +12,9 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { WordPopup } from "@/components/WordPopup";
+import { StrokeWriter, type WriteTarget } from "@/components/StrokeWriter";
+import { useWritableChars } from "@/hooks/use-writable";
+
 import { bookQuery } from "@/lib/books";
 import { useProgress } from "@/lib/progress";
 import {
