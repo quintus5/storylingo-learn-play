@@ -142,6 +142,34 @@ function ProgressPage() {
         </p>
       </div>
 
+      <div className="mt-4 rounded-3xl border border-primary/20 bg-card p-4">
+        <p className="text-xs uppercase tracking-widest text-muted-foreground">
+          {t("Characters written", "ตัวอักษรที่เขียนได้")}
+        </p>
+        <p className="mt-1 text-2xl font-extrabold">{progress.charsWritten.length}</p>
+        {progress.charsWritten.length === 0 ? (
+          <p className="mt-1 text-xs text-muted-foreground">
+            {t(
+              "Tap a word and choose Write it to start your collection.",
+              "แตะที่คำแล้วเลือก หัดเขียน เพื่อเริ่มสะสม",
+            )}
+          </p>
+        ) : (
+          <ul className="mt-3 flex flex-wrap gap-2">
+            {progress.charsWritten.map((ch) => (
+              <li
+                key={ch}
+                className="han rounded-2xl border border-gold/40 bg-secondary/50 px-3 py-1.5 text-xl font-bold text-gold"
+              >
+                {ch}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+
+
 
       <h2 className="mb-3 mt-8 text-sm font-bold uppercase tracking-widest text-primary">
         {t("Chapters", "บทเรียน")}
