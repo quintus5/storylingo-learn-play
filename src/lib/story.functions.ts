@@ -289,3 +289,80 @@ export const deleteBook = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+/**
+ * Developer-only: write the book's visual bible (if it has none) and repaint
+ * every page with it, so an older, inconsistent book becomes consistent.
+ * The story text is untouched.
+ */
+export const repaintBook = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => DeleteBookInput.parse(input))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { getSourceText, buildStoryBible, illustratePages, makeArt } = await import(
+      "./story.server"
+    );
+
+    const { data: book } = await supabaseAdmin
+      .from("books")
+      .select("id, title, art_style, source_url, character_prompt, cast_bible, places")
+      .eq("id", data.bookId)
+      .single();
+    if (!book) throw new Error("Book not found");
+
+    let bible = {
+      cast: parseBibleEntries(book.cast_bible, 12),
+      places: parseBibleEntries(book.places, 8),
+    };
+    if (!bible.cast.length && book.source_url) {
+      const storyText = await getSourceText(book.source_url);
+      bible = await buildStoryBible(storyText);
+      await supabaseAdmin
+        .from("books")
+        .update({ cast_bible: bible.cast, places: bible.places })
+        .eq("id", data.bookId);
+    }
+
+    const { data: chapters } = await supabaseAdmin
+      .from("chapters")
+      .select("id, idx, title, pages")
+      .eq("book_id", data.bookId)
+      .order("idx");
+
+    for (const chapter of chapters ?? []) {
+      const pages = ((chapter.pages ?? []) as Page[]).filter((p) => p?.sentences?.length);
+      if (!pages.length) continue;
+      const painted = await illustratePages(
+        data.bookId,
+        chapter.idx as number,
+        chapter.title as string,
+        pages,
+        book.art_style ?? null,
+        book.character_prompt ?? null,
+        bible,
+      );
+      await supabaseAdmin
+        .from("chapters")
+        .update({ pages: painted, image_url: painted.find((p) => p.image_url)?.image_url ?? null })
+        .eq("id", chapter.id);
+    }
+
+    const cover = await makeArt(
+      data.bookId,
+      "cover",
+      `Book cover scene for the children's story "${book.title}".`,
+      book.art_style ?? null,
+      book.character_prompt ?? null,
+      [...bible.cast.slice(0, 3), ...bible.places.slice(0, 1)],
+    ).catch(() => null);
+    if (cover) {
+      // Bust the browser cache for the replaced cover image.
+      await supabaseAdmin
+        .from("books")
+        .update({ cover_url: `${cover}?v=${Date.now()}` })
+        .eq("id", data.bookId);
+    }
+
+    return { ok: true, chapters: (chapters ?? []).length };
+  });
+
