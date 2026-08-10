@@ -273,6 +273,61 @@ export async function buildChapterContent(
 }
 
 
+/**
+ * Write the book's visual bible once: a fixed look for each character and
+ * place. The exact same wording is reused in every page prompt afterwards,
+ * which is what keeps a book consistent across chapters.
+ */
+export async function buildStoryBible(
+  storyText: string,
+  spine?: PlotSpine | null,
+): Promise<{ cast: BibleEntry[]; places: BibleEntry[] }> {
+  const known = spine?.characters?.length
+    ? `Characters found in the story: ${spine.characters.join("; ")}\n`
+    : "";
+  try {
+    const raw = await chatJson<{ cast?: unknown; places?: unknown }>(
+      "You are an art director writing a visual bible for a children's picture book. " +
+        "Descriptions must be concrete, physical and repeatable. Reply with JSON only.",
+      `Story source:\n"""${storyText.slice(0, 12000)}"""\n\n` +
+        known +
+        `Write ONE fixed visual description for each important character and each recurring place. ` +
+        `These descriptions will be pasted into every illustration prompt for the whole book, so they must be ` +
+        `specific and unchanging: for a character give species/age, build, face, hair, eye colour, exact clothing ` +
+        `colours and any distinguishing mark; for a place give architecture or landscape, key objects, colour ` +
+        `palette and time of day. Do not mention art style, camera or mood. 25-45 words each.\n` +
+        `Return JSON: {"cast":[{"name":"the character's name as used in the story","description":"..."}],` +
+        `"places":[{"name":"the place name","description":"..."}]}`,
+    );
+    return {
+      cast: parseBibleEntries(raw.cast, 12),
+      places: parseBibleEntries(raw.places, 8),
+    };
+  } catch (err) {
+    console.warn("Could not build the story bible", err);
+    return { cast: [], places: [] };
+  }
+}
+
+const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9\u0e00-\u0e7f\u4e00-\u9fff]+/g, " ").trim();
+
+/** Pick the bible entries a page needs, from its tags or from its scene text. */
+export function matchBibleEntries(
+  page: Page,
+  cast: BibleEntry[],
+  places: BibleEntry[],
+): BibleEntry[] {
+  const scene = norm([page.scene ?? "", ...(page.cast ?? []), page.place ?? ""].join(" "));
+  const hit = (e: BibleEntry) => {
+    const name = norm(e.name.split(/[—\-(,]/)[0] ?? e.name);
+    return name.length > 1 && scene.includes(name);
+  };
+  const chosen = [...cast.filter(hit)];
+  const place = places.find(hit);
+  if (place) chosen.push(place);
+  return chosen.slice(0, 5);
+}
+
 /** Paint one illustration per page, all in parallel. */
 export async function illustratePages(
   bookId: string,
@@ -281,6 +336,7 @@ export async function illustratePages(
   pages: Page[],
   styleId?: string | null,
   characterPrompt?: string | null,
+  bible?: { cast: BibleEntry[]; places: BibleEntry[] } | null,
 ): Promise<Page[]> {
   const out: Page[] = new Array(pages.length);
   let next = 0;
@@ -299,6 +355,7 @@ export async function illustratePages(
           scene,
           styleId,
           characterPrompt,
+          bible ? matchBibleEntries(page, bible.cast, bible.places) : [],
         );
         out[i] = { ...page, image_url: url };
       } catch (err) {
@@ -320,6 +377,7 @@ export async function makeArt(
   scene: string,
   styleId?: string | null,
   characterPrompt?: string | null,
+  refs: BibleEntry[] = [],
 ): Promise<string> {
   const style = artStylePrompt(styleId);
   const buddy = characterPrompt?.trim()
@@ -329,8 +387,15 @@ export async function makeArt(
       `different style (no cartoon, 3D, sticker or cut-out look pasted onto the scene) — translate the ` +
       `described skin, hair, eyes, clothing and companion into this art tradition's own conventions.`
     : "";
+  // The same locked wording goes into every picture of this book, so the
+  // characters and places look identical from chapter to chapter.
+  const locked = refs.length
+    ? `\n\nFIXED APPEARANCES (must match exactly — these characters and places already appeared ` +
+      `earlier in this book and must look identical, same face, same clothes, same colours):\n` +
+      refs.map((r) => `- ${r.name}: ${r.description}`).join("\n")
+    : "";
   const bytes = await generateIllustration(
-    `Style (applies to every element in the picture, including any characters): ${style}\n\nScene: ${scene}${buddy}`,
+    `Style (applies to every element in the picture, including any characters): ${style}\n\nScene: ${scene}${locked}${buddy}`,
   );
 
   const path = `${bookId}/${name}.png`;
@@ -340,6 +405,7 @@ export async function makeArt(
   if (error) throw new Error(`Could not store illustration: ${error.message}`);
   return `/api/public/art/${path}`;
 }
+
 
 export type StoryPreview = {
   title: string;
