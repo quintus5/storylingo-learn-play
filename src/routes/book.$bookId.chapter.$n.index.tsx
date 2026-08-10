@@ -7,11 +7,16 @@ import {
   ChevronRight,
   Music,
   Pause,
+  PenLine,
   Play,
   VolumeX,
 } from "lucide-react";
+
 import { AppShell } from "@/components/AppShell";
 import { WordPopup } from "@/components/WordPopup";
+import { StrokeWriter, type WriteTarget } from "@/components/StrokeWriter";
+import { useWritableChars } from "@/hooks/use-writable";
+
 import { bookQuery } from "@/lib/books";
 import { useProgress } from "@/lib/progress";
 import {
@@ -72,7 +77,7 @@ function Reader() {
   const { bookId, n } = Route.useParams();
   const idx = Number(n);
   const { data } = useSuspenseQuery(bookQuery(bookId));
-  const { markRead, seeWords } = useProgress();
+  const { markRead, seeWords, progress: saved } = useProgress();
   const speaking = useSpeakingText();
   const progress = useSpeakingProgress();
   const [voice, chooseVoice] = useVoice();
@@ -81,6 +86,8 @@ function Reader() {
   const pages = chapter?.pages ?? [];
   const [page, setPage] = useState(0);
   const [word, setWord] = useState<Word | null>(null);
+  const [writing, setWriting] = useState<{ targets: WriteTarget[]; key: string; title: string } | null>(null);
+
   const [playing, setPlaying] = useState(false);
   const [music, setMusic] = useState(false);
   const [dir, setDir] = useState(1);
@@ -91,7 +98,28 @@ function Reader() {
   const current = pages[page];
   const isLast = page >= pages.length - 1;
 
+  // Characters worth practising on this page, and across the whole chapter.
+  const pageWords = useMemo(
+    () => (current?.sentences ?? []).flatMap((s) => s.words ?? []),
+    [current],
+  );
+  const pageChars = useWritableChars(pageWords);
+  const chapterChars = useWritableChars(chapter?.words ?? []);
+  const lookUp = useCallback(
+    (hanzi: string): WriteTarget => {
+      const hit = (chapter?.words ?? [])
+        .concat(pageWords)
+        .find((w) => w.hanzi === hanzi);
+      return hit && hit.hanzi.length === 1
+        ? { hanzi, pinyin: hit.pinyin, dict: hit.dict }
+        : { hanzi };
+    },
+    [chapter?.words, pageWords],
+  );
+
   const nextChapter = data.chapters.find((c) => c.idx === idx + 1);
+
+
 
   const sentenceTexts = useMemo(
     () => (current?.sentences ?? []).map((s) => s.hanzi),
@@ -330,6 +358,37 @@ function Reader() {
             >
               <Play className="h-3.5 w-3.5" /> {t("Hear", "ฟัง")}
             </button>
+            {pageChars.length > 0 && (
+              <button
+                onClick={() => {
+                  stopAudio();
+                  setPlaying(false);
+                  setWriting({
+                    targets: pageChars.map(lookUp),
+                    key: `${chapter.id}:page:${page}`,
+                    title: t("Write this page", "หัดเขียนหน้านี้"),
+                  });
+                }}
+                aria-label={t(
+                  `Write the ${pageChars.length} characters on this page`,
+                  `หัดเขียน ${pageChars.length} ตัวอักษรในหน้านี้`,
+                )}
+                className="press relative inline-flex shrink-0 items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-xs font-bold text-secondary-foreground"
+              >
+                <PenLine className="h-3.5 w-3.5" /> {t("Write", "เขียน")}
+                {/* Tiny badge: turns gold once every character here is written. */}
+                <span
+                  className={`absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold ${
+                    pageChars.every((c) => saved.charsWritten.includes(c))
+                      ? "bg-gold text-background"
+                      : "bg-primary text-primary-foreground"
+                  }`}
+                >
+                  {pageChars.length}
+                </span>
+              </button>
+            )}
+
             {current.sentences.length > 1 && (
               <div className="flex items-center gap-1">
                 {current.sentences.map((_, i) => (
@@ -358,16 +417,35 @@ function Reader() {
             </button>
 
             {isLast ? (
-              <Link
-                to="/book/$bookId/chapter/$n/quiz"
-                params={{ bookId, n }}
-                onClick={() => stopAudio()}
-                aria-label={t("Go to the quiz", "ไปที่แบบทดสอบ")}
-                className="press inline-flex h-9 items-center gap-1 rounded-full bg-primary px-3 text-xs font-bold text-primary-foreground"
-              >
-                {t("Quiz", "แบบทดสอบ")} <ChevronRight className="h-4 w-4" />
-              </Link>
+              <>
+                {chapterChars.length > 0 && (
+                  <button
+                    onClick={() => {
+                      stopAudio();
+                      setPlaying(false);
+                      setWriting({
+                        targets: chapterChars.slice(0, 12).map(lookUp),
+                        key: `${chapter.id}:chapter`,
+                        title: t("Practice writing", "ฝึกเขียน"),
+                      });
+                    }}
+                    className="press inline-flex h-9 items-center gap-1 rounded-full border border-border/30 bg-secondary/70 px-3 text-xs font-bold text-secondary-foreground backdrop-blur-sm"
+                  >
+                    <PenLine className="h-4 w-4" /> {t("Practice writing", "ฝึกเขียน")}
+                  </button>
+                )}
+                <Link
+                  to="/book/$bookId/chapter/$n/quiz"
+                  params={{ bookId, n }}
+                  onClick={() => stopAudio()}
+                  aria-label={t("Go to the quiz", "ไปที่แบบทดสอบ")}
+                  className="press inline-flex h-9 items-center gap-1 rounded-full bg-primary px-3 text-xs font-bold text-primary-foreground"
+                >
+                  {t("Quiz", "แบบทดสอบ")} <ChevronRight className="h-4 w-4" />
+                </Link>
+              </>
             ) : (
+
               <button
                 onClick={() => go(1)}
                 aria-label={t(
@@ -436,6 +514,15 @@ function Reader() {
 
 
       {word && <WordPopup word={word} onClose={() => setWord(null)} />}
+      {writing && (
+        <StrokeWriter
+          targets={writing.targets}
+          bonusKey={writing.key}
+          title={writing.title}
+          onClose={() => setWriting(null)}
+        />
+      )}
+
     </div>
   );
 }

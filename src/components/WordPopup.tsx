@@ -1,14 +1,19 @@
-import { useEffect, useRef } from "react";
-import { X, Volume2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { X, Volume2, PenLine } from "lucide-react";
 import type { Word } from "@/lib/types";
 import { speak, stopAudio } from "@/lib/audio";
 import { useT } from "@/lib/i18n";
 import { normalizePinyin } from "@/lib/pinyin";
+import { StrokeWriter } from "@/components/StrokeWriter";
+import { useWritableChars } from "@/hooks/use-writable";
 
 export function WordPopup({ word, onClose }: { word: Word; onClose: () => void }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const t = useT();
+  const [writing, setWriting] = useState(false);
+  const chars = useWritableChars([word]);
+
 
   useEffect(() => {
     void speak(word.hanzi, true);
@@ -99,13 +104,39 @@ export function WordPopup({ word, onClose }: { word: Word; onClose: () => void }
           ) : null}
         </dl>
 
-        <button
-          onClick={() => void speak(word.hanzi, true)}
-          className="press mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 font-bold text-primary-foreground"
-        >
-          <Volume2 className="h-5 w-5" /> {t("Hear it slowly", "ฟังทีละคำช้าๆ")}
-        </button>
+        <div className="mt-4 flex gap-2">
+          <button
+            onClick={() => void speak(word.hanzi, true)}
+            className="press inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 font-bold text-primary-foreground"
+          >
+            <Volume2 className="h-5 w-5" /> {t("Hear it slowly", "ฟังทีละคำช้าๆ")}
+          </button>
+          {/* Only offered when this word really has stroke data to practise. */}
+          {chars.length > 0 && (
+            <button
+              onClick={() => {
+                stopAudio();
+                setWriting(true);
+              }}
+              className="press inline-flex items-center justify-center gap-2 rounded-2xl bg-secondary px-4 py-3 font-bold text-secondary-foreground"
+            >
+              <PenLine className="h-5 w-5" /> {t("Write it", "หัดเขียน")}
+            </button>
+          )}
+        </div>
       </div>
+
+      {writing && (
+        <StrokeWriter
+          targets={chars.map((hanzi) => ({
+            hanzi,
+            pinyin: chars.length === 1 ? word.pinyin : undefined,
+            dict: chars.length === 1 ? word.dict : undefined,
+          }))}
+          onClose={() => setWriting(false)}
+        />
+      )}
     </div>
   );
+
 }

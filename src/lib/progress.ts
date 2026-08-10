@@ -52,7 +52,10 @@ export type Progress = {
   wordLog: Record<string, WordLogEntry>;
   /** ISO days the child practised, newest last, capped at 30. */
   activeDays: string[];
+  /** Characters the child has written stroke by stroke at least once. */
+  charsWritten: string[];
 };
+
 
 const EMPTY: Progress = {
   books: {},
@@ -73,7 +76,9 @@ const EMPTY: Progress = {
   listenLog: [],
   wordLog: {},
   activeDays: [],
+  charsWritten: [],
 };
+
 
 function today() {
   return new Date().toISOString().slice(0, 10);
@@ -287,6 +292,30 @@ export function useProgress() {
 
   const saveCharacter = useCallback((character: CharacterLook) => update((p) => ({ ...p, character })), [update]);
 
+  /**
+   * Remember a character the child wrote stroke by stroke. Coins are paid the
+   * first time only, so repeating a character cannot farm the purse.
+   */
+  const writeChar = useCallback(
+    (hanzi: string) =>
+      update((p) => {
+        const next: Progress = {
+          ...p,
+          charsWritten: Array.from(new Set([...p.charsWritten, hanzi])),
+        };
+        return give(next, REWARDS.character, `write:${hanzi}`);
+      }),
+    [update],
+  );
+
+  /** One-off bonus for finishing a whole writing round (page or chapter). */
+  const finishWritingSet = useCallback(
+    (key: string) => update((p) => give(p, REWARDS.writingSet, `writeset:${key}`)),
+    [update],
+  );
+
+
+
   return {
     progress,
     loaded,
@@ -299,6 +328,9 @@ export function useProgress() {
     spend,
     buyItem,
     buyChapter,
+    writeChar,
+    finishWritingSet,
+
     saveCharacter,
   };
 }

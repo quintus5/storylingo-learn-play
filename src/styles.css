@@ -372,3 +372,31 @@
   }
 }
 
+
+/* Writing practice: ink splash, star burst, gentle wobble and buddy cheer. */
+@keyframes ink-pop {
+  0% { transform: scale(0.4); opacity: 0.9; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+
+@keyframes star-burst {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--bx), var(--by)) scale(0.3); opacity: 0; }
+}
+
+@keyframes wobble {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+
+@keyframes buddy-cheer {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  30% { transform: translateY(-12px) rotate(-5deg); }
+  60% { transform: translateY(-4px) rotate(5deg); }
+}
+
+@keyframes gold-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.18); }
+}
