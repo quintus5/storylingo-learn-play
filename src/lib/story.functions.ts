@@ -157,6 +157,7 @@ export const generateChapter = createServerFn({ method: "POST" })
       known,
       keyEvents,
       sourceExcerpt,
+      bible,
     );
 
 
@@ -169,6 +170,7 @@ export const generateChapter = createServerFn({ method: "POST" })
         content.pages,
         styleId,
         characterPrompt,
+        bible,
       ),
       data.idx === 1
         ? makeArt(
@@ -177,7 +179,9 @@ export const generateChapter = createServerFn({ method: "POST" })
             `Book cover scene for the children's story "${book.title}". ${scene}`,
             styleId,
             characterPrompt,
+            [...bible.cast.slice(0, 3), ...bible.places.slice(0, 1)],
           ).catch((err) => {
+
             console.error("Cover failed", err);
             return null;
           })
