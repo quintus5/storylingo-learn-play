@@ -514,6 +514,15 @@ function Reader() {
 
 
       {word && <WordPopup word={word} onClose={() => setWord(null)} />}
+      {writing && (
+        <StrokeWriter
+          targets={writing.targets}
+          setKey={writing.key}
+          title={writing.title}
+          onClose={() => setWriting(null)}
+        />
+      )}
+
     </div>
   );
 }
