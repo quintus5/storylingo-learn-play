@@ -86,6 +86,9 @@ function Bookshelf() {
       <section className="mb-8 rounded-3xl border border-primary/20 bg-card/70 p-6">
         <p className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-primary">
           <Sparkles className="h-4 w-4" /> {t("Mandarin for Thai speakers", "ภาษาจีนกลางสำหรับเด็กไทย")}
+          <span className="rounded-full bg-secondary/70 px-2 py-0.5 text-[10px] font-bold normal-case tracking-normal text-secondary-foreground">
+            Test edit
+          </span>
         </p>
         <h2 className="mt-2 text-2xl font-extrabold sm:text-3xl">
           {t(
