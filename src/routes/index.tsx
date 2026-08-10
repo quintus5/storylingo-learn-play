@@ -52,6 +52,8 @@ function Bookshelf() {
   const dev = useDevMode();
   const queryClient = useQueryClient();
   const [removing, setRemoving] = useState<string | null>(null);
+  const [repainting, setRepainting] = useState<string | null>(null);
+
   const t = useT();
   const local = useLocalText();
 
