@@ -211,6 +211,9 @@ export function StrokeWriter({
             }
             setStage("done");
             setCelebrate(true);
+            setDoneIdx((list) =>
+              list.includes(indexRef.current) ? list : [...list, indexRef.current],
+            );
             writeChar(target.hanzi);
             void speak(target.hanzi, true);
           },
