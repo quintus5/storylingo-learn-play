@@ -3,7 +3,7 @@ import { useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
 import { BookOpen, Plus, Sparkles, X } from "lucide-react";
 import { useState } from "react";
 import { booksQuery } from "@/lib/books";
-import { deleteBook } from "@/lib/story.functions";
+import { deleteBook, repaintBook } from "@/lib/story.functions";
 import { AppShell } from "@/components/AppShell";
 import { useProgress } from "@/lib/progress";
 import { CoinPurse } from "@/components/CoinPurse";
