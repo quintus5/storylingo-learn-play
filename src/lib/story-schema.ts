@@ -127,7 +127,17 @@ export function parseChapterContent(raw: unknown): { pages: Page[]; words: Word[
     }
     const sceneRaw = (p as { scene?: unknown }).scene;
     const scene = typeof sceneRaw === "string" && sceneRaw.trim() ? sceneRaw.trim().slice(0, 600) : undefined;
-    if (sentences.length) pages.push({ sentences, scene });
+    const castRaw = (p as { cast?: unknown }).cast;
+    const cast = Array.isArray(castRaw)
+      ? castRaw
+          .filter((c): c is string => typeof c === "string" && c.trim().length > 0)
+          .map((c) => c.trim().slice(0, 120))
+          .slice(0, 8)
+      : [];
+    const placeRaw = (p as { place?: unknown }).place;
+    const place = typeof placeRaw === "string" && placeRaw.trim() ? placeRaw.trim().slice(0, 120) : undefined;
+    if (sentences.length) pages.push({ sentences, scene, cast: cast.length ? cast : undefined, place });
+
   }
 
 
