@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   StoryValidationError,
+  parseBibleEntries,
   parseChapterContent,
   parseOutline,
 } from "./story-schema";
+
 
 const word = (hanzi = "小猫") => ({
   hanzi,
