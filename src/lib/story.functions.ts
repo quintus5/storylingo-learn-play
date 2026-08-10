@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { ART_STYLES, DEFAULT_ART_STYLE } from "./art-styles";
 import { parseBibleEntries } from "./story-schema";
+import type { Page } from "./types";
+
 
 
 const ART_STYLE_IDS = ART_STYLES.map((s) => s.id) as [string, ...string[]];
