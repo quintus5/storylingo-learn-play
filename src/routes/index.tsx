@@ -66,6 +66,26 @@ function Bookshelf() {
     }
   }
 
+  async function repaint(bookId: string, title: string) {
+    if (
+      !window.confirm(
+        t(
+          `Repaint every picture in "${title}" so the characters stay the same? This takes a few minutes.`,
+          `วาดภาพใหม่ทั้งเล่มของ "${title}" เพื่อให้ตัวละครเหมือนกันทุกบท? ใช้เวลาสักครู่`,
+        ),
+      )
+    )
+      return;
+    setRepainting(bookId);
+    try {
+      await repaintBook({ data: { bookId } });
+      await queryClient.invalidateQueries({ queryKey: ["books"] });
+    } finally {
+      setRepainting(null);
+    }
+  }
+
+
 
 
   return (
