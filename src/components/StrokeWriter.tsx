@@ -79,12 +79,15 @@ export function StrokeWriter({
   onClose,
   bonusKey,
   title,
+  sentence,
 }: {
   targets: WriteTarget[];
   onClose: () => void;
   /** When given, a one-off bonus is paid for finishing every character. */
   bonusKey?: string;
   title?: string;
+  /** The whole line being practised, shown across the top for context. */
+  sentence?: { chars: string[]; native?: string };
 }) {
   const t = useT();
   const { progress, writeChar, finishWritingSet } = useProgress();
