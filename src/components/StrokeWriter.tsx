@@ -420,7 +420,12 @@ export function StrokeWriter({
           </button>
 
           <p className="text-xs text-muted-foreground">
-            {t(`${index + 1} of ${targets.length}`, `${index + 1} จาก ${targets.length}`)}
+            {sentence
+              ? t(
+                  `${index + 1} of ${targets.length} in this line`,
+                  `${index + 1} จาก ${targets.length} ในบรรทัดนี้`,
+                )
+              : t(`${index + 1} of ${targets.length}`, `${index + 1} จาก ${targets.length}`)}
           </p>
 
           <button
