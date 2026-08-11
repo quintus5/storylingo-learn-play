@@ -98,6 +98,7 @@ function Reader() {
   const [dir, setDir] = useState(1);
   const [active, setActive] = useState(0);
   const [voiceOpen, setVoiceOpen] = useState(false);
+  const [brokenArt, setBrokenArt] = useState<Record<string, true>>({});
   const trackRef = useRef<HTMLDivElement>(null);
 
   const current = pages[page];
@@ -270,7 +271,8 @@ function Reader() {
 
 
 
-  const art = current.image_url ?? (page === 0 ? chapter.image_url : null) ?? chapter.image_url;
+  const artSrc = current.image_url ?? (page === 0 ? chapter.image_url : null) ?? chapter.image_url;
+  const art = artSrc && !brokenArt[artSrc] ? artSrc : null;
   
 
   return (
@@ -285,6 +287,7 @@ function Reader() {
             fetchPriority="high"
             decoding="async"
             loading="eager"
+            onError={() => setBrokenArt((prev) => ({ ...prev, [art]: true }))}
             className="h-full w-full object-cover animate-[art-fade_.5s_ease-out_both,ken-burns_14s_ease-out_both]"
           />
         ) : (
