@@ -640,7 +640,8 @@ function SentenceCard({
       }`}
     >
       <div className="flex flex-wrap items-end justify-center gap-x-1">
-        {sentence.words.length > 0
+        {wordsMatchSentence(sentence.hanzi, sentence.words)
+
           ? sentence.words.map((w, i) => (
               <button
                 key={`${w.hanzi}-${i}`}
