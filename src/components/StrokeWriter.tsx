@@ -323,7 +323,7 @@ export function StrokeWriter({
       writerRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [target?.hanzi, stage]);
+  }, [target?.hanzi, stage, nonce]);
 
   if (!target) return null;
 
