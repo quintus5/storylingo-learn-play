@@ -230,13 +230,20 @@ function Reader() {
   // Warm the next scene and the next page so changes feel instant.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    for (const url of [sentenceArt[active + 1], pages[page + 1]?.image_url]) {
+    const ahead = [
+      sentenceArt[active + 1],
+      sentenceArt[active + 2],
+      pages[page + 1]?.image_url,
+      pages[page + 1]?.sentences?.find((s) => s.image_url)?.image_url,
+      isLast ? nextChapter?.image_url : null,
+    ];
+    for (const url of ahead) {
       if (!url) continue;
       const img = new Image();
       img.decoding = "async";
       img.src = url;
     }
-  }, [page, active, pages, sentenceArt]);
+  }, [page, active, pages, sentenceArt, isLast, nextChapter?.image_url]);
 
 
 
