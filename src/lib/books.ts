@@ -2,6 +2,15 @@ import { queryOptions } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { BookRow, ChapterRow } from "./types";
 
+/**
+ * Small copy of a cover, written beside the full picture when the book is
+ * made. Older books are PNG and have no thumbnail, so they keep their own URL.
+ */
+export function coverThumb(url: string | null | undefined): string | undefined {
+  if (!url) return undefined;
+  return url.endsWith(".webp") ? url.replace(/\.webp$/, "-thumb.webp") : url;
+}
+
 export const booksQuery = queryOptions({
   queryKey: ["books"],
   queryFn: async (): Promise<BookRow[]> => {
