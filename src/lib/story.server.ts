@@ -439,17 +439,15 @@ export async function makeArt(
   name: string,
   scene: string,
   styleId?: string | null,
-  characterPrompt?: string | null,
+  /**
+   * Kept for older callers only. The child's buddy is no longer painted into
+   * the picture — books are shared by every reader, so the buddy is drawn on
+   * top of the page as that child's own sprite instead.
+   */
+  _characterPrompt?: string | null,
   refs: BibleEntry[] = [],
 ): Promise<string> {
   const style = artStylePrompt(styleId);
-  const buddy = characterPrompt?.trim()
-    ? `\n\n${characterPrompt.trim()}\n` +
-      `Paint this child with exactly the same medium, brushwork, line quality, texture and palette as the ` +
-      `rest of the picture, as if drawn by the same artist in one sitting. Never render the child in a ` +
-      `different style (no cartoon, 3D, sticker or cut-out look pasted onto the scene) — translate the ` +
-      `described skin, hair, eyes, clothing and companion into this art tradition's own conventions.`
-    : "";
   // The same locked wording goes into every picture of this book, so the
   // characters and places look identical from chapter to chapter.
   const locked = refs.length
