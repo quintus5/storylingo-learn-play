@@ -165,26 +165,21 @@ export function StrokeWriter({
     window.setTimeout(() => nextRef.current(), 500);
   }, [targets.length, onClose, t]);
 
+  /** Replay the stroke animation, then hand the box back for writing. */
   const replay = useCallback(() => {
     try {
       writerRef.current?.cancelQuiz?.();
       writerRef.current?.animateCharacter?.({
         onComplete: () => {
-          if (stage === "trace" || stage === "try") setStage((s) => s);
+          // Rebuild the current stage so the quiz starts fresh after watching.
+          if (stage === "trace" || stage === "try") setNonce((n) => n + 1);
         },
       });
     } catch {
       /* nothing to replay */
     }
-    if (stage === "trace" || stage === "try") {
-      // Restart the quiz once the replay is done so the child can keep writing.
-      window.setTimeout(() => {
-        const cur = stage;
-        setStage("watch");
-        window.setTimeout(() => setStage(cur === "try" ? "try" : "trace"), 0);
-      }, 0);
-    }
   }, [stage]);
+
 
   // Escape always gets out — this is practice, never a trap.
   useEffect(() => {
