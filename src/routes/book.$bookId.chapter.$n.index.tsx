@@ -260,6 +260,7 @@ function Reader() {
 
 
   const art = current.image_url ?? (page === 0 ? chapter.image_url : null) ?? chapter.image_url;
+  const nextArt = pages[page + 1]?.image_url ?? null;
 
   return (
     <div className="fixed inset-0 overflow-hidden bg-background">
@@ -270,6 +271,9 @@ function Reader() {
             key={art}
             src={art}
             alt={t(`Illustration for ${chapter.title}, page ${page + 1}`, `ภาพประกอบของ ${chapter.title} หน้า ${page + 1}`)}
+            fetchPriority="high"
+            decoding="async"
+            loading="eager"
             className="h-full w-full object-cover animate-[art-fade_.5s_ease-out_both,ken-burns_14s_ease-out_both]"
           />
         ) : (
