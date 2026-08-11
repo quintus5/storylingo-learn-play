@@ -53,6 +53,7 @@ function Bookshelf() {
   const queryClient = useQueryClient();
   const [removing, setRemoving] = useState<string | null>(null);
   const [repainting, setRepainting] = useState<string | null>(null);
+  const [brokenCovers, setBrokenCovers] = useState<Record<string, true>>({});
 
   const t = useT();
   const local = useLocalText();
