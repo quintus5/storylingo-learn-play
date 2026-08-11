@@ -444,7 +444,7 @@ function Reader() {
             )}
           </div>
 
-          <div className="order-3 flex items-center justify-end gap-1 sm:w-44 sm:shrink-0 sm:pb-1">
+          <div className="order-3 flex min-w-0 flex-wrap items-center justify-end gap-1 sm:w-44 sm:shrink-0 sm:flex-nowrap sm:pb-1">
             <button
               onClick={() => go(-1)}
               disabled={page === 0}
