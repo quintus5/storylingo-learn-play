@@ -202,6 +202,17 @@ function Reader() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [speaking]);
 
+  // Warm the next page's illustration so page turns feel instant.
+  useEffect(() => {
+    const url = pages[page + 1]?.image_url;
+    if (!url || typeof window === "undefined") return;
+    const img = new Image();
+    img.decoding = "async";
+    img.src = url;
+  }, [page, pages]);
+
+
+
   if (!chapter || pages.length === 0) {
     return (
       <AppShell back={{ to: "/book/$bookId", params: { bookId } }}>
