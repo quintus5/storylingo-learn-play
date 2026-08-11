@@ -109,6 +109,13 @@ function Reader() {
   const current = pages[page];
   const isLast = page >= pages.length - 1;
 
+  // Forget the last-good picture when the chapter changes, so the previous
+  // chapter's artwork can never flash behind the new one.
+  useEffect(() => {
+    setShownArt(null);
+    setBrokenArt({});
+  }, [bookId, idx]);
+
   // Characters worth practising on this page, and across the whole chapter.
   const pageWords = useMemo(
     () => (current?.sentences ?? []).flatMap((s) => s.words ?? []),
