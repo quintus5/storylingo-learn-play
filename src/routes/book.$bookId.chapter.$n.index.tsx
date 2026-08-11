@@ -470,9 +470,11 @@ function Reader() {
                         title: t("Practice writing", "ฝึกเขียน"),
                       });
                     }}
-                    className="press inline-flex h-9 items-center gap-1 rounded-full border border-border/30 bg-secondary/70 px-3 text-xs font-bold text-secondary-foreground backdrop-blur-sm"
+                    aria-label={t("Practice writing", "ฝึกเขียน")}
+                    className="press inline-flex h-9 shrink-0 items-center gap-1 rounded-full border border-border/30 bg-secondary/70 px-2.5 text-xs font-bold text-secondary-foreground backdrop-blur-sm"
                   >
-                    <PenLine className="h-4 w-4" /> {t("Practice writing", "ฝึกเขียน")}
+                    <PenLine className="h-4 w-4 shrink-0" />
+                    <span className="hidden sm:inline">{t("Practice writing", "ฝึกเขียน")}</span>
                   </button>
                 )}
                 <Link
@@ -480,10 +482,12 @@ function Reader() {
                   params={{ bookId, n }}
                   onClick={() => stopAudio()}
                   aria-label={t("Go to the quiz", "ไปที่แบบทดสอบ")}
-                  className="press inline-flex h-9 items-center gap-1 rounded-full bg-primary px-3 text-xs font-bold text-primary-foreground"
+                  className="press inline-flex h-9 min-w-0 shrink items-center gap-1 rounded-full bg-primary px-3 text-xs font-bold text-primary-foreground"
                 >
-                  {t("Quiz", "แบบทดสอบ")} <ChevronRight className="h-4 w-4" />
+                  <span className="truncate">{t("Quiz", "แบบทดสอบ")}</span>
+                  <ChevronRight className="h-4 w-4 shrink-0" />
                 </Link>
+
               </>
             ) : (
 
