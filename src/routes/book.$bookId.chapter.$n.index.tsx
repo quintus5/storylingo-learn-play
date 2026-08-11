@@ -271,7 +271,7 @@ function Reader() {
 
 
   const art = current.image_url ?? (page === 0 ? chapter.image_url : null) ?? chapter.image_url;
-  const nextArt = pages[page + 1]?.image_url ?? null;
+  
 
   return (
     <div className="fixed inset-0 overflow-hidden bg-background">
