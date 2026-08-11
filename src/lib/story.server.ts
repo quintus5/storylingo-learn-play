@@ -474,13 +474,31 @@ export async function makeArt(
       `the scene always wins; treat the style purely as painting technique.${locked}`,
   );
 
-  const path = `${bookId}/${name}.png`;
+  // Store a resized WebP when we can — the raw PNG is ~2 MB, the WebP ~150 KB.
+  const image = await toWebp(bytes, 1280, 78);
+  const path = `${bookId}/${name}.${image.extension}`;
   const { error } = await supabaseAdmin.storage
     .from(BUCKET)
-    .upload(path, bytes, { contentType: "image/png", upsert: true });
+    .upload(path, image.bytes, { contentType: image.contentType, upsert: true });
   if (error) throw new Error(`Could not store illustration: ${error.message}`);
+
+  // Covers are shown small on the bookshelf, so keep a thumbnail beside them.
+  if (name === "cover") {
+    try {
+      const thumb = await toWebp(bytes, 480, 70);
+      await supabaseAdmin.storage
+        .from(BUCKET)
+        .upload(`${bookId}/${name}-thumb.${thumb.extension}`, thumb.bytes, {
+          contentType: thumb.contentType,
+          upsert: true,
+        });
+    } catch (err) {
+      console.warn("Cover thumbnail skipped", err);
+    }
+  }
   return `/api/public/art/${path}`;
 }
+
 
 
 export type StoryPreview = {
