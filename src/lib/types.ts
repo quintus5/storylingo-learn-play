@@ -12,6 +12,12 @@ export type Sentence = {
   pinyin: string;
   native: string;
   words: Word[];
+  /** English description of what this sentence depicts, when the picture moves. */
+  scene?: string;
+  /** True when this sentence starts a new picture. */
+  sceneChange?: boolean;
+  /** URL of this sentence's illustration, when one was generated. */
+  image_url?: string | null;
 };
 
 export type Page = {

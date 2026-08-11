@@ -45,6 +45,11 @@ export const SentenceSchema = z
     pinyin: pinyin(400),
     native: nonEmpty(400),
     words: z.array(WordSchema),
+    /** English description of what this sentence depicts, when the picture moves. */
+    scene: z.string().trim().max(600).optional(),
+    /** True when the visual actually changes at this sentence. */
+    sceneChange: z.boolean().optional(),
+    image_url: z.string().trim().max(500).nullable().optional(),
   })
   .transform((s) => ({
     ...s,
@@ -103,6 +108,12 @@ export const OutlineSchema = z.object({
 export type ChapterContent = z.infer<typeof ChapterContentSchema>;
 export type Outline = z.infer<typeof OutlineSchema>;
 
+/** Page-level scene text, used when a page's first sentence has none of its own. */
+function sceneOf(p: unknown): string | undefined {
+  const raw = (p as { scene?: unknown }).scene;
+  return typeof raw === "string" && raw.trim() ? raw.trim().slice(0, 600) : undefined;
+}
+
 function asRecord(raw: unknown): Record<string, unknown> {
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
     throw new StoryValidationError("The story generator returned an unexpected shape.", [
@@ -140,9 +151,23 @@ export function parseChapterContent(raw: unknown): { pages: Page[]; words: Word[
     for (const s of list) {
       if (s === null || typeof s !== "object" || Array.isArray(s)) continue;
       // Repair the word list first so one bad word doesn't discard the sentence.
-      const candidate = { ...(s as object), words: keepValid(WordSchema, (s as { words?: unknown }).words) };
+      const raw = s as { words?: unknown; scene?: unknown; sceneChange?: unknown };
+      const sceneText =
+        typeof raw.scene === "string" && raw.scene.trim() ? raw.scene.trim().slice(0, 600) : undefined;
+      const candidate = {
+        ...(s as object),
+        words: keepValid(WordSchema, raw.words),
+        scene: sceneText,
+        sceneChange: sceneText ? raw.sceneChange !== false : false,
+      };
       const parsed = SentenceSchema.safeParse(candidate);
       if (parsed.success) sentences.push(parsed.data);
+    }
+    // The first sentence of a page always opens a new picture.
+    if (sentences.length && sentences.some((x) => x.scene)) {
+      const first = sentences[0]!;
+      if (!first.scene) first.scene = sceneOf(p);
+      first.sceneChange = true;
     }
     const sceneRaw = (p as { scene?: unknown }).scene;
     const scene = typeof sceneRaw === "string" && sceneRaw.trim() ? sceneRaw.trim().slice(0, 600) : undefined;
