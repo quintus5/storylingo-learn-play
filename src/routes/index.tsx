@@ -216,13 +216,16 @@ function Bookshelf() {
                 <div className="aspect-[3/4] w-full shrink-0 overflow-hidden bg-secondary">
                   {book.cover_url && !brokenCovers[book.id] ? (
                     <img
-                      src={book.cover_url}
+                      src={coverThumb(book.cover_url)}
                       alt={t(
                         `Cover illustration for ${book.title}`,
                         `ภาพปกของ ${book.title}`,
                       )}
                       className="h-full w-full object-cover"
                       loading="lazy"
+                      decoding="async"
+                      width={480}
+                      height={640}
                       onError={() => setBrokenCovers((prev) => ({ ...prev, [book.id]: true }))}
                     />
                   ) : (
