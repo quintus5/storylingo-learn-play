@@ -139,9 +139,12 @@ function BookPage() {
         <div className="h-44 w-32 shrink-0 overflow-hidden rounded-2xl bg-secondary">
           {book.cover_url ? (
             <img
-              src={book.cover_url}
+              src={coverThumb(book.cover_url)}
               alt={t(`Cover illustration for ${local(book.title, book.title_th)}`, `ภาพปกของ ${local(book.title, book.title_th)}`)}
               className="h-full w-full object-cover"
+              decoding="async"
+              width={480}
+              height={640}
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-muted-foreground">
