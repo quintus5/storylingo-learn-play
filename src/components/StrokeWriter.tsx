@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { X, SkipForward, Volume2, Sparkles } from "lucide-react";
+import { X, SkipForward, Volume2, Sparkles, RotateCcw } from "lucide-react";
 import { CharacterSprite } from "@/components/CharacterSprite";
 import { speak } from "@/lib/audio";
 import { charDataLoader, loadCharData } from "@/lib/hanzi-data";
@@ -13,7 +13,10 @@ export type WriteTarget = { hanzi: string; pinyin?: string; dict?: string };
 
 type Stage = "watch" | "trace" | "try" | "done";
 
-const SIZE = 260;
+/** The "from memory" stage gets a bigger box — still fits a 393px phone. */
+function boxSize(stage: Stage) {
+  return stage === "try" || stage === "done" ? 300 : 260;
+}
 
 function reducedMotion() {
   return (
@@ -97,11 +100,12 @@ export function StrokeWriter({
   const [index, setIndex] = useState(0);
   const [stage, setStage] = useState<Stage>("watch");
   const [strokes, setStrokes] = useState({ done: 0, total: 0 });
-  const [wobble, setWobble] = useState(0);
+  const [shake, setShake] = useState(false);
   const [nudge, setNudge] = useState<string | null>(null);
   const [splashes, setSplashes] = useState<Splash[]>([]);
   const [celebrate, setCelebrate] = useState(false);
-  const [unavailable, setUnavailable] = useState(false);
+  const [earned, setEarned] = useState(true);
+  const [closingMsg, setClosingMsg] = useState<string | null>(null);
   /** Characters finished during this session, by target index. */
   const [doneIdx, setDoneIdx] = useState<number[]>([]);
 
@@ -110,6 +114,9 @@ export function StrokeWriter({
   indexRef.current = index;
   const soft = reducedMotion();
   const written = useMemo(() => new Set(progress.charsWritten), [progress.charsWritten]);
+  const writtenRef = useRef(written);
+  writtenRef.current = written;
+  const size = boxSize(stage);
 
   const next = useCallback(() => {
     setCelebrate(false);
@@ -122,6 +129,62 @@ export function StrokeWriter({
     setIndex((i) => i + 1);
     setStage("watch");
   }, [index, targets.length, bonusKey, finishWritingSet, onClose]);
+
+  const nextRef = useRef(next);
+  nextRef.current = next;
+
+  /** Jump straight to a character from the top row. */
+  const pick = useCallback(
+    (i: number) => {
+      if (i === indexRef.current || i < 0 || i >= targets.length) return;
+      try {
+        writerRef.current?.cancelQuiz?.();
+      } catch {
+        /* nothing running */
+      }
+      setCelebrate(false);
+      setNudge(null);
+      setIndex(i);
+      setStage("watch");
+    },
+    [targets.length],
+  );
+
+  /** No dead ends: characters without stroke data are skipped for us. */
+  const missingRef = useRef(0);
+  const skipMissing = useCallback(() => {
+    missingRef.current += 1;
+    if (missingRef.current >= targets.length) {
+      setClosingMsg(
+        t("No writing lesson for these characters yet.", "ยังไม่มีบทเรียนการเขียนสำหรับตัวอักษรเหล่านี้"),
+      );
+      window.setTimeout(() => onClose(), 1400);
+      return;
+    }
+    setNudge(t("Skipping — no writing lesson for that one.", "ข้ามให้นะ ตัวนี้ยังไม่มีบทเรียนการเขียน"));
+    window.setTimeout(() => nextRef.current(), 500);
+  }, [targets.length, onClose, t]);
+
+  const replay = useCallback(() => {
+    try {
+      writerRef.current?.cancelQuiz?.();
+      writerRef.current?.animateCharacter?.({
+        onComplete: () => {
+          if (stage === "trace" || stage === "try") setStage((s) => s);
+        },
+      });
+    } catch {
+      /* nothing to replay */
+    }
+    if (stage === "trace" || stage === "try") {
+      // Restart the quiz once the replay is done so the child can keep writing.
+      window.setTimeout(() => {
+        const cur = stage;
+        setStage("watch");
+        window.setTimeout(() => setStage(cur === "try" ? "try" : "trace"), 0);
+      }, 0);
+    }
+  }, [stage]);
 
   // Escape always gets out — this is practice, never a trap.
   useEffect(() => {
@@ -136,14 +199,15 @@ export function StrokeWriter({
   useEffect(() => {
     if (!target) return;
     let cancelled = false;
-    setUnavailable(false);
     setStrokes({ done: 0, total: 0 });
+    let misses = 0;
+    let hinting = false;
 
     void (async () => {
       const data = (await loadCharData(target.hanzi)) as { strokes?: string[] } | null;
       if (cancelled) return;
       if (!data) {
-        setUnavailable(true);
+        skipMissing();
         return;
       }
       setStrokes({ done: 0, total: data.strokes?.length ?? 0 });
@@ -152,9 +216,10 @@ export function StrokeWriter({
       if (cancelled || !boxRef.current) return;
       boxRef.current.innerHTML = "";
 
+      const px = boxSize(stage);
       const writer = HanziWriter.create(boxRef.current, target.hanzi, {
-        width: SIZE,
-        height: SIZE,
+        width: px,
+        height: px,
         padding: 14,
         showCharacter: false,
         showOutline: stage !== "try",
@@ -165,7 +230,7 @@ export function StrokeWriter({
         drawingColor: "#f2c14e",
         highlightColor: "#7fb3ff",
         charDataLoader,
-        onLoadCharDataError: () => setUnavailable(true),
+        onLoadCharDataError: () => skipMissing(),
       } as never) as unknown as typeof writerRef.current;
       writerRef.current = writer;
       if (!writer) return;
@@ -186,6 +251,15 @@ export function StrokeWriter({
           leniency: stage === "trace" ? 1.4 : 1.1,
           onCorrectStroke: (info: { strokesRemaining: number; drawnPath?: { points?: { x: number; y: number }[] } }) => {
             clickSound();
+            misses = 0;
+            if (hinting && stage === "try") {
+              hinting = false;
+              try {
+                writerRef.current?.hideOutline?.();
+              } catch {
+                /* fine */
+              }
+            }
             setStrokes((s) => ({ ...s, done: s.total - info.strokesRemaining }));
             const pts = info.drawnPath?.points;
             const last = pts?.[pts.length - 1];
@@ -199,8 +273,18 @@ export function StrokeWriter({
             }
           },
           onMistake: () => {
-            setWobble((w) => w + 1);
+            misses += 1;
+            setShake(true);
             setNudge(t("Almost — try that stroke again.", "เกือบแล้ว ลองเส้นนี้อีกครั้ง"));
+            // A faint outline appears as a gentle hint in the memory stage.
+            if (stage === "try" && misses >= 1 && !hinting) {
+              hinting = true;
+              try {
+                writerRef.current?.showOutline?.();
+              } catch {
+                /* fine */
+              }
+            }
           },
           onComplete: () => {
             if (cancelled) return;
@@ -211,11 +295,22 @@ export function StrokeWriter({
             }
             setStage("done");
             setCelebrate(true);
+            setEarned(!writtenRef.current.has(target.hanzi));
             setDoneIdx((list) =>
               list.includes(indexRef.current) ? list : [...list, indexRef.current],
             );
             writeChar(target.hanzi);
             void speak(target.hanzi, true);
+            // Show the correct stroke order once, right after they finish.
+            if (!soft) {
+              window.setTimeout(() => {
+                try {
+                  writerRef.current?.animateCharacter?.();
+                } catch {
+                  /* fine */
+                }
+              }, 700);
+            }
           },
         });
       }
@@ -284,21 +379,25 @@ export function StrokeWriter({
                 const isNow = i === index;
                 const isDone = doneIdx.includes(i);
                 return (
-                  <span
+                  <button
                     key={`${ch}-${i}`}
-                    className={`han relative inline-flex h-9 min-w-9 items-center justify-center rounded-lg px-1.5 text-xl font-bold transition-colors duration-200 motion-reduce:transition-none ${
+                    type="button"
+                    onClick={() => pick(i)}
+                    aria-current={isNow ? "true" : undefined}
+                    aria-label={t(`Write ${ch}`, `เขียน ${ch}`)}
+                    className={`han press relative inline-flex h-10 min-w-10 items-center justify-center rounded-lg px-1.5 text-xl font-bold transition-colors duration-200 motion-reduce:transition-none ${
                       isNow
                         ? "bg-gold/20 text-gold ring-1 ring-gold/60"
                         : isDone
                           ? "bg-gold/10 text-gold"
-                          : "text-muted-foreground/60"
+                          : "text-muted-foreground/60 hover:bg-secondary/60"
                     }`}
                   >
                     {ch}
                     {isDone && !isNow && (
                       <span className="absolute -right-0.5 -top-1 text-[10px] leading-none">✓</span>
                     )}
-                  </span>
+                  </button>
                 );
               })}
             </div>
@@ -324,14 +423,14 @@ export function StrokeWriter({
 
           <div className="relative mx-auto">
             <div
-              key={wobble}
-              className={`relative rounded-2xl bg-secondary/40 ${
-                wobble && !soft ? "animate-[wobble_.35s_ease-in-out]" : ""
+              onAnimationEnd={() => setShake(false)}
+              className={`relative touch-none rounded-2xl bg-secondary/40 ${
+                shake && !soft ? "animate-[wobble_.35s_ease-in-out]" : ""
               }`}
-              style={{ width: SIZE, height: SIZE }}
+              style={{ width: size, height: size, touchAction: "none" }}
             >
               <RiceGrid />
-              <div ref={boxRef} className="relative" aria-hidden />
+              <div ref={boxRef} className="relative touch-none" style={{ touchAction: "none" }} aria-hidden />
 
               {splashes.map((s) => (
                 <span
@@ -357,20 +456,9 @@ export function StrokeWriter({
                 </span>
               )}
 
-              {unavailable && (
+              {closingMsg && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-2xl bg-card/90 p-4 text-center">
-                  <p className="text-sm text-muted-foreground">
-                    {t(
-                      "This character has no writing lesson yet.",
-                      "ตัวอักษรนี้ยังไม่มีบทเรียนการเขียน",
-                    )}
-                  </p>
-                  <button
-                    onClick={next}
-                    className="press rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"
-                  >
-                    {t("Next", "ถัดไป")}
-                  </button>
+                  <p className="text-sm text-muted-foreground">{closingMsg}</p>
                 </div>
               )}
             </div>
@@ -402,7 +490,9 @@ export function StrokeWriter({
 
         <p className="mt-2 min-h-5 text-center text-xs text-muted-foreground">
           {celebrate
-            ? t(`Great job! +${REWARDS.character} coins`, `เก่งมาก! +${REWARDS.character} เหรียญ`)
+            ? earned
+              ? t(`Great job! +${REWARDS.character} coins`, `เก่งมาก! +${REWARDS.character} เหรียญ`)
+              : t("Great job! Coins already earned for this one.", "เก่งมาก! ตัวนี้ได้เหรียญไปแล้ว")
             : (nudge ??
               (stage === "watch"
                 ? t("Watch how it is written.", "ดูวิธีเขียนก่อนนะ")
@@ -411,13 +501,21 @@ export function StrokeWriter({
                   : t("Now write it from memory.", "ตอนนี้ลองเขียนเอง")))}
         </p>
 
-        <div className="mt-3 flex items-center justify-between gap-2">
-          <button
-            onClick={() => void speak(target.hanzi, true)}
-            className="press inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-2 text-xs font-bold text-secondary-foreground"
-          >
-            <Volume2 className="h-4 w-4" /> {t("Hear it", "ฟังเสียง")}
-          </button>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => void speak(target.hanzi, true)}
+              className="press inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-2 text-xs font-bold text-secondary-foreground"
+            >
+              <Volume2 className="h-4 w-4" /> {t("Hear it", "ฟังเสียง")}
+            </button>
+            <button
+              onClick={replay}
+              className="press inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-2 text-xs font-bold text-secondary-foreground"
+            >
+              <RotateCcw className="h-4 w-4" /> {t("Show me again", "ดูอีกครั้ง")}
+            </button>
+          </div>
 
           <p className="text-xs text-muted-foreground">
             {sentence
