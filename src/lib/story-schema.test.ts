@@ -111,7 +111,6 @@ describe("parseChapterContent — partial repair keeps the reader safe", () => {
     ["whitespace-only hanzi", { hanzi: "   " }],
     ["empty pinyin", { pinyin: "" }],
     ["non-string hanzi", { hanzi: 123 }],
-    ["no words array", { words: [] }],
   ])("drops a sentence with %s", (_label, patch) => {
     const out = parseChapterContent({
       pages: [{ sentences: [{ ...sentence("坏。"), ...patch }, sentence()] }],
@@ -120,24 +119,25 @@ describe("parseChapterContent — partial repair keeps the reader safe", () => {
     expect(out.pages[0].sentences).toHaveLength(1);
   });
 
-  it("drops invalid words inside a sentence but keeps the sentence", () => {
+  it("keeps a sentence with no usable words, so the line still reads", () => {
+    const out = parseChapterContent({
+      pages: [{ sentences: [{ ...sentence(), words: [] }] }],
+      words: [word()],
+    });
+    expect(out.pages[0].sentences[0].words).toHaveLength(0);
+    expect(out.pages[0].sentences[0].hanzi).toBe("小猫在睡觉。");
+  });
+
+  it("drops a word list that does not rebuild the sentence", () => {
     const s = sentence();
     const out = parseChapterContent({
       pages: [{ sentences: [{ ...s, words: ["not an object", { hanzi: "词" }, word()] }] }],
       words: [word()],
     });
-    expect(out.pages[0].sentences[0].words).toHaveLength(1);
-    expect(out.pages[0].sentences[0].words[0].dict).toBe("แมวน้อย");
+    expect(out.pages[0].sentences[0].words).toHaveLength(0);
+    expect(out.pages[0].sentences[0].hanzi).toBe("小猫在睡觉。");
   });
 
-  it("drops a sentence whose words are all invalid", () => {
-    expect(() =>
-      parseChapterContent({
-        pages: [{ sentences: [{ ...sentence(), words: [{ hanzi: "词" }, null] }] }],
-        words: [word()],
-      }),
-    ).toThrow(StoryValidationError);
-  });
 
   it("drops malformed vocabulary entries from the top-level list", () => {
     const out = parseChapterContent({
