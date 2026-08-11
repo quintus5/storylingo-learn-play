@@ -183,7 +183,7 @@ function Bookshelf() {
           {books.map((book) => {
             const stars = Object.values(progress.books[book.id]?.stars ?? {}).length;
             return (
-              <div key={book.id} className="relative">
+              <div key={book.id} className="relative h-full">
               {dev && (
                 <>
                 <button
@@ -209,10 +209,10 @@ function Bookshelf() {
               <Link
                 to="/book/$bookId"
                 params={{ bookId: book.id }}
-                className="press group block overflow-hidden rounded-3xl border border-border bg-card shadow-[0_18px_40px_-18px_oklch(0_0_0/0.75)]"
+                className="press group flex h-full flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-[0_18px_40px_-18px_oklch(0_0_0/0.75)]"
               >
 
-                <div className="aspect-[3/4] w-full overflow-hidden bg-secondary">
+                <div className="aspect-[3/4] w-full shrink-0 overflow-hidden bg-secondary">
                   {book.cover_url ? (
                     <img
                       src={book.cover_url}
@@ -229,14 +229,15 @@ function Bookshelf() {
                     </div>
                   )}
                 </div>
-                <div className="p-3">
-                  <p className="line-clamp-2 font-bold leading-snug">{local(book.title, book.title_th)}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
+                <div className="flex flex-1 flex-col p-3">
+                  <p className="line-clamp-2 min-h-[2.75em] font-bold leading-snug">{local(book.title, book.title_th)}</p>
+                  <p className="mt-auto pt-1 text-xs text-muted-foreground">
                     {t(`${stars}/${book.chapter_count} chapters done`, `ทำแล้ว ${stars}/${book.chapter_count} บท`)}
                   </p>
                 </div>
               </Link>
               </div>
+
             );
 
           })}
