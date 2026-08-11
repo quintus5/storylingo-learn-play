@@ -5,7 +5,7 @@ import { useState } from "react";
 import { BookOpen, ListChecks, Loader2, Lock, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { StarRow } from "@/components/StarRow";
-import { bookQuery } from "@/lib/books";
+import { bookQuery, coverThumb } from "@/lib/books";
 import { generateChapter, missingChapters } from "@/lib/story.functions";
 import { isUnlocked, useProgress } from "@/lib/progress";
 import { PRICES } from "@/lib/economy";
