@@ -302,7 +302,7 @@ function Reader() {
         {art ? (
           <>
             <img
-              src={art}
+              src={previous ?? art}
               alt=""
               aria-hidden
               className="absolute inset-0 h-full w-full scale-110 object-cover blur-2xl"
