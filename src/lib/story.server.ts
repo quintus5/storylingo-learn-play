@@ -264,9 +264,17 @@ export async function buildChapterContent(
       `{"pages":[{"scene":"a vivid English description of one picture to paint for this page (no text in image)",` +
       `"cast":["character names from the list above that appear in this picture"],"place":"the place name from the list above",` +
       `"sentences":[{"hanzi":"简体中文句子","pinyin":"jiǎn tǐ zhōng wén jù zi","native":"ประโยคภาษาไทย",` +
+      `"scene":"a short English description of what THIS sentence depicts","sceneChange":true,` +
       `"words":[{"hanzi":"词","pinyin":"cí","dict":"ความหมายทั่วไปในพจนานุกรม (Thai)","context":"ความหมายในประโยคนี้ (Thai)"}]}]}],` +
       `"words":[{"hanzi":"词","pinyin":"cí","dict":"ความหมายทั่วไป (Thai)"}]}\n\n` +
       `Every page MUST include its own "scene" description matching what happens on that page. ` +
+      `Every sentence MUST also carry its own short English "scene" plus "sceneChange". ` +
+      `Set "sceneChange" true ONLY when the picture genuinely moves: a new location, a new character ` +
+      `entering, or a significant new action. Set it false when the sentence continues the same moment. ` +
+      `Aim for about 2 to 4 scene changes per page, never one per sentence. ` +
+      `The FIRST sentence of every page must have "sceneChange": true. ` +
+      `Each sentence's scene must match that sentence and the chapter's beats: if the sentence names a ` +
+      `place, creature or object, the scene must show that thing. Scenes never contain text or letters. ` +
 
       `Rules: split every sentence into its real words (1-3 characters each, no punctuation as a word). ` +
       `"dict" is the GENERAL dictionary meaning of the word on its own; "context" is what it means in that sentence. ` +
@@ -330,8 +338,9 @@ export function matchBibleEntries(
   page: Page,
   cast: BibleEntry[],
   places: BibleEntry[],
+  extraText = "",
 ): BibleEntry[] {
-  const scene = norm([page.scene ?? "", ...(page.cast ?? []), page.place ?? ""].join(" "));
+  const scene = norm([page.scene ?? "", ...(page.cast ?? []), page.place ?? "", extraText].join(" "));
   const hit = (e: BibleEntry) => {
     const name = norm(e.name.split(/[—\-(,]/)[0] ?? e.name);
     return name.length > 1 && scene.includes(name);
@@ -342,7 +351,12 @@ export function matchBibleEntries(
   return chosen.slice(0, 5);
 }
 
-/** Paint one illustration per page, all in parallel. */
+/**
+ * Paint the chapter's illustrations. Newer chapters carry per-sentence scenes,
+ * so only the sentences that actually move the picture get their own image;
+ * the rest reuse the most recent one. Older chapters (no sentence scenes)
+ * still get exactly one picture per page.
+ */
 export async function illustratePages(
   bookId: string,
   chapterIdx: number,
@@ -352,34 +366,69 @@ export async function illustratePages(
   characterPrompt?: string | null,
   bible?: { cast: BibleEntry[]; places: BibleEntry[] } | null,
 ): Promise<Page[]> {
-  const out: Page[] = new Array(pages.length);
+  type Job = { page: number; sentence: number | null; scene: string; name: string };
+  const jobs: Job[] = [];
+
+  pages.forEach((page, i) => {
+    const pageScene = page.scene?.trim() || `${chapterTitle}: ${page.sentences[0]?.native ?? ""}`;
+    const changes = page.sentences
+      .map((sentence, j) => ({ sentence, j }))
+      .filter(({ sentence, j }) => sentence.scene?.trim() && (j === 0 || sentence.sceneChange));
+
+    if (changes.length === 0) {
+      jobs.push({ page: i, sentence: null, scene: pageScene, name: `chapter-${chapterIdx}-page-${i + 1}` });
+      return;
+    }
+    for (const { sentence, j } of changes) {
+      jobs.push({
+        page: i,
+        sentence: j,
+        scene: sentence.scene!.trim(),
+        name: `chapter-${chapterIdx}-page-${i + 1}-s${j + 1}`,
+      });
+    }
+  });
+
+  const results = new Array<string | null>(jobs.length).fill(null);
   let next = 0;
 
   // A small pool keeps a long chapter from firing a dozen image calls at once.
   const worker = async () => {
     while (true) {
-      const i = next++;
-      if (i >= pages.length) return;
-      const page = pages[i];
-      const scene = page.scene?.trim() || `${chapterTitle}: ${page.sentences[0]?.native ?? ""}`;
+      const k = next++;
+      if (k >= jobs.length) return;
+      const job = jobs[k]!;
+      const page = pages[job.page]!;
       try {
-        const url = await makeArt(
+        results[k] = await makeArt(
           bookId,
-          `chapter-${chapterIdx}-page-${i + 1}`,
-          scene,
+          job.name,
+          job.scene,
           styleId,
           characterPrompt,
-          bible ? matchBibleEntries(page, bible.cast, bible.places) : [],
+          bible ? matchBibleEntries(page, bible.cast, bible.places, job.scene) : [],
         );
-        out[i] = { ...page, image_url: url };
       } catch (err) {
-        console.error(`Page ${i + 1} illustration failed`, err);
-        out[i] = { ...page, image_url: null };
+        console.error(`Illustration ${job.name} failed`, err);
+        results[k] = null;
       }
     }
   };
 
-  await Promise.all(Array.from({ length: Math.min(4, pages.length) }, worker));
+  await Promise.all(Array.from({ length: Math.min(4, jobs.length) }, worker));
+
+  const out = pages.map((p) => ({ ...p, sentences: p.sentences.map((s) => ({ ...s })) }));
+  jobs.forEach((job, k) => {
+    const url = results[k];
+    const page = out[job.page]!;
+    if (job.sentence === null) {
+      page.image_url = url;
+    } else {
+      page.sentences[job.sentence]!.image_url = url;
+      // The page image is the first picture of that page, for older readers.
+      if (page.image_url == null) page.image_url = url;
+    }
+  });
   return out;
 }
 
@@ -409,7 +458,11 @@ export async function makeArt(
       refs.map((r) => `- ${r.name}: ${r.description}`).join("\n")
     : "";
   const bytes = await generateIllustration(
-    `Style (applies to every element in the picture, including any characters): ${style}\n\nScene: ${scene}${locked}${buddy}`,
+    `Scene (this decides WHAT is depicted — the location, characters, action, weather and time of day): ${scene}\n\n` +
+      `Style (this decides ONLY HOW it is painted — medium, brushwork, texture, palette and mood, for every ` +
+      `element including any characters): ${style}\n\n` +
+      `If the style wording and the scene ever disagree about the setting, landscape, weather or time of day, ` +
+      `the scene always wins; treat the style purely as painting technique.${locked}${buddy}`,
   );
 
   const path = `${bookId}/${name}.png`;
