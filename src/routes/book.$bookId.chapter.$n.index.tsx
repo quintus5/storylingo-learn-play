@@ -101,6 +101,9 @@ function Reader() {
   const [active, setActive] = useState(0);
   const [voiceOpen, setVoiceOpen] = useState(false);
   const [brokenArt, setBrokenArt] = useState<Record<string, true>>({});
+  // The last picture that actually loaded, kept behind the new one so a slow
+  // or failed image never blanks the page.
+  const [shownArt, setShownArt] = useState<string | null>(null);
   const trackRef = useRef<HTMLDivElement>(null);
 
   const current = pages[page];
@@ -119,6 +122,18 @@ function Reader() {
     [activeSentence],
   );
   const sentenceChars = useWritableChars(sentenceWords);
+
+  // One picture per sentence: sentences that open a new scene have their own
+  // image, the rest keep showing the most recent one. Older chapters have none
+  // of these, so every sentence falls back to the page (then chapter) image.
+  const sentenceArt = useMemo(() => {
+    const base = current?.image_url ?? chapter?.image_url ?? null;
+    let last: string | null = null;
+    return (current?.sentences ?? []).map((s) => {
+      if (s.image_url) last = s.image_url;
+      return last ?? base;
+    });
+  }, [current, chapter]);
   const lookUp = useCallback(
     (hanzi: string): WriteTarget => {
       const hit = (chapter?.words ?? [])
@@ -205,14 +220,16 @@ function Reader() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [speaking]);
 
-  // Warm the next page's illustration so page turns feel instant.
+  // Warm the next scene and the next page so changes feel instant.
   useEffect(() => {
-    const url = pages[page + 1]?.image_url;
-    if (!url || typeof window === "undefined") return;
-    const img = new Image();
-    img.decoding = "async";
-    img.src = url;
-  }, [page, pages]);
+    if (typeof window === "undefined") return;
+    for (const url of [sentenceArt[active + 1], pages[page + 1]?.image_url]) {
+      if (!url) continue;
+      const img = new Image();
+      img.decoding = "async";
+      img.src = url;
+    }
+  }, [page, active, pages, sentenceArt]);
 
 
 
@@ -273,8 +290,9 @@ function Reader() {
 
 
 
-  const artSrc = current.image_url ?? (page === 0 ? chapter.image_url : null) ?? chapter.image_url;
-  const art = artSrc && !brokenArt[artSrc] ? artSrc : null;
+  const artSrc = sentenceArt[active] ?? current.image_url ?? chapter.image_url;
+  const art = (artSrc && !brokenArt[artSrc] ? artSrc : null) ?? shownArt;
+  const previous = shownArt && shownArt !== art ? shownArt : null;
   
 
   return (
@@ -289,9 +307,18 @@ function Reader() {
               aria-hidden
               className="absolute inset-0 h-full w-full scale-110 object-cover blur-2xl"
             />
+            {previous && (
+              <img
+                src={previous}
+                alt=""
+                aria-hidden
+                className="absolute inset-0 h-full w-full object-contain"
+              />
+            )}
             <img
               key={art}
               src={art}
+              onLoad={() => setShownArt(art)}
               alt={t(`Illustration for ${chapter.title}, page ${page + 1}`, `ภาพประกอบของ ${chapter.title} หน้า ${page + 1}`)}
               fetchPriority="high"
               decoding="async"
