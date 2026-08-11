@@ -33,6 +33,8 @@ import { useVoice } from "@/hooks/use-voice";
 import type { Sentence, Word } from "@/lib/types";
 import { useLocalText, useT } from "@/lib/i18n";
 import { normalizePinyin } from "@/lib/pinyin";
+import { wordsMatchSentence } from "@/lib/story-schema";
+
 
 export const Route = createFileRoute("/book/$bookId/chapter/$n/")({
   loader: ({ context, params }) => context.queryClient.ensureQueryData(bookQuery(params.bookId)),
