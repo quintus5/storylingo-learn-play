@@ -391,7 +391,7 @@ function Reader() {
         {/* On phones the two control clusters share one row under the box; on
             wider screens `contents` lets them sit either side of it. */}
         <div className="order-2 flex w-full items-center justify-between gap-2 sm:contents">
-          <div className="order-1 flex items-center gap-2 sm:w-44 sm:shrink-0 sm:pb-1">
+          <div className="order-1 flex min-w-0 flex-wrap items-center gap-2 sm:w-44 sm:shrink-0 sm:flex-nowrap sm:pb-1">
             <button
               onClick={() => void speak(current.sentences[active]?.hanzi ?? "")}
               className="press inline-flex shrink-0 items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-xs font-bold text-secondary-foreground"

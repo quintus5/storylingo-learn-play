@@ -345,7 +345,7 @@ function Quiz() {
             return (
               <button
                 key={option.hanzi}
-                onClick={() => answer(option)}
+                onClick={() => void answer(option)}
                 disabled={!!picked}
                 className={`press flex items-center justify-between gap-3 rounded-2xl border p-4 text-left ${state}`}
               >
