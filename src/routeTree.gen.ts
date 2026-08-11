@@ -18,6 +18,7 @@ import { Route as ApiTtsRouteImport } from './routes/api/tts'
 import { Route as BookBookIdIndexRouteImport } from './routes/book.$bookId.index'
 import { Route as BookBookIdVocabRouteImport } from './routes/book.$bookId.vocab'
 import { Route as BookBookIdProgressRouteImport } from './routes/book.$bookId.progress'
+import { Route as ApiPublicTmpwebpRouteImport } from './routes/api/public/tmpwebp'
 import { Route as ApiPublicArtSplatRouteImport } from './routes/api/public/art/$'
 import { Route as BookBookIdChapterNIndexRouteImport } from './routes/book.$bookId.chapter.$n.index'
 import { Route as BookBookIdChapterNQuizRouteImport } from './routes/book.$bookId.chapter.$n.quiz'
@@ -67,6 +68,11 @@ const BookBookIdProgressRoute = BookBookIdProgressRouteImport.update({
   path: '/book/$bookId/progress',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicTmpwebpRoute = ApiPublicTmpwebpRouteImport.update({
+  id: '/api/public/tmpwebp',
+  path: '/api/public/tmpwebp',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicArtSplatRoute = ApiPublicArtSplatRouteImport.update({
   id: '/api/public/art/$',
   path: '/api/public/art/$',
@@ -90,6 +96,7 @@ export interface FileRoutesByFullPath {
   '/shop': typeof ShopRoute
   '/api/tts': typeof ApiTtsRoute
   '/dev/sprite-grid': typeof DevSpriteGridRoute
+  '/api/public/tmpwebp': typeof ApiPublicTmpwebpRoute
   '/book/$bookId/progress': typeof BookBookIdProgressRoute
   '/book/$bookId/vocab': typeof BookBookIdVocabRoute
   '/book/$bookId/': typeof BookBookIdIndexRoute
@@ -104,6 +111,7 @@ export interface FileRoutesByTo {
   '/shop': typeof ShopRoute
   '/api/tts': typeof ApiTtsRoute
   '/dev/sprite-grid': typeof DevSpriteGridRoute
+  '/api/public/tmpwebp': typeof ApiPublicTmpwebpRoute
   '/book/$bookId/progress': typeof BookBookIdProgressRoute
   '/book/$bookId/vocab': typeof BookBookIdVocabRoute
   '/book/$bookId': typeof BookBookIdIndexRoute
@@ -119,6 +127,7 @@ export interface FileRoutesById {
   '/shop': typeof ShopRoute
   '/api/tts': typeof ApiTtsRoute
   '/dev/sprite-grid': typeof DevSpriteGridRoute
+  '/api/public/tmpwebp': typeof ApiPublicTmpwebpRoute
   '/book/$bookId/progress': typeof BookBookIdProgressRoute
   '/book/$bookId/vocab': typeof BookBookIdVocabRoute
   '/book/$bookId/': typeof BookBookIdIndexRoute
@@ -135,6 +144,7 @@ export interface FileRouteTypes {
     | '/shop'
     | '/api/tts'
     | '/dev/sprite-grid'
+    | '/api/public/tmpwebp'
     | '/book/$bookId/progress'
     | '/book/$bookId/vocab'
     | '/book/$bookId/'
@@ -149,6 +159,7 @@ export interface FileRouteTypes {
     | '/shop'
     | '/api/tts'
     | '/dev/sprite-grid'
+    | '/api/public/tmpwebp'
     | '/book/$bookId/progress'
     | '/book/$bookId/vocab'
     | '/book/$bookId'
@@ -163,6 +174,7 @@ export interface FileRouteTypes {
     | '/shop'
     | '/api/tts'
     | '/dev/sprite-grid'
+    | '/api/public/tmpwebp'
     | '/book/$bookId/progress'
     | '/book/$bookId/vocab'
     | '/book/$bookId/'
@@ -178,6 +190,7 @@ export interface RootRouteChildren {
   ShopRoute: typeof ShopRoute
   ApiTtsRoute: typeof ApiTtsRoute
   DevSpriteGridRoute: typeof DevSpriteGridRoute
+  ApiPublicTmpwebpRoute: typeof ApiPublicTmpwebpRoute
   BookBookIdProgressRoute: typeof BookBookIdProgressRoute
   BookBookIdVocabRoute: typeof BookBookIdVocabRoute
   BookBookIdIndexRoute: typeof BookBookIdIndexRoute
@@ -251,6 +264,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BookBookIdProgressRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/tmpwebp': {
+      id: '/api/public/tmpwebp'
+      path: '/api/public/tmpwebp'
+      fullPath: '/api/public/tmpwebp'
+      preLoaderRoute: typeof ApiPublicTmpwebpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/art/$': {
       id: '/api/public/art/$'
       path: '/api/public/art/$'
@@ -282,6 +302,7 @@ const rootRouteChildren: RootRouteChildren = {
   ShopRoute: ShopRoute,
   ApiTtsRoute: ApiTtsRoute,
   DevSpriteGridRoute: DevSpriteGridRoute,
+  ApiPublicTmpwebpRoute: ApiPublicTmpwebpRoute,
   BookBookIdProgressRoute: BookBookIdProgressRoute,
   BookBookIdVocabRoute: BookBookIdVocabRoute,
   BookBookIdIndexRoute: BookBookIdIndexRoute,
