@@ -44,7 +44,7 @@ export const SentenceSchema = z
     hanzi: nonEmpty(200),
     pinyin: pinyin(400),
     native: nonEmpty(400),
-    words: z.array(WordSchema).min(1),
+    words: z.array(WordSchema),
   })
   .transform((s) => ({
     ...s,
