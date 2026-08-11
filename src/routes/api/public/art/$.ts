@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 const IMMUTABLE = "public, max-age=31536000, immutable";
+const REDIRECT_CACHE = "public, max-age=3600";
 const SIGNED_TTL = 60 * 60 * 24 * 7; // 7 days
 const REFRESH_BEFORE = 60 * 60 * 1000; // regenerate when < 1h left
 
@@ -17,12 +18,6 @@ export const Route = createFileRoute("/api/public/art/$")({
         }
 
         const etag = `"art-${path.replace(/[^a-z0-9]/gi, "-")}"`;
-        if (request.headers.get("if-none-match") === etag) {
-          return new Response(null, {
-            status: 304,
-            headers: { ETag: etag, "Cache-Control": IMMUTABLE },
-          });
-        }
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
@@ -40,14 +35,23 @@ export const Route = createFileRoute("/api/public/art/$")({
             }
           }
           if (url) {
+            // Short-lived: the signed URL expires, so the redirect must not be immutable.
             return new Response(null, {
               status: 302,
-              headers: { Location: url, "Cache-Control": IMMUTABLE, ETag: etag },
+              headers: { Location: url, "Cache-Control": REDIRECT_CACHE },
             });
           }
         } catch {
           // fall through to download-and-serve
         }
+
+        if (request.headers.get("if-none-match") === etag) {
+          return new Response(null, {
+            status: 304,
+            headers: { ETag: etag, "Cache-Control": IMMUTABLE },
+          });
+        }
+
 
         const { data, error } = await supabaseAdmin.storage.from("story-art").download(path);
         if (error || !data) return new Response("Not found", { status: 404 });
