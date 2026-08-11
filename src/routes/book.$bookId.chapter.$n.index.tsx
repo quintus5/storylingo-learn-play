@@ -277,24 +277,33 @@ function Reader() {
 
   return (
     <div className="fixed inset-0 overflow-hidden bg-background">
-      {/* Artwork layer */}
+      {/* Artwork layer — whole picture visible, blurred copy fills the gaps */}
       <div className="absolute inset-0 h-full w-full">
         {art ? (
-          <img
-            key={art}
-            src={art}
-            alt={t(`Illustration for ${chapter.title}, page ${page + 1}`, `ภาพประกอบของ ${chapter.title} หน้า ${page + 1}`)}
-            fetchPriority="high"
-            decoding="async"
-            loading="eager"
-            onError={() => setBrokenArt((prev) => ({ ...prev, [art]: true }))}
-            className="h-full w-full object-cover animate-[art-fade_.5s_ease-out_both,ken-burns_14s_ease-out_both]"
-          />
+          <>
+            <img
+              src={art}
+              alt=""
+              aria-hidden
+              className="absolute inset-0 h-full w-full scale-110 object-cover blur-2xl"
+            />
+            <img
+              key={art}
+              src={art}
+              alt={t(`Illustration for ${chapter.title}, page ${page + 1}`, `ภาพประกอบของ ${chapter.title} หน้า ${page + 1}`)}
+              fetchPriority="high"
+              decoding="async"
+              loading="eager"
+              onError={() => setBrokenArt((prev) => ({ ...prev, [art]: true }))}
+              className="relative h-full w-full object-contain animate-[art-fade_.5s_ease-out_both]"
+            />
+          </>
         ) : (
           <div className="h-full w-full bg-secondary" />
         )}
         <span className="art-scrim pointer-events-none absolute inset-0 opacity-70" />
       </div>
+
 
       {/* Floating controls */}
       <header className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start gap-2 p-3">
