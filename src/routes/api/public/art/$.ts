@@ -83,7 +83,7 @@ export const Route = createFileRoute("/api/public/art/$")({
 
         return new Response(data.stream(), {
           headers: {
-            "Content-Type": "image/png",
+            "Content-Type": type,
             "Cache-Control": IMMUTABLE,
             ETag: etag,
           },
