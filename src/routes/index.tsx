@@ -213,7 +213,7 @@ function Bookshelf() {
               >
 
                 <div className="aspect-[3/4] w-full shrink-0 overflow-hidden bg-secondary">
-                  {book.cover_url ? (
+                  {book.cover_url && !brokenCovers[book.id] ? (
                     <img
                       src={book.cover_url}
                       alt={t(
@@ -222,6 +222,7 @@ function Bookshelf() {
                       )}
                       className="h-full w-full object-cover"
                       loading="lazy"
+                      onError={() => setBrokenCovers((prev) => ({ ...prev, [book.id]: true }))}
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-muted-foreground">

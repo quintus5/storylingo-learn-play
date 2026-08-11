@@ -43,7 +43,7 @@ export const Route = createFileRoute("/api/public/art/$")({
               .createSignedUrl(path, SIGNED_TTL);
             if (!error && data?.signedUrl) {
               url = data.signedUrl;
-              signedUrls.set(path, { url, expiresAt: Date.now() + SIGNED_TTL * 1000 });
+              cacheSignedUrl(path, url, Date.now() + SIGNED_TTL * 1000);
             }
           }
           if (url) {
