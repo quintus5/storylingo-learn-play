@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { chatJson, generateIllustration } from "./ai.server";
+import { toWebp } from "./image-optimize.server";
 import { ART_STYLE_MENU, DEFAULT_ART_STYLE, artStylePrompt, isArtStyleId } from "./art-styles";
 import type { ArtStyleId } from "./art-styles";
 import type { BibleEntry, Page, Word } from "./types";
