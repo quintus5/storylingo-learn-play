@@ -27,14 +27,33 @@ export const WordSchema = z
   })
   .transform((w) => ({ ...w, pinyin: applySandhi(w.hanzi, w.pinyin) }));
 
+/** Only the characters that carry meaning, so punctuation never blocks a match. */
+const hanziOnly = (s: string) => s.replace(/[^\p{Script=Han}\p{Script=Latin}\p{Nd}]/gu, "");
+
+/**
+ * True when the per-word list reconstructs the sentence. A mismatch means the
+ * child would read different words than the narrator speaks.
+ */
+export function wordsMatchSentence(hanzi: string, words: { hanzi: string }[]) {
+  if (words.length === 0) return false;
+  return hanziOnly(words.map((w) => w.hanzi).join("")) === hanziOnly(hanzi);
+}
+
 export const SentenceSchema = z
   .object({
     hanzi: nonEmpty(200),
     pinyin: pinyin(400),
     native: nonEmpty(400),
-    words: z.array(WordSchema).min(1),
+    words: z.array(WordSchema),
   })
-  .transform((s) => ({ ...s, pinyin: applySandhi(s.hanzi, s.pinyin) }));
+  .transform((s) => ({
+    ...s,
+    pinyin: applySandhi(s.hanzi, s.pinyin),
+    // A word list that doesn't rebuild the line is dropped: the reader then
+    // shows the whole sentence, which is exactly what is read aloud.
+    words: wordsMatchSentence(s.hanzi, s.words) ? s.words : [],
+  }));
+
 
 
 export const PageSchema = z.object({

@@ -134,9 +134,12 @@ function Quiz() {
   const question = questions[step];
 
   useEffect(() => {
-    // Always cut off whatever was playing for the previous question.
-    stopAudio();
-    if (started && question?.kind === "listen") void speak(question.prompt.hanzi, true);
+    // Only interrupt playback when this question has its own clip to play;
+    // otherwise the answer's word audio would be chopped off mid-word.
+    if (started && question?.kind === "listen") {
+      stopAudio();
+      void speak(question.prompt.hanzi, true);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [started, step]);
 
@@ -156,25 +159,30 @@ function Quiz() {
     return 0;
   })();
 
-  function answer(option: Word) {
+  async function answer(option: Word) {
     if (picked || !question) return;
     setPicked(option.hanzi);
     const right = option.hanzi === question.prompt.hanzi;
     // Records the tone bucket and the round kind, not just right/wrong.
     recordAnswer(question.prompt, question.kind, right);
+
+    // Let the word finish before moving on, with a short pause either way.
+    const pause = new Promise((r) => setTimeout(r, 900));
     if (right) {
       setCorrect((c) => c + 1);
-      void speak(question.prompt.hanzi);
+      await Promise.all([speak(question.prompt.hanzi), pause]);
+    } else {
+      await pause;
     }
-    setTimeout(() => {
-      setPicked(null);
-      if (step + 1 >= questions.length) {
-        setDone(true);
-      } else {
-        setStep((s) => s + 1);
-      }
-    }, 900);
+
+    setPicked(null);
+    if (step + 1 >= questions.length) {
+      setDone(true);
+    } else {
+      setStep((s) => s + 1);
+    }
   }
+
 
   useEffect(() => {
     if (coinsAtStart.current === null && started) coinsAtStart.current = progress.coins;
@@ -337,7 +345,7 @@ function Quiz() {
             return (
               <button
                 key={option.hanzi}
-                onClick={() => answer(option)}
+                onClick={() => void answer(option)}
                 disabled={!!picked}
                 className={`press flex items-center justify-between gap-3 rounded-2xl border p-4 text-left ${state}`}
               >

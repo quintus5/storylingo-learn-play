@@ -33,6 +33,8 @@ import { useVoice } from "@/hooks/use-voice";
 import type { Sentence, Word } from "@/lib/types";
 import { useLocalText, useT } from "@/lib/i18n";
 import { normalizePinyin } from "@/lib/pinyin";
+import { wordsMatchSentence } from "@/lib/story-schema";
+
 
 export const Route = createFileRoute("/book/$bookId/chapter/$n/")({
   loader: ({ context, params }) => context.queryClient.ensureQueryData(bookQuery(params.bookId)),
@@ -277,24 +279,33 @@ function Reader() {
 
   return (
     <div className="fixed inset-0 overflow-hidden bg-background">
-      {/* Artwork layer */}
+      {/* Artwork layer — whole picture visible, blurred copy fills the gaps */}
       <div className="absolute inset-0 h-full w-full">
         {art ? (
-          <img
-            key={art}
-            src={art}
-            alt={t(`Illustration for ${chapter.title}, page ${page + 1}`, `ภาพประกอบของ ${chapter.title} หน้า ${page + 1}`)}
-            fetchPriority="high"
-            decoding="async"
-            loading="eager"
-            onError={() => setBrokenArt((prev) => ({ ...prev, [art]: true }))}
-            className="h-full w-full object-cover animate-[art-fade_.5s_ease-out_both,ken-burns_14s_ease-out_both]"
-          />
+          <>
+            <img
+              src={art}
+              alt=""
+              aria-hidden
+              className="absolute inset-0 h-full w-full scale-110 object-cover blur-2xl"
+            />
+            <img
+              key={art}
+              src={art}
+              alt={t(`Illustration for ${chapter.title}, page ${page + 1}`, `ภาพประกอบของ ${chapter.title} หน้า ${page + 1}`)}
+              fetchPriority="high"
+              decoding="async"
+              loading="eager"
+              onError={() => setBrokenArt((prev) => ({ ...prev, [art]: true }))}
+              className="relative h-full w-full object-contain animate-[art-fade_.5s_ease-out_both]"
+            />
+          </>
         ) : (
           <div className="h-full w-full bg-secondary" />
         )}
         <span className="art-scrim pointer-events-none absolute inset-0 opacity-70" />
       </div>
+
 
       {/* Floating controls */}
       <header className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start gap-2 p-3">
@@ -380,7 +391,7 @@ function Reader() {
         {/* On phones the two control clusters share one row under the box; on
             wider screens `contents` lets them sit either side of it. */}
         <div className="order-2 flex w-full items-center justify-between gap-2 sm:contents">
-          <div className="order-1 flex items-center gap-2 sm:w-44 sm:shrink-0 sm:pb-1">
+          <div className="order-1 flex min-w-0 flex-wrap items-center gap-2 sm:w-44 sm:shrink-0 sm:flex-nowrap sm:pb-1">
             <button
               onClick={() => void speak(current.sentences[active]?.hanzi ?? "")}
               className="press inline-flex shrink-0 items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-xs font-bold text-secondary-foreground"
@@ -433,7 +444,7 @@ function Reader() {
             )}
           </div>
 
-          <div className="order-3 flex items-center justify-end gap-1 sm:w-44 sm:shrink-0 sm:pb-1">
+          <div className="order-3 flex min-w-0 flex-wrap items-center justify-end gap-1 sm:w-44 sm:shrink-0 sm:flex-nowrap sm:pb-1">
             <button
               onClick={() => go(-1)}
               disabled={page === 0}
@@ -459,9 +470,11 @@ function Reader() {
                         title: t("Practice writing", "ฝึกเขียน"),
                       });
                     }}
-                    className="press inline-flex h-9 items-center gap-1 rounded-full border border-border/30 bg-secondary/70 px-3 text-xs font-bold text-secondary-foreground backdrop-blur-sm"
+                    aria-label={t("Practice writing", "ฝึกเขียน")}
+                    className="press inline-flex h-9 shrink-0 items-center gap-1 rounded-full border border-border/30 bg-secondary/70 px-2.5 text-xs font-bold text-secondary-foreground backdrop-blur-sm"
                   >
-                    <PenLine className="h-4 w-4" /> {t("Practice writing", "ฝึกเขียน")}
+                    <PenLine className="h-4 w-4 shrink-0" />
+                    <span className="hidden sm:inline">{t("Practice writing", "ฝึกเขียน")}</span>
                   </button>
                 )}
                 <Link
@@ -469,10 +482,12 @@ function Reader() {
                   params={{ bookId, n }}
                   onClick={() => stopAudio()}
                   aria-label={t("Go to the quiz", "ไปที่แบบทดสอบ")}
-                  className="press inline-flex h-9 items-center gap-1 rounded-full bg-primary px-3 text-xs font-bold text-primary-foreground"
+                  className="press inline-flex h-9 min-w-0 shrink items-center gap-1 rounded-full bg-primary px-3 text-xs font-bold text-primary-foreground"
                 >
-                  {t("Quiz", "แบบทดสอบ")} <ChevronRight className="h-4 w-4" />
+                  <span className="truncate">{t("Quiz", "แบบทดสอบ")}</span>
+                  <ChevronRight className="h-4 w-4 shrink-0" />
                 </Link>
+
               </>
             ) : (
 
@@ -631,7 +646,8 @@ function SentenceCard({
       }`}
     >
       <div className="flex flex-wrap items-end justify-center gap-x-1">
-        {sentence.words.length > 0
+        {wordsMatchSentence(sentence.hanzi, sentence.words)
+
           ? sentence.words.map((w, i) => (
               <button
                 key={`${w.hanzi}-${i}`}
