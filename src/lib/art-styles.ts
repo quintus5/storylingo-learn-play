@@ -1,6 +1,8 @@
 /** Culture-aware illustration presets. The AI picks one per book; the user can override it. */
 
 const CHILD_SAFE =
+  "This describes only the painting medium, brushwork, palette and mood — never the location, landscape, " +
+  "weather or time of day, which come from the scene description alone. " +
   "Gentle, warm and friendly mood suitable for young children. Rounded, kind character shapes. " +
   "No text, no letters, no words, no numbers, no borders, no watermarks.";
 
@@ -32,9 +34,9 @@ export const ART_STYLES: ArtStylePreset[] = [
     hintTh: "นิทานพื้นบ้านและอมตะจีน",
     prompt:
       "Traditional Chinese ink-wash painting (shuǐmòhuà) on warm rice paper. Calligraphic brush strokes " +
-      "with varied pressure, soft bleeding ink washes, generous misty negative space, distant layered " +
-      "mountains. Muted ink greys and blacks with restrained cinnabar red and pale jade accents. " +
-      "Historically faithful Chinese clothing, architecture and landscape. " +
+      "with varied pressure, soft bleeding ink washes, generous misty negative space. Muted ink greys and " +
+      "blacks with restrained cinnabar red and pale jade accents. Chinese historical costume and " +
+      "architectural detailing where the scene calls for it. " +
       CHILD_SAFE,
   },
   {
@@ -45,8 +47,9 @@ export const ART_STYLES: ArtStylePreset[] = [
     hintTh: "นิทานพื้นบ้านญี่ปุ่น",
     prompt:
       "Japanese ukiyo-e woodblock print. Bold confident outlines, flat layered colour fields, subtle " +
-      "wood-grain and paper texture, stylised waves, clouds and pine. Indigo, ochre, soft coral palette. " +
-      "Historically faithful Japanese dress and architecture. " +
+      "wood-grain and paper texture, the tradition's stylised treatment of water, cloud and foliage forms. " +
+      "Indigo, ochre, soft coral palette. Japanese historical costume and architectural detailing where the " +
+      "scene calls for it. " +
       CHILD_SAFE,
   },
   {
@@ -57,9 +60,9 @@ export const ART_STYLES: ArtStylePreset[] = [
     hintTh: "นิทานกริมม์ แอนเดอร์เซน อีสป และยุโรป",
     prompt:
       "Golden Age European storybook illustration in soft pastel and gouache. Delicate pencil underdrawing, " +
-      "creamy paper tone, sculptural carved-relief detail in stone and woodwork, romantic forest and " +
-      "cottage settings. Muted rose, sage, dusty blue and antique gold palette. Period-accurate European " +
-      "costume and architecture. " +
+      "creamy paper tone, sculptural carved-relief rendering of surfaces, romantic softly lit atmosphere. " +
+      "Muted rose, sage, dusty blue and antique gold palette. Period European costume and architectural " +
+      "detailing where the scene calls for it. " +
       CHILD_SAFE,
   },
   {
@@ -70,8 +73,8 @@ export const ART_STYLES: ArtStylePreset[] = [
     hintTh: "นิทานไทยและเอเชียตะวันออกเฉียงใต้",
     prompt:
       "Thai temple mural painting style. Fine flowing kranok line work, gold-leaf highlights, flattened " +
-      "decorative perspective, lush tropical foliage and tiered temple roofs. Warm vermilion, deep green " +
-      "and gold palette. Historically faithful Thai dress and architecture. " +
+      "decorative perspective, ornamental framing of forms. Warm vermilion, deep green and gold palette. " +
+      "Thai costume and architectural detailing where the scene calls for it. " +
       CHILD_SAFE,
   },
   {
@@ -81,9 +84,9 @@ export const ART_STYLES: ArtStylePreset[] = [
     hint: "Middle Eastern and Central Asian tales",
     hintTh: "นิทานตะวันออกกลางและเอเชียกลาง",
     prompt:
-      "Persian miniature painting. Ornamental floral borders, flattened jewel-like perspective, intricate " +
-      "tilework and arabesque pattern, tiny precise brushwork. Lapis blue, turquoise, saffron and gold " +
-      "palette. Historically faithful Persian dress and architecture. " +
+      "Persian miniature painting. Ornamental floral framing, flattened jewel-like perspective, intricate " +
+      "arabesque patterning of surfaces, tiny precise brushwork. Lapis blue, turquoise, saffron and gold " +
+      "palette. Persian costume and architectural detailing where the scene calls for it. " +
       CHILD_SAFE,
   },
   {
@@ -94,8 +97,8 @@ export const ART_STYLES: ArtStylePreset[] = [
     hintTh: "นิทานพื้นบ้านและนิทานสัตว์แอฟริกัน",
     prompt:
       "West African folk illustration with bold textile patterning. Batik and kente-inspired geometric " +
-      "borders, earth-pigment texture, strong graphic silhouettes, savannah light. Ochre, indigo, terracotta " +
-      "and cream palette. Culturally faithful dress and setting. " +
+      "borders, earth-pigment texture, strong graphic silhouettes. Ochre, indigo, terracotta and cream " +
+      "palette. Culturally faithful costume detailing where the scene calls for it. " +
       CHILD_SAFE,
   },
   {
@@ -107,8 +110,8 @@ export const ART_STYLES: ArtStylePreset[] = [
     prompt:
       "Indian folk art illustration blending Madhubani and Pattachitra traditions. Dense decorative pattern " +
       "fill, strong black outlines, flattened symbolic composition, floral and animal motifs. Saturated " +
-      "turmeric yellow, indigo, madder red and leaf green palette. Historically faithful Indian dress and " +
-      "architecture. " +
+      "turmeric yellow, indigo, madder red and leaf green palette. Indian costume and architectural " +
+      "detailing where the scene calls for it. " +
       CHILD_SAFE,
   },
   {
@@ -118,8 +121,9 @@ export const ART_STYLES: ArtStylePreset[] = [
     hint: "Modern or unknown origin (default)",
     hintTh: "เรื่องราวสมัยใหม่หรือไม่ระบุที่มา (ค่าเริ่มต้น)",
     prompt:
-      "Soft children's watercolor storybook illustration, warm desert night palette: deep navy sky, golden " +
-      "stars, warm sand dunes, gentle glowing lantern light. Hand-painted texture, rounded friendly shapes. " +
+      "Soft children's watercolour storybook illustration. Hand-painted paper texture, wet-in-wet washes " +
+      "with gentle pigment blooms, rounded friendly shapes, soft directional light. Warm gentle palette of " +
+      "muted blues, sand-golds and soft rose. " +
       CHILD_SAFE,
   },
 ];
