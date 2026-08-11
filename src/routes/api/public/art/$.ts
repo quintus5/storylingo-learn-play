@@ -5,7 +5,19 @@ const REDIRECT_CACHE = "public, max-age=3600";
 const SIGNED_TTL = 60 * 60 * 24 * 7; // 7 days
 const REFRESH_BEFORE = 60 * 60 * 1000; // regenerate when < 1h left
 
+const MAX_CACHED = 500;
+
 const signedUrls = new Map<string, { url: string; expiresAt: number }>();
+
+function cacheSignedUrl(path: string, url: string, expiresAt: number) {
+  signedUrls.delete(path);
+  signedUrls.set(path, { url, expiresAt });
+  while (signedUrls.size > MAX_CACHED) {
+    const oldest = signedUrls.keys().next().value;
+    if (oldest === undefined) break;
+    signedUrls.delete(oldest);
+  }
+}
 
 export const Route = createFileRoute("/api/public/art/$")({
   server: {
@@ -31,7 +43,7 @@ export const Route = createFileRoute("/api/public/art/$")({
               .createSignedUrl(path, SIGNED_TTL);
             if (!error && data?.signedUrl) {
               url = data.signedUrl;
-              signedUrls.set(path, { url, expiresAt: Date.now() + SIGNED_TTL * 1000 });
+              cacheSignedUrl(path, url, Date.now() + SIGNED_TTL * 1000);
             }
           }
           if (url) {
