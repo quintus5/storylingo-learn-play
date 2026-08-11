@@ -369,11 +369,22 @@ export async function illustratePages(
   type Job = { page: number; sentence: number | null; scene: string; name: string };
   const jobs: Job[] = [];
 
+  // Safety net: however many scene changes the model asks for, one page never
+  // costs more than this many images.
+  const MAX_IMAGES_PER_PAGE = 4;
+
   pages.forEach((page, i) => {
     const pageScene = page.scene?.trim() || `${chapterTitle}: ${page.sentences[0]?.native ?? ""}`;
-    const changes = page.sentences
+    const wanted = page.sentences
       .map((sentence, j) => ({ sentence, j }))
       .filter(({ sentence, j }) => sentence.scene?.trim() && (j === 0 || sentence.sceneChange));
+    // Earliest changes win; later sentences keep showing the last picture.
+    const changes = wanted.slice(0, MAX_IMAGES_PER_PAGE);
+    if (wanted.length > changes.length) {
+      console.warn(
+        `Illustration cap hit: chapter ${chapterIdx} page ${i + 1} asked for ${wanted.length} images, painting ${changes.length}`,
+      );
+    }
 
     if (changes.length === 0) {
       jobs.push({ page: i, sentence: null, scene: pageScene, name: `chapter-${chapterIdx}-page-${i + 1}` });
@@ -460,7 +471,7 @@ export async function makeArt(
       `Style (this decides ONLY HOW it is painted — medium, brushwork, texture, palette and mood, for every ` +
       `element including any characters): ${style}\n\n` +
       `If the style wording and the scene ever disagree about the setting, landscape, weather or time of day, ` +
-      `the scene always wins; treat the style purely as painting technique.${locked}${buddy}`,
+      `the scene always wins; treat the style purely as painting technique.${locked}`,
   );
 
   const path = `${bookId}/${name}.png`;

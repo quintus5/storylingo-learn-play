@@ -158,7 +158,9 @@ export function parseChapterContent(raw: unknown): { pages: Page[]; words: Word[
         ...(s as object),
         words: keepValid(WordSchema, raw.words),
         scene: sceneText,
-        sceneChange: sceneText ? raw.sceneChange !== false : false,
+        // Fail cheap: only an explicit true opens a new picture. A missing
+        // flag must never turn every sentence into its own illustration.
+        sceneChange: sceneText ? raw.sceneChange === true : false,
       };
       const parsed = SentenceSchema.safeParse(candidate);
       if (parsed.success) sentences.push(parsed.data);
