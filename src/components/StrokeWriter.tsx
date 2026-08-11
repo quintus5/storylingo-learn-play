@@ -108,6 +108,8 @@ export function StrokeWriter({
   const [closingMsg, setClosingMsg] = useState<string | null>(null);
   /** Characters finished during this session, by target index. */
   const [doneIdx, setDoneIdx] = useState<number[]>([]);
+  /** Bumped to rebuild the writer for the same character and stage. */
+  const [nonce, setNonce] = useState(0);
 
   const target = targets[index];
   const indexRef = useRef(index);
