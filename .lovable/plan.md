@@ -23,7 +23,6 @@ Fix: keep the DOM stable. Trigger the shake by toggling a CSS class on a wrapper
 - **Auto-replay after a character is finished** — when the last stroke lands, the completed character plays its stroke animation back once (with the celebration), so the child sees the correct order they just wrote before moving on. Skipped under reduced motion.
 - **Replay the animation** — a "Show me again" button available in every stage, replaying the stroke animation for the current character.
 - **No scroll-jank** — the drawing surface uses `touch-action: none` and swallows touch scrolling, so drawing a downstroke never scrolls the page or the dialog behind it.
-- **Progress that reads clearly** — the stroke dots stay, plus "stroke 3 of 7" text for the current character.
 - **No dead ends** — if a character has no stroke data, it is skipped automatically to the next one instead of showing a blocking panel; if the whole line has none, the writer closes cleanly with a short message.
 - **Reduced motion respected** everywhere (shake, confetti, auto-replay, hint fade).
 - **Coins only once per character** — the reward is paid the first time a character is completed, tracked by the existing `charsWritten` progress. Replaying a finished character is free practice and shows "already earned" instead of paying again or looking broken.
