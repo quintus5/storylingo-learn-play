@@ -19,6 +19,13 @@ function cacheSignedUrl(path: string, url: string, expiresAt: number) {
   }
 }
 
+/**
+ * The stored art is a ~2 MB PNG straight from the image model, far larger than
+ * any phone needs. Ask storage for a resized, re-compressed copy instead; if
+ * this project has no image transformation, fall back to the raw object.
+ */
+const TRANSFORM = { width: 1080, quality: 68 } as const;
+
 export const Route = createFileRoute("/api/public/art/$")({
   server: {
     handlers: {
@@ -38,9 +45,14 @@ export const Route = createFileRoute("/api/public/art/$")({
           const cached = signedUrls.get(path);
           let url = cached && cached.expiresAt - Date.now() > REFRESH_BEFORE ? cached.url : null;
           if (!url) {
-            const { data, error } = await supabaseAdmin.storage
-              .from("story-art")
-              .createSignedUrl(path, SIGNED_TTL);
+            const bucket = supabaseAdmin.storage.from("story-art");
+            let signed = await bucket.createSignedUrl(path, SIGNED_TTL, {
+              transform: TRANSFORM,
+            });
+            if (signed.error || !signed.data?.signedUrl) {
+              signed = await bucket.createSignedUrl(path, SIGNED_TTL);
+            }
+            const { data, error } = signed;
             if (!error && data?.signedUrl) {
               url = data.signedUrl;
               cacheSignedUrl(path, url, Date.now() + SIGNED_TTL * 1000);
