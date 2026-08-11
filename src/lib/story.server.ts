@@ -471,7 +471,7 @@ export async function makeArt(
       `Style (this decides ONLY HOW it is painted — medium, brushwork, texture, palette and mood, for every ` +
       `element including any characters): ${style}\n\n` +
       `If the style wording and the scene ever disagree about the setting, landscape, weather or time of day, ` +
-      `the scene always wins; treat the style purely as painting technique.${locked}${buddy}`,
+      `the scene always wins; treat the style purely as painting technique.${locked}`,
   );
 
   const path = `${bookId}/${name}.png`;
