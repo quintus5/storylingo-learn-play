@@ -227,12 +227,12 @@ function Reader() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [speaking]);
 
-  // Warm the next scene and the next page so changes feel instant.
+  // Warm every scene on this page (at most four) plus what comes next, so
+  // swiping or following narration never lands on a cold picture.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const ahead = [
-      sentenceArt[active + 1],
-      sentenceArt[active + 2],
+      ...new Set(sentenceArt.filter(Boolean) as string[]),
       pages[page + 1]?.image_url,
       pages[page + 1]?.sentences?.find((s) => s.image_url)?.image_url,
       isLast ? nextChapter?.image_url : null,
@@ -243,7 +243,7 @@ function Reader() {
       img.decoding = "async";
       img.src = url;
     }
-  }, [page, active, pages, sentenceArt, isLast, nextChapter?.image_url]);
+  }, [page, pages, sentenceArt, isLast, nextChapter?.image_url]);
 
 
 

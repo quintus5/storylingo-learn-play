@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
 import { BookOpen, Paintbrush, Plus, Sparkles, X } from "lucide-react";
 import { useState } from "react";
-import { booksQuery } from "@/lib/books";
+import { booksQuery, coverThumb } from "@/lib/books";
 import { deleteBook, repaintBook } from "@/lib/story.functions";
 import { AppShell } from "@/components/AppShell";
 import { useProgress } from "@/lib/progress";
@@ -216,13 +216,16 @@ function Bookshelf() {
                 <div className="aspect-[3/4] w-full shrink-0 overflow-hidden bg-secondary">
                   {book.cover_url && !brokenCovers[book.id] ? (
                     <img
-                      src={book.cover_url}
+                      src={coverThumb(book.cover_url)}
                       alt={t(
                         `Cover illustration for ${book.title}`,
                         `ภาพปกของ ${book.title}`,
                       )}
                       className="h-full w-full object-cover"
                       loading="lazy"
+                      decoding="async"
+                      width={480}
+                      height={640}
                       onError={() => setBrokenCovers((prev) => ({ ...prev, [book.id]: true }))}
                     />
                   ) : (
