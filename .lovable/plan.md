@@ -21,7 +21,6 @@ Fix: keep the DOM stable. Trigger the shake by toggling a CSS class on a wrapper
 ## Other quality-of-life improvements
 
 - **Auto-replay after a character is finished** — when the last stroke lands, the completed character plays its stroke animation back once (with the celebration), so the child sees the correct order they just wrote before moving on. Skipped under reduced motion.
-- **Undo / retry buttons** — a "Start this character over" control (and Escape still closes), so a child can restart a messy character without leaving.
 - **Replay the animation** — a "Show me again" button available in every stage, replaying the stroke animation for the current character.
 - **No scroll-jank** — the drawing surface uses `touch-action: none` and swallows touch scrolling, so drawing a downstroke never scrolls the page or the dialog behind it.
 - **Progress that reads clearly** — the stroke dots stay, plus "stroke 3 of 7" text for the current character.
