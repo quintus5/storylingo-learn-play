@@ -52,6 +52,7 @@ function BookPage() {
   const [wiggling, setWiggling] = useState<number | null>(null);
   const [repairing, setRepairing] = useState(false);
   const [repairNote, setRepairNote] = useState<string | null>(null);
+  const [useFullCover, setUseFullCover] = useState(false);
 
   const findMissing = useServerFn(missingChapters);
   const buildChapter = useServerFn(generateChapter);
@@ -139,12 +140,15 @@ function BookPage() {
         <div className="h-44 w-32 shrink-0 overflow-hidden rounded-2xl bg-secondary">
           {book.cover_url ? (
             <img
-              src={coverThumb(book.cover_url)}
+              src={useFullCover ? book.cover_url : coverThumb(book.cover_url)}
               alt={t(`Cover illustration for ${local(book.title, book.title_th)}`, `ภาพปกของ ${local(book.title, book.title_th)}`)}
               className="h-full w-full object-cover"
               decoding="async"
               width={480}
               height={640}
+              onError={() => {
+                if (coverThumb(book.cover_url) !== book.cover_url) setUseFullCover(true);
+              }}
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-muted-foreground">

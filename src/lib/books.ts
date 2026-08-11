@@ -8,7 +8,9 @@ import type { BookRow, ChapterRow } from "./types";
  */
 export function coverThumb(url: string | null | undefined): string | undefined {
   if (!url) return undefined;
-  return url.endsWith(".webp") ? url.replace(/\.webp$/, "-thumb.webp") : url;
+  const [path, query] = url.split("?", 2);
+  if (!path?.endsWith(".webp")) return url;
+  return `${path.replace(/\.webp$/, "-thumb.webp")}${query ? `?${query}` : ""}`;
 }
 
 export const booksQuery = queryOptions({

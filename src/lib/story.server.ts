@@ -487,12 +487,18 @@ export async function makeArt(
   if (name === "cover") {
     try {
       const thumb = await toWebp(bytes, 480, 70);
-      await supabaseAdmin.storage
+      if (thumb.extension !== "webp") {
+        console.warn("Cover thumbnail skipped: WebP conversion was unavailable");
+        return `/api/public/art/${path}`;
+      }
+      const { error: thumbError } = await supabaseAdmin.storage
         .from(BUCKET)
-        .upload(`${bookId}/${name}-thumb.${thumb.extension}`, thumb.bytes, {
+        .upload(`${bookId}/${name}-thumb.webp`, thumb.bytes, {
           contentType: thumb.contentType,
           upsert: true,
         });
+      if (thumbError) throw new Error(thumbError.message);
+      console.log(`Cover thumbnail stored: ${bookId}/${name}-thumb.webp`);
     } catch (err) {
       console.warn("Cover thumbnail skipped", err);
     }
