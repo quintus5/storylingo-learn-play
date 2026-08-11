@@ -54,6 +54,7 @@ function Bookshelf() {
   const [removing, setRemoving] = useState<string | null>(null);
   const [repainting, setRepainting] = useState<string | null>(null);
   const [brokenCovers, setBrokenCovers] = useState<Record<string, true>>({});
+  const [fullCoverFallbacks, setFullCoverFallbacks] = useState<Record<string, true>>({});
 
   const t = useT();
   const local = useLocalText();
@@ -216,7 +217,7 @@ function Bookshelf() {
                 <div className="aspect-[3/4] w-full shrink-0 overflow-hidden bg-secondary">
                   {book.cover_url && !brokenCovers[book.id] ? (
                     <img
-                      src={coverThumb(book.cover_url)}
+                      src={fullCoverFallbacks[book.id] ? book.cover_url : coverThumb(book.cover_url)}
                       alt={t(
                         `Cover illustration for ${book.title}`,
                         `ภาพปกของ ${book.title}`,
@@ -226,7 +227,13 @@ function Bookshelf() {
                       decoding="async"
                       width={480}
                       height={640}
-                      onError={() => setBrokenCovers((prev) => ({ ...prev, [book.id]: true }))}
+                      onError={() => {
+                        if (!fullCoverFallbacks[book.id] && coverThumb(book.cover_url) !== book.cover_url) {
+                          setFullCoverFallbacks((prev) => ({ ...prev, [book.id]: true }));
+                          return;
+                        }
+                        setBrokenCovers((prev) => ({ ...prev, [book.id]: true }));
+                      }}
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-muted-foreground">
