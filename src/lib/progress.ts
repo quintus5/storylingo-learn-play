@@ -286,6 +286,11 @@ export function useProgress() {
   const spend = useCallback(
     (amount: number, apply?: (p: Progress) => Progress) => {
       const current = read();
+      // In test mode purchases go through without touching the real purse.
+      if (testUnlockOn) {
+        if (apply) update(apply);
+        return true;
+      }
       if (current.coins < amount) return false;
       update((p) => {
         if (p.coins < amount) return p;
@@ -294,6 +299,7 @@ export function useProgress() {
       });
       return true;
     },
+
     [update],
   );
 
