@@ -89,7 +89,17 @@ function read(): Progress {
   try {
     const raw = localStorage.getItem(KEY) ?? localStorage.getItem(LEGACY_KEY);
     // A brand new reader gets a starter purse so they can make a first book.
-    if (!raw) return { ...EMPTY, coins: STARTER_COINS, earned: STARTER_COINS };
+    // Save it straight away, so the balance can never be re-derived differently
+    // on a later visit.
+    if (!raw) {
+      const fresh = { ...EMPTY, coins: STARTER_COINS, earned: STARTER_COINS };
+      try {
+        localStorage.setItem(KEY, JSON.stringify(fresh));
+      } catch {
+        /* storage unavailable */
+      }
+      return fresh;
+    }
     return { ...EMPTY, ...(JSON.parse(raw) as Progress) };
   } catch {
     return EMPTY;
@@ -106,6 +116,7 @@ function write(next: Progress) {
 }
 
 const listeners = new Set<(p: Progress) => void>();
+
 
 function touchStreak(p: Progress): Progress {
   const day = today();
