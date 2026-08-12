@@ -419,8 +419,8 @@ const TEST_COINS = 99999;
 
 /**
  * Test switch: visiting any page with ?unlockAll=1 unlocks every outfit, hat,
- * pet and chapter for the rest of the browser session and tops the purse up to
- * 99,999 coins once. Only the coin top-up is saved; ownership stays untouched.
+ * pet and chapter for the rest of the browser session. It never touches the
+ * saved purse, so the real coin balance stays exactly as the child earned it.
  * Read after hydration so the server and the first client render agree.
  */
 export function useTestUnlock() {
@@ -433,18 +433,13 @@ export function useTestUnlock() {
       const active = sessionStorage.getItem("storylingo.unlockAll") === "1";
       testUnlockOn = active;
       setOn(active);
-      // Top the purse up once per session so purchases are testable end to end.
-      if (active && sessionStorage.getItem("storylingo.unlockAll.paid") !== "1") {
-        sessionStorage.setItem("storylingo.unlockAll.paid", "1");
-        const p = read();
-        if (p.coins < TEST_COINS) write({ ...p, coins: TEST_COINS, earned: Math.max(p.earned, TEST_COINS) });
-      }
     } catch {
       setOn(false);
     }
   }, []);
   return on;
 }
+
 
 export function owns(p: Progress, itemId: string) {
   return testUnlockOn || p.owned.includes(itemId);
