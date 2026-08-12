@@ -85,7 +85,9 @@ function Reader() {
   const [voice, chooseVoice] = useVoice();
 
   const chapter = data.chapters.find((c) => c.idx === idx);
-  const pages = chapter?.pages ?? [];
+  // Memoised because it feeds an effect's dependency list: a bare `?? []`
+  // hands that effect a new array on every render.
+  const pages = useMemo(() => chapter?.pages ?? [], [chapter]);
   const [page, setPage] = useState(0);
   const [word, setWord] = useState<Word | null>(null);
   const [writing, setWriting] = useState<{
@@ -434,7 +436,12 @@ function Reader() {
         <div className="order-2 flex w-full items-center justify-between gap-2 sm:contents">
           <div className="order-1 flex min-w-0 flex-wrap items-center gap-2 sm:w-44 sm:shrink-0 sm:flex-nowrap sm:pb-1">
             <button
-              onClick={() => void speak(current.sentences[active]?.hanzi ?? "")}
+              onClick={() => {
+                // Never send an empty string to the narrator: it fails
+                // validation server-side and surfaces as a broken-audio toast.
+                const line = current.sentences[active]?.hanzi;
+                if (line) void speak(line);
+              }}
               className="press inline-flex shrink-0 items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-xs font-bold text-secondary-foreground"
             >
               <Play className="h-3.5 w-3.5" /> {t("Hear", "ฟัง")}
