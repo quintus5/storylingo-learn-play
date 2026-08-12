@@ -169,10 +169,18 @@ export function useProgress() {
     setLoaded(true);
     const listener = (p: Progress) => setProgress(p);
     listeners.add(listener);
+    // Another tab changing the purse must not leave this one showing a stale
+    // balance that "changes" the next time the app is opened.
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === KEY || e.key === null) setProgress(read());
+    };
+    window.addEventListener("storage", onStorage);
     return () => {
       listeners.delete(listener);
+      window.removeEventListener("storage", onStorage);
     };
   }, []);
+
 
 
   const update = useCallback((fn: (p: Progress) => Progress) => {
