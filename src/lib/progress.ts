@@ -89,7 +89,17 @@ function read(): Progress {
   try {
     const raw = localStorage.getItem(KEY) ?? localStorage.getItem(LEGACY_KEY);
     // A brand new reader gets a starter purse so they can make a first book.
-    if (!raw) return { ...EMPTY, coins: STARTER_COINS, earned: STARTER_COINS };
+    // Save it straight away, so the balance can never be re-derived differently
+    // on a later visit.
+    if (!raw) {
+      const fresh = { ...EMPTY, coins: STARTER_COINS, earned: STARTER_COINS };
+      try {
+        localStorage.setItem(KEY, JSON.stringify(fresh));
+      } catch {
+        /* storage unavailable */
+      }
+      return fresh;
+    }
     return { ...EMPTY, ...(JSON.parse(raw) as Progress) };
   } catch {
     return EMPTY;
@@ -107,6 +117,7 @@ function write(next: Progress) {
 
 const listeners = new Set<(p: Progress) => void>();
 
+
 function touchStreak(p: Progress): Progress {
   const day = today();
   const activeDays = p.activeDays.includes(day)
@@ -115,16 +126,19 @@ function touchStreak(p: Progress): Progress {
   if (p.lastDay === day) return activeDays === p.activeDays ? p : { ...p, activeDays };
   const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
   const streak = p.lastDay === yesterday ? p.streak + 1 : 1;
-  // Coming back on a new day always pays a small bonus.
+  const base = { ...p, lastDay: day, streak, activeDays };
+  // Coming back on a new day pays a small bonus, but only once per day even if
+  // several tabs or screens touch progress at the same moment.
+  const key = `streak:${day}`;
+  if (base.awarded[key]) return base;
   return {
-    ...p,
-    lastDay: day,
-    streak,
-    activeDays,
-    coins: p.coins + STREAK_BONUS,
-    earned: p.earned + STREAK_BONUS,
+    ...base,
+    coins: base.coins + STREAK_BONUS,
+    earned: base.earned + STREAK_BONUS,
+    awarded: { ...base.awarded, [key]: true },
   };
 }
+
 
 /** Add coins. When `key` is given the reward is paid only once, ever. */
 function give(p: Progress, amount: number, key?: string): Progress {
@@ -155,10 +169,18 @@ export function useProgress() {
     setLoaded(true);
     const listener = (p: Progress) => setProgress(p);
     listeners.add(listener);
+    // Another tab changing the purse must not leave this one showing a stale
+    // balance that "changes" the next time the app is opened.
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === KEY || e.key === null) setProgress(read());
+    };
+    window.addEventListener("storage", onStorage);
     return () => {
       listeners.delete(listener);
+      window.removeEventListener("storage", onStorage);
     };
   }, []);
+
 
 
   const update = useCallback((fn: (p: Progress) => Progress) => {
@@ -264,6 +286,11 @@ export function useProgress() {
   const spend = useCallback(
     (amount: number, apply?: (p: Progress) => Progress) => {
       const current = read();
+      // In test mode purchases go through without touching the real purse.
+      if (testUnlockOn) {
+        if (apply) update(apply);
+        return true;
+      }
       if (current.coins < amount) return false;
       update((p) => {
         if (p.coins < amount) return p;
@@ -272,6 +299,7 @@ export function useProgress() {
       });
       return true;
     },
+
     [update],
   );
 
@@ -393,12 +421,12 @@ export function learningStats(p: Progress): LearningStats {
 /** Session-only test flag, mirrored here so owns()/isUnlocked() can see it. */
 let testUnlockOn = false;
 
-const TEST_COINS = 99999;
+
 
 /**
  * Test switch: visiting any page with ?unlockAll=1 unlocks every outfit, hat,
- * pet and chapter for the rest of the browser session and tops the purse up to
- * 99,999 coins once. Only the coin top-up is saved; ownership stays untouched.
+ * pet and chapter for the rest of the browser session. It never touches the
+ * saved purse, so the real coin balance stays exactly as the child earned it.
  * Read after hydration so the server and the first client render agree.
  */
 export function useTestUnlock() {
@@ -411,18 +439,13 @@ export function useTestUnlock() {
       const active = sessionStorage.getItem("storylingo.unlockAll") === "1";
       testUnlockOn = active;
       setOn(active);
-      // Top the purse up once per session so purchases are testable end to end.
-      if (active && sessionStorage.getItem("storylingo.unlockAll.paid") !== "1") {
-        sessionStorage.setItem("storylingo.unlockAll.paid", "1");
-        const p = read();
-        if (p.coins < TEST_COINS) write({ ...p, coins: TEST_COINS, earned: Math.max(p.earned, TEST_COINS) });
-      }
     } catch {
       setOn(false);
     }
   }, []);
   return on;
 }
+
 
 export function owns(p: Progress, itemId: string) {
   return testUnlockOn || p.owned.includes(itemId);
