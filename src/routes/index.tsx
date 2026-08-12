@@ -11,6 +11,8 @@ import { CharacterSprite } from "@/components/CharacterSprite";
 import { useDevMode } from "@/lib/dev-mode";
 import { useLocalText, useT } from "@/lib/i18n";
 
+// Sync canary — 2026-08-12. Written on GitHub to check that merging into main
+// flows back into the Lovable editor. Changes nothing; delete once confirmed.
 
 export const Route = createFileRoute("/")({
   head: () => ({
