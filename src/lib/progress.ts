@@ -126,16 +126,19 @@ function touchStreak(p: Progress): Progress {
   if (p.lastDay === day) return activeDays === p.activeDays ? p : { ...p, activeDays };
   const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
   const streak = p.lastDay === yesterday ? p.streak + 1 : 1;
-  // Coming back on a new day always pays a small bonus.
+  const base = { ...p, lastDay: day, streak, activeDays };
+  // Coming back on a new day pays a small bonus, but only once per day even if
+  // several tabs or screens touch progress at the same moment.
+  const key = `streak:${day}`;
+  if (base.awarded[key]) return base;
   return {
-    ...p,
-    lastDay: day,
-    streak,
-    activeDays,
-    coins: p.coins + STREAK_BONUS,
-    earned: p.earned + STREAK_BONUS,
+    ...base,
+    coins: base.coins + STREAK_BONUS,
+    earned: base.earned + STREAK_BONUS,
+    awarded: { ...base.awarded, [key]: true },
   };
 }
+
 
 /** Add coins. When `key` is given the reward is paid only once, ever. */
 function give(p: Progress, amount: number, key?: string): Progress {
