@@ -415,7 +415,7 @@ export function learningStats(p: Progress): LearningStats {
 /** Session-only test flag, mirrored here so owns()/isUnlocked() can see it. */
 let testUnlockOn = false;
 
-const TEST_COINS = 99999;
+
 
 /**
  * Test switch: visiting any page with ?unlockAll=1 unlocks every outfit, hat,
