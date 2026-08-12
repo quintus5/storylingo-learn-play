@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { AppShell } from "@/components/AppShell";
+import { RouteMessage } from "@/components/RouteMessage";
 import { WordPopup } from "@/components/WordPopup";
 import { StrokeWriter, type WriteTarget } from "@/components/StrokeWriter";
 import { useWritableChars } from "@/hooks/use-writable";
@@ -55,15 +56,9 @@ export const Route = createFileRoute("/book/$bookId/chapter/$n/")({
   },
   component: Reader,
   errorComponent: () => (
-    <AppShell>
-      <p className="text-muted-foreground">{useT()("This chapter could not be opened.", "ไม่สามารถเปิดบทนี้ได้")}</p>
-    </AppShell>
+    <RouteMessage en="This chapter could not be opened." th="ไม่สามารถเปิดบทนี้ได้" />
   ),
-  notFoundComponent: () => (
-    <AppShell>
-      <p className="text-muted-foreground">{useT()("Chapter not found.", "ไม่พบบทนี้")}</p>
-    </AppShell>
-  ),
+  notFoundComponent: () => <RouteMessage en="Chapter not found." th="ไม่พบบทนี้" />,
 });
 
 function prefersReducedMotion() {

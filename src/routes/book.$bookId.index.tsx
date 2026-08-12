@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { BookOpen, ListChecks, Loader2, Lock, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { RouteMessage } from "@/components/RouteMessage";
 import { StarRow } from "@/components/StarRow";
 import { bookQuery, coverThumb } from "@/lib/books";
 import { generateChapter, missingChapters } from "@/lib/story.functions";
@@ -30,14 +31,14 @@ export const Route = createFileRoute("/book/$bookId/")({
   },
   component: BookPage,
   errorComponent: () => (
-    <AppShell back={{ to: "/" }}>
-      <p className="text-muted-foreground">{useT()("This book could not be opened.", "ไม่สามารถเปิดหนังสือเล่มนี้ได้")}</p>
-    </AppShell>
+    <RouteMessage
+      en="This book could not be opened."
+      th="ไม่สามารถเปิดหนังสือเล่มนี้ได้"
+      back={{ to: "/" }}
+    />
   ),
   notFoundComponent: () => (
-    <AppShell back={{ to: "/" }}>
-      <p className="text-muted-foreground">{useT()("This book does not exist.", "ไม่พบหนังสือเล่มนี้")}</p>
-    </AppShell>
+    <RouteMessage en="This book does not exist." th="ไม่พบหนังสือเล่มนี้" back={{ to: "/" }} />
   ),
 });
 

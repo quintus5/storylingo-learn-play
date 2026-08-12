@@ -3,6 +3,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Play, Sparkles, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { RouteMessage } from "@/components/RouteMessage";
 import { StarRow } from "@/components/StarRow";
 import { bookQuery } from "@/lib/books";
 import { useProgress } from "@/lib/progress";
@@ -31,9 +32,7 @@ export const Route = createFileRoute("/book/$bookId/chapter/$n/quiz")({
   },
   component: Quiz,
   errorComponent: () => (
-    <AppShell>
-      <p className="text-muted-foreground">{useT()("The quiz could not be loaded.", "ไม่สามารถโหลดแบบทดสอบได้")}</p>
-    </AppShell>
+    <RouteMessage en="The quiz could not be loaded." th="ไม่สามารถโหลดแบบทดสอบได้" />
   ),
 });
 

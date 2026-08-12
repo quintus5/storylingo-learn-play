@@ -3,6 +3,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { PenLine, Volume2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { RouteMessage } from "@/components/RouteMessage";
 import { StrokeWriter, type WriteTarget } from "@/components/StrokeWriter";
 import { bookQuery } from "@/lib/books";
 import { useProgress } from "@/lib/progress";
@@ -33,9 +34,7 @@ export const Route = createFileRoute("/book/$bookId/vocab")({
   },
   component: VocabPage,
   errorComponent: () => (
-    <AppShell>
-      <p className="text-muted-foreground">{useT()("The word list could not be loaded.", "ไม่สามารถโหลดคลังคำศัพท์ได้")}</p>
-    </AppShell>
+    <RouteMessage en="The word list could not be loaded." th="ไม่สามารถโหลดคลังคำศัพท์ได้" />
   ),
 });
 
