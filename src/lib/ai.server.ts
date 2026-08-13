@@ -6,6 +6,17 @@ function key(): string {
   return k;
 }
 
+/** Turn a gateway HTTP failure into a message a child's grown-up can act on. */
+function gatewayMessage(status: number, body: string, what: string): string {
+  if (status === 402) {
+    return "The AI credits for this app have run out. Top up credits in your Lovable workspace settings, then try again.";
+  }
+  if (status === 429) {
+    return "The story machine is busy right now. Please wait a moment and try again.";
+  }
+  return `${what} failed [${status}]: ${body.slice(0, 300)}`;
+}
+
 /** Ask a chat model for a strict JSON object and parse it. */
 export async function chatJson<T>(
   systemPrompt: string,
@@ -32,8 +43,9 @@ export async function chatJson<T>(
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`AI request failed [${res.status}]: ${body.slice(0, 500)}`);
+    throw new Error(gatewayMessage(res.status, body, "AI request"));
   }
+
 
   const json = (await res.json()) as {
     choices?: { message?: { content?: string } }[];
@@ -78,7 +90,7 @@ export async function generateIllustration(prompt: string): Promise<Uint8Array> 
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`Image generation failed [${res.status}]: ${body.slice(0, 300)}`);
+    throw new Error(gatewayMessage(res.status, body, "Image generation"));
   }
 
   const json = (await res.json()) as { data?: { b64_json?: string }[] };
