@@ -6,6 +6,17 @@ function key(): string {
   return k;
 }
 
+/** Turn a gateway HTTP failure into a message a child's grown-up can act on. */
+function gatewayMessage(status: number, body: string, what: string): string {
+  if (status === 402) {
+    return "The AI credits for this app have run out. Top up credits in your Lovable workspace settings, then try again.";
+  }
+  if (status === 429) {
+    return "The story machine is busy right now. Please wait a moment and try again.";
+  }
+  return `${what} failed [${status}]: ${body.slice(0, 300)}`;
+}
+
 /** Ask a chat model for a strict JSON object and parse it. */
 export async function chatJson<T>(
   systemPrompt: string,
