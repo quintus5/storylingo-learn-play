@@ -32,8 +32,9 @@ export async function chatJson<T>(
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`AI request failed [${res.status}]: ${body.slice(0, 500)}`);
+    throw new Error(gatewayMessage(res.status, body, "AI request"));
   }
+
 
   const json = (await res.json()) as {
     choices?: { message?: { content?: string } }[];
