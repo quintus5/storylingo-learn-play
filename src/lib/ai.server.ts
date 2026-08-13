@@ -90,7 +90,7 @@ export async function generateIllustration(prompt: string): Promise<Uint8Array> 
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`Image generation failed [${res.status}]: ${body.slice(0, 300)}`);
+    throw new Error(gatewayMessage(res.status, body, "Image generation"));
   }
 
   const json = (await res.json()) as { data?: { b64_json?: string }[] };
