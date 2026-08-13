@@ -3,6 +3,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Play, Sparkles, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { RouteMessage } from "@/components/RouteMessage";
 import { StarRow } from "@/components/StarRow";
 import { bookQuery } from "@/lib/books";
 import { useProgress } from "@/lib/progress";
@@ -31,9 +32,7 @@ export const Route = createFileRoute("/book/$bookId/chapter/$n/quiz")({
   },
   component: Quiz,
   errorComponent: () => (
-    <AppShell>
-      <p className="text-muted-foreground">{useT()("The quiz could not be loaded.", "ไม่สามารถโหลดแบบทดสอบได้")}</p>
-    </AppShell>
+    <RouteMessage en="The quiz could not be loaded." th="ไม่สามารถโหลดแบบทดสอบได้" />
   ),
 });
 
@@ -133,6 +132,15 @@ function Quiz() {
 
   const question = questions[step];
 
+  const stars = (() => {
+    if (questions.length === 0) return 0;
+    const ratio = correct / questions.length;
+    if (ratio >= 0.9) return 3;
+    if (ratio >= 0.7) return 2;
+    if (ratio >= 0.5) return 1;
+    return 0;
+  })();
+
   useEffect(() => {
     // Only interrupt playback when this question has its own clip to play;
     // otherwise the answer's word audio would be chopped off mid-word.
@@ -143,6 +151,23 @@ function Quiz() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [started, step]);
 
+  // Remember the purse as each round begins, so "coins won" counts this round
+  // only — replaying must not add the previous round's coins on top.
+  useEffect(() => {
+    coinsAtStart.current = started ? progress.coins : null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [started]);
+
+  useEffect(() => {
+    if (done) awardStars(bookId, idx, stars);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [done]);
+
+  const coinsWon = Math.max(0, progress.coins - (coinsAtStart.current ?? progress.coins));
+
+  // Every hook must run before this point: the branch below is taken while a
+  // chapter is still being written, and React throws "rendered more hooks than
+  // during the previous render" if a refetch later fills the words in.
   if (!chapter || questions.length === 0) {
     return (
       <AppShell back={{ to: "/book/$bookId", params: { bookId } }}>
@@ -150,14 +175,6 @@ function Quiz() {
       </AppShell>
     );
   }
-
-  const stars = (() => {
-    const ratio = correct / questions.length;
-    if (ratio >= 0.9) return 3;
-    if (ratio >= 0.7) return 2;
-    if (ratio >= 0.5) return 1;
-    return 0;
-  })();
 
   async function answer(option: Word) {
     if (picked || !question) return;
@@ -182,19 +199,6 @@ function Quiz() {
       setStep((s) => s + 1);
     }
   }
-
-
-  useEffect(() => {
-    if (coinsAtStart.current === null && started) coinsAtStart.current = progress.coins;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [started]);
-
-  const coinsWon = Math.max(0, progress.coins - (coinsAtStart.current ?? progress.coins));
-
-  useEffect(() => {
-    if (done) awardStars(bookId, idx, Math.max(stars, 1) === 1 && stars === 0 ? 0 : stars);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [done]);
 
   if (!started) {
     return (

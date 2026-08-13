@@ -28,6 +28,9 @@ export function WordPopup({ word, onClose }: { word: Word; onClose: () => void }
     closeRef.current?.focus();
 
     const onKey = (e: KeyboardEvent) => {
+      // The stroke writer sits on top and handles its own Escape; closing this
+      // card too would tear both of them down on one key press.
+      if (writing) return;
       if (e.key === "Escape") {
         onClose();
         return;
@@ -55,9 +58,10 @@ export function WordPopup({ word, onClose }: { word: Word; onClose: () => void }
       window.removeEventListener("keydown", onKey);
       opener?.focus?.();
     };
-  }, [onClose]);
+  }, [onClose, writing]);
 
   return (
+    <>
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-background/70 p-4 backdrop-blur-sm sm:items-center"
       onClick={(e) => {
@@ -125,18 +129,22 @@ export function WordPopup({ word, onClose }: { word: Word; onClose: () => void }
           )}
         </div>
       </div>
-
-      {writing && (
-        <StrokeWriter
-          targets={chars.map((hanzi) => ({
-            hanzi,
-            pinyin: chars.length === 1 ? word.pinyin : undefined,
-            dict: chars.length === 1 ? word.dict : undefined,
-          }))}
-          onClose={() => setWriting(false)}
-        />
-      )}
     </div>
+
+    {/* Rendered outside the backdrop above: as a child of it, every click
+        inside the stroke writer bubbled into the backdrop's dismiss handler
+        and closed this card mid-practice. */}
+    {writing && (
+      <StrokeWriter
+        targets={chars.map((hanzi) => ({
+          hanzi,
+          pinyin: chars.length === 1 ? word.pinyin : undefined,
+          dict: chars.length === 1 ? word.dict : undefined,
+        }))}
+        onClose={() => setWriting(false)}
+      />
+    )}
+    </>
   );
 
 }

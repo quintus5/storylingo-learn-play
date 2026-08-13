@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/AppShell";
+import { RouteMessage } from "@/components/RouteMessage";
 import { StarRow } from "@/components/StarRow";
 import { bookQuery } from "@/lib/books";
 import { learningStats, useProgress } from "@/lib/progress";
@@ -24,9 +25,7 @@ export const Route = createFileRoute("/book/$bookId/progress")({
   }),
   component: ProgressPage,
   errorComponent: () => (
-    <AppShell>
-      <p className="text-muted-foreground">{useT()("Progress could not be loaded.", "ไม่สามารถโหลดข้อมูลความก้าวหน้าได้")}</p>
-    </AppShell>
+    <RouteMessage en="Progress could not be loaded." th="ไม่สามารถโหลดข้อมูลความก้าวหน้าได้" />
   ),
 });
 

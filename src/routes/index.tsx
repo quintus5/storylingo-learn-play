@@ -11,8 +11,6 @@ import { CharacterSprite } from "@/components/CharacterSprite";
 import { useDevMode } from "@/lib/dev-mode";
 import { useLocalText, useT } from "@/lib/i18n";
 
-// Sync canary — 2026-08-12. Written on GitHub to check that merging into main
-// flows back into the Lovable editor. Changes nothing; delete once confirmed.
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -185,7 +183,11 @@ function Bookshelf() {
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {books.map((book) => {
-            const stars = Object.values(progress.books[book.id]?.stars ?? {}).length;
+            // Only chapters that actually earned a star count as done — a
+            // failed quiz still writes a 0 into the stars map.
+            const stars = Object.values(progress.books[book.id]?.stars ?? {}).filter(
+              (s) => s > 0,
+            ).length;
             return (
               <div key={book.id} className="relative h-full">
               {dev && (

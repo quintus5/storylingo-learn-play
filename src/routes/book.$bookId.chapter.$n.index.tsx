@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { AppShell } from "@/components/AppShell";
+import { RouteMessage } from "@/components/RouteMessage";
 import { WordPopup } from "@/components/WordPopup";
 import { StrokeWriter, type WriteTarget } from "@/components/StrokeWriter";
 import { useWritableChars } from "@/hooks/use-writable";
@@ -55,15 +56,9 @@ export const Route = createFileRoute("/book/$bookId/chapter/$n/")({
   },
   component: Reader,
   errorComponent: () => (
-    <AppShell>
-      <p className="text-muted-foreground">{useT()("This chapter could not be opened.", "ไม่สามารถเปิดบทนี้ได้")}</p>
-    </AppShell>
+    <RouteMessage en="This chapter could not be opened." th="ไม่สามารถเปิดบทนี้ได้" />
   ),
-  notFoundComponent: () => (
-    <AppShell>
-      <p className="text-muted-foreground">{useT()("Chapter not found.", "ไม่พบบทนี้")}</p>
-    </AppShell>
-  ),
+  notFoundComponent: () => <RouteMessage en="Chapter not found." th="ไม่พบบทนี้" />,
 });
 
 function prefersReducedMotion() {
@@ -85,7 +80,9 @@ function Reader() {
   const [voice, chooseVoice] = useVoice();
 
   const chapter = data.chapters.find((c) => c.idx === idx);
-  const pages = chapter?.pages ?? [];
+  // Memoised because it feeds an effect's dependency list: a bare `?? []`
+  // hands that effect a new array on every render.
+  const pages = useMemo(() => chapter?.pages ?? [], [chapter]);
   const [page, setPage] = useState(0);
   const [word, setWord] = useState<Word | null>(null);
   const [writing, setWriting] = useState<{
@@ -130,17 +127,10 @@ function Reader() {
   );
   const sentenceChars = useWritableChars(sentenceWords);
 
-  // One picture per sentence: sentences that open a new scene have their own
-  // image, the rest keep showing the most recent one. Older chapters have none
-  // of these, so every sentence falls back to the page (then chapter) image.
-  const sentenceArt = useMemo(() => {
-    const base = current?.image_url ?? chapter?.image_url ?? null;
-    let last: string | null = null;
-    return (current?.sentences ?? []).map((s) => {
-      if (s.image_url) last = s.image_url;
-      return last ?? base;
-    });
-  }, [current, chapter]);
+  // One picture per page: the illustration holds still while the reader works
+  // through the page's sentences. Books generated while pictures changed per
+  // sentence still show their page image, so nothing older breaks.
+  const pageArt = current?.image_url ?? chapter?.image_url ?? null;
   const lookUp = useCallback(
     (hanzi: string): WriteTarget => {
       const hit = (chapter?.words ?? [])
@@ -227,14 +217,13 @@ function Reader() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [speaking]);
 
-  // Warm every scene on this page (at most four) plus what comes next, so
-  // swiping or following narration never lands on a cold picture.
+  // Warm this page's picture and the next one, so turning the page never
+  // lands on a cold image.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const ahead = [
-      ...new Set(sentenceArt.filter(Boolean) as string[]),
+      pageArt,
       pages[page + 1]?.image_url,
-      pages[page + 1]?.sentences?.find((s) => s.image_url)?.image_url,
       isLast ? nextChapter?.image_url : null,
     ];
     for (const url of ahead) {
@@ -243,7 +232,7 @@ function Reader() {
       img.decoding = "async";
       img.src = url;
     }
-  }, [page, pages, sentenceArt, isLast, nextChapter?.image_url]);
+  }, [page, pages, pageArt, isLast, nextChapter?.image_url]);
 
 
 
@@ -304,7 +293,7 @@ function Reader() {
 
 
 
-  const artSrc = sentenceArt[active] ?? current.image_url ?? chapter.image_url;
+  const artSrc = pageArt;
   const art = (artSrc && !brokenArt[artSrc] ? artSrc : null) ?? shownArt;
   const previous = shownArt && shownArt !== art ? shownArt : null;
   
@@ -434,7 +423,12 @@ function Reader() {
         <div className="order-2 flex w-full items-center justify-between gap-2 sm:contents">
           <div className="order-1 flex min-w-0 flex-wrap items-center gap-2 sm:w-44 sm:shrink-0 sm:flex-nowrap sm:pb-1">
             <button
-              onClick={() => void speak(current.sentences[active]?.hanzi ?? "")}
+              onClick={() => {
+                // Never send an empty string to the narrator: it fails
+                // validation server-side and surfaces as a broken-audio toast.
+                const line = current.sentences[active]?.hanzi;
+                if (line) void speak(line);
+              }}
               className="press inline-flex shrink-0 items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-xs font-bold text-secondary-foreground"
             >
               <Play className="h-3.5 w-3.5" /> {t("Hear", "ฟัง")}
