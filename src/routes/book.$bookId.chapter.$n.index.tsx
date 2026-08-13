@@ -127,17 +127,10 @@ function Reader() {
   );
   const sentenceChars = useWritableChars(sentenceWords);
 
-  // One picture per sentence: sentences that open a new scene have their own
-  // image, the rest keep showing the most recent one. Older chapters have none
-  // of these, so every sentence falls back to the page (then chapter) image.
-  const sentenceArt = useMemo(() => {
-    const base = current?.image_url ?? chapter?.image_url ?? null;
-    let last: string | null = null;
-    return (current?.sentences ?? []).map((s) => {
-      if (s.image_url) last = s.image_url;
-      return last ?? base;
-    });
-  }, [current, chapter]);
+  // One picture per page: the illustration holds still while the reader works
+  // through the page's sentences. Books generated while pictures changed per
+  // sentence still show their page image, so nothing older breaks.
+  const pageArt = current?.image_url ?? chapter?.image_url ?? null;
   const lookUp = useCallback(
     (hanzi: string): WriteTarget => {
       const hit = (chapter?.words ?? [])
@@ -224,14 +217,13 @@ function Reader() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [speaking]);
 
-  // Warm every scene on this page (at most four) plus what comes next, so
-  // swiping or following narration never lands on a cold picture.
+  // Warm this page's picture and the next one, so turning the page never
+  // lands on a cold image.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const ahead = [
-      ...new Set(sentenceArt.filter(Boolean) as string[]),
+      pageArt,
       pages[page + 1]?.image_url,
-      pages[page + 1]?.sentences?.find((s) => s.image_url)?.image_url,
       isLast ? nextChapter?.image_url : null,
     ];
     for (const url of ahead) {
@@ -240,7 +232,7 @@ function Reader() {
       img.decoding = "async";
       img.src = url;
     }
-  }, [page, pages, sentenceArt, isLast, nextChapter?.image_url]);
+  }, [page, pages, pageArt, isLast, nextChapter?.image_url]);
 
 
 
@@ -301,7 +293,7 @@ function Reader() {
 
 
 
-  const artSrc = sentenceArt[active] ?? current.image_url ?? chapter.image_url;
+  const artSrc = pageArt;
   const art = (artSrc && !brokenArt[artSrc] ? artSrc : null) ?? shownArt;
   const previous = shownArt && shownArt !== art ? shownArt : null;
   

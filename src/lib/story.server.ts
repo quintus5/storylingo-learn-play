@@ -265,17 +265,11 @@ export async function buildChapterContent(
       `{"pages":[{"scene":"a vivid English description of one picture to paint for this page (no text in image)",` +
       `"cast":["character names from the list above that appear in this picture"],"place":"the place name from the list above",` +
       `"sentences":[{"hanzi":"简体中文句子","pinyin":"jiǎn tǐ zhōng wén jù zi","native":"ประโยคภาษาไทย",` +
-      `"scene":"a short English description of what THIS sentence depicts","sceneChange":true,` +
       `"words":[{"hanzi":"词","pinyin":"cí","dict":"ความหมายทั่วไปในพจนานุกรม (Thai)","context":"ความหมายในประโยคนี้ (Thai)"}]}]}],` +
       `"words":[{"hanzi":"词","pinyin":"cí","dict":"ความหมายทั่วไป (Thai)"}]}\n\n` +
-      `Every page MUST include its own "scene" description matching what happens on that page. ` +
-      `Every sentence MUST also carry its own short English "scene" plus "sceneChange". ` +
-      `Set "sceneChange" true ONLY when the picture genuinely moves: a new location, a new character ` +
-      `entering, or a significant new action. Set it false when the sentence continues the same moment. ` +
-      `Aim for about 2 to 4 scene changes per page, never one per sentence. ` +
-      `The FIRST sentence of every page must have "sceneChange": true. ` +
-      `Each sentence's scene must match that sentence and the chapter's beats: if the sentence names a ` +
-      `place, creature or object, the scene must show that thing. Scenes never contain text or letters. ` +
+      `Every page MUST include its own "scene" description. One picture is painted per page, so that ` +
+      `scene has to cover what happens across the whole page, not just its first line. Give sentences ` +
+      `no scene of their own. Scenes never contain text or letters. ` +
 
       `Rules: split every sentence into its real words (1-3 characters each, no punctuation as a word). ` +
       `"dict" is the GENERAL dictionary meaning of the word on its own; "context" is what it means in that sentence. ` +
@@ -353,10 +347,8 @@ export function matchBibleEntries(
 }
 
 /**
- * Paint the chapter's illustrations. Newer chapters carry per-sentence scenes,
- * so only the sentences that actually move the picture get their own image;
- * the rest reuse the most recent one. Older chapters (no sentence scenes)
- * still get exactly one picture per page.
+ * Paint the chapter's illustrations: exactly one picture per page, which holds
+ * still for every sentence on that page.
  */
 export async function illustratePages(
   bookId: string,
@@ -367,39 +359,13 @@ export async function illustratePages(
   characterPrompt?: string | null,
   bible?: { cast: BibleEntry[]; places: BibleEntry[] } | null,
 ): Promise<Page[]> {
-  type Job = { page: number; sentence: number | null; scene: string; name: string };
-  const jobs: Job[] = [];
+  type Job = { page: number; scene: string; name: string };
 
-  // Safety net: however many scene changes the model asks for, one page never
-  // costs more than this many images.
-  const MAX_IMAGES_PER_PAGE = 4;
-
-  pages.forEach((page, i) => {
-    const pageScene = page.scene?.trim() || `${chapterTitle}: ${page.sentences[0]?.native ?? ""}`;
-    const wanted = page.sentences
-      .map((sentence, j) => ({ sentence, j }))
-      .filter(({ sentence, j }) => sentence.scene?.trim() && (j === 0 || sentence.sceneChange));
-    // Earliest changes win; later sentences keep showing the last picture.
-    const changes = wanted.slice(0, MAX_IMAGES_PER_PAGE);
-    if (wanted.length > changes.length) {
-      console.warn(
-        `Illustration cap hit: chapter ${chapterIdx} page ${i + 1} asked for ${wanted.length} images, painting ${changes.length}`,
-      );
-    }
-
-    if (changes.length === 0) {
-      jobs.push({ page: i, sentence: null, scene: pageScene, name: `chapter-${chapterIdx}-page-${i + 1}` });
-      return;
-    }
-    for (const { sentence, j } of changes) {
-      jobs.push({
-        page: i,
-        sentence: j,
-        scene: sentence.scene!.trim(),
-        name: `chapter-${chapterIdx}-page-${i + 1}-s${j + 1}`,
-      });
-    }
-  });
+  const jobs: Job[] = pages.map((page, i) => ({
+    page: i,
+    scene: page.scene?.trim() || `${chapterTitle}: ${page.sentences[0]?.native ?? ""}`,
+    name: `chapter-${chapterIdx}-page-${i + 1}`,
+  }));
 
   const results = new Array<string | null>(jobs.length).fill(null);
   let next = 0;
@@ -429,17 +395,14 @@ export async function illustratePages(
 
   await Promise.all(Array.from({ length: Math.min(4, jobs.length) }, worker));
 
-  const out = pages.map((p) => ({ ...p, sentences: p.sentences.map((s) => ({ ...s })) }));
+  // Any per-sentence art a book picked up earlier is cleared, so a repaint
+  // never leaves a page pointing at both a new picture and stale old ones.
+  const out = pages.map((p) => ({
+    ...p,
+    sentences: p.sentences.map((s) => ({ ...s, image_url: null })),
+  }));
   jobs.forEach((job, k) => {
-    const url = results[k];
-    const page = out[job.page]!;
-    if (job.sentence === null) {
-      page.image_url = url;
-    } else {
-      page.sentences[job.sentence]!.image_url = url;
-      // The page image is the first picture of that page, for older readers.
-      if (page.image_url == null) page.image_url = url;
-    }
+    out[job.page]!.image_url = results[k];
   });
   return out;
 }
