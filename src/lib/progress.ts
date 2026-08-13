@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { CharacterLook } from "./character";
 import { PRICES, REWARDS, STARTER_COINS, STREAK_BONUS } from "./economy";
 import { syllableTone } from "./pinyin";
+import { AUTHORING_ENABLED } from "./authoring";
 
 const KEY = "storylingo.progress.v2";
 const LEGACY_KEY = "storylingo.progress.v1";
@@ -432,6 +433,7 @@ let testUnlockOn = false;
 export function useTestUnlock() {
   const [on, setOn] = useState(false);
   useEffect(() => {
+    if (!AUTHORING_ENABLED) return;
     try {
       if (new URLSearchParams(window.location.search).get("unlockAll") === "1") {
         sessionStorage.setItem("storylingo.unlockAll", "1");

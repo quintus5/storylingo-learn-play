@@ -16,9 +16,12 @@ export function coverThumb(url: string | null | undefined): string | undefined {
 export const booksQuery = queryOptions({
   queryKey: ["books"],
   queryFn: async (): Promise<BookRow[]> => {
+    // Row-level security already hides unpublished books; asking for them
+    // explicitly keeps the intent visible where the shelf is built.
     const { data, error } = await supabase
       .from("books")
       .select("*")
+      .eq("published", true)
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     return (data ?? []) as unknown as BookRow[];

@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { ART_STYLES, DEFAULT_ART_STYLE } from "./art-styles";
 import { parseBibleEntries } from "./story-schema";
+import { requireAdmin } from "./admin-middleware";
 import type { Page } from "./types";
 
 
@@ -21,6 +22,7 @@ const CreateBookInput = z.object({
 const HOURLY_BOOK_LIMIT = 12;
 
 export const createBook = createServerFn({ method: "POST" })
+  .middleware([requireAdmin])
   .inputValidator((input: unknown) => CreateBookInput.parse(input))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -91,6 +93,7 @@ const ChapterInput = z.object({
 });
 
 export const generateChapter = createServerFn({ method: "POST" })
+  .middleware([requireAdmin])
   .inputValidator((input: unknown) => ChapterInput.parse(input))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -227,6 +230,7 @@ const FailInput = z.object({
 
 /** Flag a half-built book so it stops looking like it is still working. */
 export const markBookFailed = createServerFn({ method: "POST" })
+  .middleware([requireAdmin])
   .inputValidator((input: unknown) => FailInput.parse(input))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -245,6 +249,7 @@ export const markBookFailed = createServerFn({ method: "POST" })
 
 /** Which chapters of a book still have no pages, so they can be retried. */
 export const missingChapters = createServerFn({ method: "POST" })
+  .middleware([requireAdmin])
   .inputValidator((input: unknown) => z.object({ bookId: z.string().uuid() }).parse(input))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -273,16 +278,64 @@ const PreviewInput = z.object({
 });
 
 export const previewBook = createServerFn({ method: "POST" })
+  .middleware([requireAdmin])
   .inputValidator((input: unknown) => PreviewInput.parse(input))
   .handler(async ({ data }) => {
     const { previewStory } = await import("./story.server");
     return previewStory(data.url, data.title ?? "");
   });
 
+const PublishInput = z.object({
+  bookId: z.string().uuid(),
+  published: z.boolean(),
+});
+
+/**
+ * Put a finished book on the shelf, or take it back off.
+ *
+ * This is the human step the publication gate exists for: nothing a model
+ * writes or paints reaches a child until someone has looked at it and called
+ * this. Publishing stamps reviewed_at so approved books can be told apart from
+ * the ones that predate the gate.
+ */
+export const setBookPublished = createServerFn({ method: "POST" })
+  .middleware([requireAdmin])
+  .inputValidator((input: unknown) => PublishInput.parse(input))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("books")
+      .update({
+        published: data.published,
+        reviewed_at: data.published ? new Date().toISOString() : null,
+      })
+      .eq("id", data.bookId);
+    if (error) throw new Error(error.message);
+    return { ok: true, published: data.published };
+  });
+
+/**
+ * Every book including the unpublished ones, for the operator's shelf. Reading
+ * these from the client is impossible by design — RLS hides them — so the list
+ * is assembled here with the service role.
+ */
+export const listBooksForReview = createServerFn({ method: "POST" })
+  .middleware([requireAdmin])
+  .handler(async () => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin
+      .from("books")
+      .select("id, title, title_th, status, published, reviewed_at, cover_url, created_at")
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  });
+
 const DeleteBookInput = z.object({ bookId: z.string().uuid() });
 
 /** Developer-only cleanup: removes a book and everything under it. */
 export const deleteBook = createServerFn({ method: "POST" })
+  .middleware([requireAdmin])
   .inputValidator((input: unknown) => DeleteBookInput.parse(input))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -298,6 +351,7 @@ export const deleteBook = createServerFn({ method: "POST" })
  * The story text is untouched.
  */
 export const repaintBook = createServerFn({ method: "POST" })
+  .middleware([requireAdmin])
   .inputValidator((input: unknown) => DeleteBookInput.parse(input))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

@@ -12,6 +12,7 @@ import { isUnlocked, useProgress } from "@/lib/progress";
 import { PRICES } from "@/lib/economy";
 import { CoinPurse } from "@/components/CoinPurse";
 import { useLocalText, useT } from "@/lib/i18n";
+import { AUTHORING_ENABLED } from "@/lib/authoring";
 
 
 export const Route = createFileRoute("/book/$bookId/")({
@@ -59,7 +60,10 @@ function BookPage() {
   const buildChapter = useServerFn(generateChapter);
 
   const { book, chapters } = data;
-  const unfinished = chapters.filter((c) => !c.pages?.length).length;
+  // Finishing a book spends AI credits, so only operator builds offer it.
+  const unfinished = AUTHORING_ENABLED
+    ? chapters.filter((c) => !c.pages?.length).length
+    : 0;
 
   /** Retry only the chapters that never got written, a few at a time. */
   async function finishBook() {

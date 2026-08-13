@@ -9,6 +9,7 @@ import { useProgress } from "@/lib/progress";
 import { CoinPurse } from "@/components/CoinPurse";
 import { CharacterSprite } from "@/components/CharacterSprite";
 import { useDevMode } from "@/lib/dev-mode";
+import { AUTHORING_ENABLED } from "@/lib/authoring";
 import { useLocalText, useT } from "@/lib/i18n";
 
 
@@ -49,7 +50,8 @@ function ErrorMessage() {
 function Bookshelf() {
   const { data: books } = useSuspenseQuery(booksQuery);
   const { progress } = useProgress();
-  const dev = useDevMode();
+  // Operator controls need both the build flag and the hidden dev toggle.
+  const dev = useDevMode() && AUTHORING_ENABLED;
   const queryClient = useQueryClient();
   const [removing, setRemoving] = useState<string | null>(null);
   const [repainting, setRepainting] = useState<string | null>(null);
@@ -98,12 +100,14 @@ function Bookshelf() {
       right={
         <div className="flex items-center gap-2">
           <CoinPurse coins={progress.coins} />
-          <Link
-            to="/create"
-            className="press inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"
-          >
-            <Plus className="h-4 w-4" /> {t("New story", "สร้างนิทานใหม่")}
-          </Link>
+          {AUTHORING_ENABLED && (
+            <Link
+              to="/create"
+              className="press inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"
+            >
+              <Plus className="h-4 w-4" /> {t("New story", "สร้างนิทานใหม่")}
+            </Link>
+          )}
         </div>
       }
     >
@@ -171,14 +175,21 @@ function Bookshelf() {
         <div className="rounded-3xl border border-dashed border-border p-10 text-center">
           <p className="text-lg font-bold">{t("Your bookshelf is empty", "ชั้นหนังสือของเธอยังว่างอยู่")}</p>
           <p className="mt-1 text-muted-foreground">
-            {t("Add your first story to get started.", "เพิ่มนิทานเรื่องแรกเพื่อเริ่มต้นกันเลย")}
+            {AUTHORING_ENABLED
+              ? t("Add your first story to get started.", "เพิ่มนิทานเรื่องแรกเพื่อเริ่มต้นกันเลย")
+              : t(
+                  "New books are on their way. Check back soon!",
+                  "หนังสือเล่มใหม่กำลังมา แวะกลับมาดูใหม่นะ",
+                )}
           </p>
-          <Link
-            to="/create"
-            className="press mt-5 inline-flex items-center gap-2 rounded-2xl bg-primary px-5 py-3 font-bold text-primary-foreground"
-          >
-            <Plus className="h-5 w-5" /> {t("Create a book", "สร้างหนังสือ")}
-          </Link>
+          {AUTHORING_ENABLED && (
+            <Link
+              to="/create"
+              className="press mt-5 inline-flex items-center gap-2 rounded-2xl bg-primary px-5 py-3 font-bold text-primary-foreground"
+            >
+              <Plus className="h-5 w-5" /> {t("Create a book", "สร้างหนังสือ")}
+            </Link>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
