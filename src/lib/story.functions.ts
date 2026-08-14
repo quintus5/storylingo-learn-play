@@ -3,11 +3,21 @@ import { z } from "zod";
 import { ART_STYLES, DEFAULT_ART_STYLE } from "./art-styles";
 import { parseBibleEntries } from "./story-schema";
 import { requireAdmin } from "./admin-middleware";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Page } from "./types";
 
 
 
 const ART_STYLE_IDS = ART_STYLES.map((s) => s.id) as [string, ...string[]];
+
+/**
+ * These handlers run with the service role, which bypasses row-level security,
+ * so the ownership rule the database would have applied has to be applied here
+ * by hand. Books made before accounts existed have no owner and are read-only.
+ */
+function assertOwner(ownerId: string | null | undefined, userId: string) {
+  if (ownerId !== userId) throw new Error("That book belongs to someone else.");
+}
 
 const CreateBookInput = z.object({
   title: z.string().trim().min(1).max(120),
@@ -21,10 +31,17 @@ const CreateBookInput = z.object({
 /** Books anyone may start in one hour, so a script cannot drain AI credits. */
 const HOURLY_BOOK_LIMIT = 12;
 
+/**
+ * Books one account may start in a day. The hourly ceiling above protects the
+ * credit balance as a whole; this stops a single enthusiastic reader from
+ * spending it all before anyone else gets a turn.
+ */
+const DAILY_BOOKS_PER_READER = 3;
+
 export const createBook = createServerFn({ method: "POST" })
-  .middleware([requireAdmin])
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => CreateBookInput.parse(input))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { getSourceText, buildOutline, buildStoryBible } = await import("./story.server");
 
@@ -35,6 +52,18 @@ export const createBook = createServerFn({ method: "POST" })
       .gte("created_at", since);
     if ((count ?? 0) >= HOURLY_BOOK_LIMIT) {
       throw new Error("StoryLingo is making a lot of books right now. Please try again in a while.");
+    }
+
+    const dayAgo = new Date(Date.now() - 86_400_000).toISOString();
+    const { count: mine } = await supabaseAdmin
+      .from("books")
+      .select("id", { count: "exact", head: true })
+      .eq("owner_id", context.userId)
+      .gte("created_at", dayAgo);
+    if ((mine ?? 0) >= DAILY_BOOKS_PER_READER) {
+      throw new Error(
+        `You have made ${DAILY_BOOKS_PER_READER} books today — that is the daily limit. Come back tomorrow for more!`,
+      );
     }
 
     const storyText = await getSourceText(data.url);
@@ -62,6 +91,10 @@ export const createBook = createServerFn({ method: "POST" })
         cast_bible: bible.cast,
         places: bible.places,
         status: "generating",
+        // Private to whoever made it. Reaching the shared shelf is a separate,
+        // reviewed step, so nothing goes out to other children unread.
+        owner_id: context.userId,
+        published: false,
       })
       .select("id")
       .single();
@@ -93,9 +126,9 @@ const ChapterInput = z.object({
 });
 
 export const generateChapter = createServerFn({ method: "POST" })
-  .middleware([requireAdmin])
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => ChapterInput.parse(input))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { buildChapterContent, illustratePages, makeArt, getSourceText } = await import(
       "./story.server"
@@ -103,10 +136,15 @@ export const generateChapter = createServerFn({ method: "POST" })
 
     const { data: book } = await supabaseAdmin
       .from("books")
-      .select("id, title, chapter_count, art_style, source_url, character_prompt, cast_bible, places")
+      .select(
+        "id, title, chapter_count, art_style, source_url, character_prompt, cast_bible, places, owner_id",
+      )
       .eq("id", data.bookId)
       .single();
     if (!book) throw new Error("Book not found");
+    // Painting a chapter spends real credits, so it has to be your own book.
+    // This runs with the service role, which bypasses row-level security.
+    assertOwner(book.owner_id, context.userId);
 
     const styleId = book.art_style ?? null;
     const characterPrompt = book.character_prompt ?? null;
@@ -230,16 +268,18 @@ const FailInput = z.object({
 
 /** Flag a half-built book so it stops looking like it is still working. */
 export const markBookFailed = createServerFn({ method: "POST" })
-  .middleware([requireAdmin])
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => FailInput.parse(input))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: book } = await supabaseAdmin
       .from("books")
-      .select("status")
+      .select("status, owner_id")
       .eq("id", data.bookId)
       .single();
-    if (!book || book.status === "ready") return { ok: false };
+    if (!book) return { ok: false };
+    assertOwner(book.owner_id, context.userId);
+    if (book.status === "ready") return { ok: false };
     await supabaseAdmin
       .from("books")
       .update({ status: "failed", generation_error: data.message ?? null })
@@ -249,10 +289,18 @@ export const markBookFailed = createServerFn({ method: "POST" })
 
 /** Which chapters of a book still have no pages, so they can be retried. */
 export const missingChapters = createServerFn({ method: "POST" })
-  .middleware([requireAdmin])
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ bookId: z.string().uuid() }).parse(input))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: owner } = await supabaseAdmin
+      .from("books")
+      .select("owner_id")
+      .eq("id", data.bookId)
+      .single();
+    if (!owner) throw new Error("Book not found");
+    assertOwner(owner.owner_id, context.userId);
+
     const { data: rows } = await supabaseAdmin
       .from("chapters")
       .select("idx, pages")
@@ -278,11 +326,39 @@ const PreviewInput = z.object({
 });
 
 export const previewBook = createServerFn({ method: "POST" })
-  .middleware([requireAdmin])
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => PreviewInput.parse(input))
   .handler(async ({ data }) => {
     const { previewStory } = await import("./story.server");
     return previewStory(data.url, data.title ?? "");
+  });
+
+const ReportInput = z.object({
+  bookId: z.string().uuid(),
+  chapterIdx: z.number().int().min(1).max(20).optional(),
+  reason: z.enum(["scary", "rude", "wrong-language", "broken", "other"]),
+  note: z.string().trim().max(500).optional(),
+});
+
+/**
+ * Flag a book from inside the reader. Reports are write-only for readers —
+ * only the operator sees them — so nothing a child submits is echoed back to
+ * anyone else.
+ */
+export const reportBook = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => ReportInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("book_reports").insert({
+      book_id: data.bookId,
+      chapter_idx: data.chapterIdx ?? null,
+      reason: data.reason,
+      note: data.note ?? null,
+      reported_by: context.userId,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
 
 const PublishInput = z.object({

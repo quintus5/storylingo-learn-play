@@ -1,16 +1,15 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { BookOpen, Loader2, Search, ShieldCheck, Wand2 } from "lucide-react";
+import { BookOpen, Loader2, Search, Wand2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { AUTHORING_ENABLED } from "@/lib/authoring";
-import { readAdminToken, saveAdminToken } from "@/lib/admin-middleware";
+import { SignInPanel } from "@/components/SignInPanel";
+import { useAuth } from "@/lib/auth";
 import {
   createBook,
   generateChapter,
   markBookFailed,
   previewBook,
-  setBookPublished,
 } from "@/lib/story.functions";
 import { ART_STYLES, DEFAULT_ART_STYLE, artStyle } from "@/lib/art-styles";
 import { CoinPurse } from "@/components/CoinPurse";
@@ -66,35 +65,18 @@ export const Route = createFileRoute("/create")({
 });
 
 /**
- * Making books is an operator tool, not something the app offers children.
- * Reader builds get a plain notice; only a build with authoring switched on
- * renders the real page, and even then the server refuses without a token.
+ * Anyone may make a book, but a grown-up signs in first: a book belongs to the
+ * account that made it and stays private to them, so there has to be an
+ * account to belong to. Reading the shelf never asks for one.
  */
 function CreateRoute() {
   const t = useT();
-  if (!AUTHORING_ENABLED) {
+  const { user, loaded } = useAuth();
+  if (!loaded) return <AppShell title={t("New story", "สร้างนิทานใหม่")} back={{ to: "/" }}>{null}</AppShell>;
+  if (!user) {
     return (
       <AppShell title={t("New story", "สร้างนิทานใหม่")} back={{ to: "/" }}>
-        <div className="mx-auto max-w-md rounded-3xl border border-border bg-card p-6 text-center">
-          <p className="text-4xl" aria-hidden>
-            📚
-          </p>
-          <h2 className="mt-3 text-xl font-extrabold">
-            {t("Books are chosen for you", "หนังสือถูกคัดมาให้แล้ว")}
-          </h2>
-          <p className="mt-2 text-muted-foreground">
-            {t(
-              "Every StoryLingo book is made and checked by a person before it reaches the shelf. Head back to find your next one.",
-              "หนังสือ StoryLingo ทุกเล่มถูกสร้างและตรวจโดยคนก่อนขึ้นชั้น กลับไปเลือกเล่มต่อไปได้เลย",
-            )}
-          </p>
-          <Link
-            to="/"
-            className="press mt-6 inline-flex rounded-2xl bg-primary px-5 py-3 font-extrabold text-primary-foreground"
-          >
-            {t("Back to the bookshelf", "กลับไปที่ชั้นหนังสือ")}
-          </Link>
-        </div>
+        <SignInPanel redirectPath="/create" />
       </AppShell>
     );
   }
@@ -108,12 +90,6 @@ function CreatePage() {
   const chapter = useServerFn(generateChapter);
   const preview = useServerFn(previewBook);
   const fail = useServerFn(markBookFailed);
-  const publish = useServerFn(setBookPublished);
-
-  const [token, setToken] = useState(() => readAdminToken());
-  /** A finished book waiting for the operator to approve it onto the shelf. */
-  const [pendingBookId, setPendingBookId] = useState<string | null>(null);
-  const [publishing, setPublishing] = useState(false);
 
   const { progress, spend } = useProgress();
   const buddy = progress.character;
@@ -206,16 +182,11 @@ function CreatePage() {
         );
         await Promise.all(batch.map((i) => chapter({ data: { bookId, idx: i } })));
       }
-      say(
-        t(
-          "Written and painted. Read it through, then publish it to the shelf.",
-          "เขียนและวาดเสร็จแล้ว อ่านตรวจก่อน แล้วค่อยเผยแพร่ขึ้นชั้น",
-        ),
-      );
+      say(t("Your book is ready!", "หนังสือของคุณพร้อมแล้ว!"));
       spend(PRICES.book);
-      // Deliberately no redirect: the book is unpublished, so row-level
-      // security hides it from the reader until it is approved below.
-      setPendingBookId(bookId);
+      // The book is unpublished, but it belongs to this account, so its owner
+      // can read it straight away — only the shared shelf waits for review.
+      await navigate({ to: "/book/$bookId", params: { bookId } });
     } catch (err) {
       const message =
         err instanceof Error ? err.message : t("Something went wrong.", "เกิดข้อผิดพลาดบางอย่าง");
@@ -238,68 +209,6 @@ function CreatePage() {
   return (
     <AppShell title={t("New story", "สร้างนิทานใหม่")} back={{ to: "/" }} right={<CoinPurse />}>
       <form onSubmit={onSubmit} className="mx-auto max-w-xl space-y-5">
-        <div className="rounded-3xl border border-primary/30 bg-card p-5">
-          <label className="flex items-center gap-2 text-sm font-semibold" htmlFor="admin-token">
-            <ShieldCheck className="h-4 w-4 text-primary" /> Operator token
-          </label>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Kept for this browser session only. Every action on this page is
-            refused by the server without it.
-          </p>
-          <input
-            id="admin-token"
-            type="password"
-            value={token}
-            autoComplete="off"
-            onChange={(e) => {
-              setToken(e.target.value);
-              saveAdminToken(e.target.value);
-            }}
-            placeholder="ADMIN_TOKEN"
-            className="mt-2 w-full rounded-2xl border border-input bg-background px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
-          />
-        </div>
-
-        {pendingBookId && (
-          <section className="rounded-3xl border border-gold/50 bg-card p-5">
-            <p className="font-extrabold">Waiting for review</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              This book is saved but hidden from the bookshelf. Read it through,
-              then publish it — that is the human check standing between a
-              generated book and a child.
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <button
-                type="button"
-                disabled={publishing}
-                onClick={async () => {
-                  setPublishing(true);
-                  setError(null);
-                  try {
-                    await publish({ data: { bookId: pendingBookId, published: true } });
-                    await navigate({ to: "/book/$bookId", params: { bookId: pendingBookId } });
-                  } catch (err) {
-                    setError(err instanceof Error ? err.message : "Could not publish that book.");
-                  } finally {
-                    setPublishing(false);
-                  }
-                }}
-                className="press inline-flex min-h-11 items-center gap-2 rounded-2xl bg-primary px-4 text-sm font-bold text-primary-foreground disabled:opacity-60"
-              >
-                {publishing ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                Publish to the bookshelf
-              </button>
-              <button
-                type="button"
-                onClick={() => setPendingBookId(null)}
-                className="press inline-flex min-h-11 items-center rounded-2xl bg-secondary px-4 text-sm font-bold text-secondary-foreground"
-              >
-                Leave it unpublished
-              </button>
-            </div>
-          </section>
-        )}
-
         <div className="rounded-3xl border border-border bg-card p-5">
           <label className="block text-sm font-semibold" htmlFor="title">
             {t("Story title", "ชื่อนิทาน")}
