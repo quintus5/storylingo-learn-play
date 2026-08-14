@@ -12,8 +12,24 @@ const BUCKET = "story-art";
 
 export type { Outline };
 
-export { assertReadable, estimateWordCount, junkRatio } from "./readable";
-import { assertReadable, estimateWordCount } from "./readable";
+export {
+  assertReadable,
+  assertProse,
+  contentFragment,
+  estimateWordCount,
+  junkRatio,
+  looksLikeNavigation,
+  proseSignals,
+  sliceHtmlAtFragment,
+  stripGutenbergBoilerplate,
+} from "./readable";
+import {
+  assertReadable,
+  contentFragment,
+  estimateWordCount,
+  sliceHtmlAtFragment,
+  stripGutenbergBoilerplate,
+} from "./readable";
 
 async function extractPdfText(buffer: ArrayBuffer): Promise<string> {
   const { extractText, getDocumentProxy } = await import("unpdf");
@@ -32,12 +48,19 @@ function extractHtmlText(html: string): string {
     .replace(/<style[\s\S]*?<\/style>/gi, " ")
     .replace(/<nav[\s\S]*?<\/nav>/gi, " ")
     .replace(/<footer[\s\S]*?<\/footer>/gi, " ")
+    // Blocks end in line breaks so that menu items, captions and paragraphs
+    // stay apart. That structure is what lets the prose check tell a page of
+    // links from a story, and it is lost the moment everything is one line.
+    .replace(/<\/(?:p|div|li|tr|h[1-6]|blockquote|section|article|figcaption|td|th)\s*>/gi, "\n")
+    .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<[^>]+>/g, " ")
     .replace(/&nbsp;/g, " ")
     .replace(/&amp;/g, "&")
     .replace(/&#39;|&rsquo;|&lsquo;/g, "'")
     .replace(/&quot;|&ldquo;|&rdquo;/g, '"')
-    .replace(/\s+/g, " ")
+    .replace(/[^\S\n]+/g, " ")
+    .replace(/[ \t]*\n[ \t]*/g, "\n")
+    .replace(/\n{2,}/g, "\n")
     .trim();
 }
 
@@ -92,8 +115,29 @@ async function safeFetch(url: string): Promise<Response> {
   throw new Error("That link redirects too many times.");
 }
 
+/** As much source text as one book is ever planned from. */
+const MAX_SOURCE_CHARS = 24000;
+
+/** An anchored section this small is a stub, so the whole page is better. */
+const MIN_SECTION_CHARS = 200;
+
+export type SourceText = {
+  /** The text handed to the models, already cut to the budget. */
+  text: string;
+  /** How much readable text the source really held, before cutting. */
+  sourceChars: number;
+  /** True when the source was longer than the budget, so the tail is missing. */
+  truncated: boolean;
+  /**
+   * Only set when the link carried a fragment: whether that anchor was found.
+   * False means the reader is looking at the whole document, not the chapter
+   * they asked for.
+   */
+  fragmentResolved?: boolean;
+};
+
 /** Fetch a web page or PDF and reduce it to readable plain text. */
-export async function fetchStoryText(url: string): Promise<string> {
+export async function fetchStoryDocument(url: string): Promise<SourceText> {
   const res = await safeFetch(url);
   if (!res.ok) throw new Error(`Could not read that page (status ${res.status}).`);
 
@@ -105,33 +149,115 @@ export async function fetchStoryText(url: string): Promise<string> {
   const contentType = (res.headers.get("content-type") ?? "").toLowerCase();
   const looksPdf = contentType.includes("pdf") || /\.pdf(\?|#|$)/i.test(url);
 
+  // HTTP never sends the fragment, so a chapter link would otherwise fetch the
+  // whole book and the first 24k characters would be its front matter.
+  const fragment = contentFragment(url);
+  let fragmentResolved = fragment ? false : undefined;
+
   let text: string;
   if (looksPdf) {
     text = await extractPdfText(await res.arrayBuffer());
   } else if (contentType.includes("html") || contentType.includes("xml") || !contentType) {
-    text = extractHtmlText(await res.text());
+    const html = await res.text();
+    const section = fragment ? sliceHtmlAtFragment(html, fragment) : null;
+    const sectionText = section ? extractHtmlText(section) : "";
+    if (sectionText.length >= MIN_SECTION_CHARS) {
+      text = sectionText;
+      fragmentResolved = true;
+    } else {
+      text = extractHtmlText(html);
+    }
   } else if (contentType.startsWith("text/")) {
-    text = (await res.text()).replace(/\s+/g, " ").trim();
+    text = (await res.text()).replace(/[^\S\n]+/g, " ").replace(/\n{2,}/g, "\n").trim();
   } else {
     throw new Error("That link isn't a readable story page or PDF.");
   }
 
+  text = stripGutenbergBoilerplate(text);
   assertReadable(text);
-  return text.slice(0, 24000);
+  return {
+    text: text.slice(0, MAX_SOURCE_CHARS),
+    sourceChars: text.length,
+    truncated: text.length > MAX_SOURCE_CHARS,
+    fragmentResolved,
+  };
+}
+
+/** Fetch a source link and keep only its story text. */
+export async function fetchStoryText(url: string): Promise<string> {
+  return (await fetchStoryDocument(url)).text;
 }
 
 
 
 /** Cache source text per URL for the lifetime of the worker instance. */
-const sourceCache = new Map<string, string>();
+const sourceCache = new Map<string, SourceText>();
 
-export async function getSourceText(url: string): Promise<string> {
+export async function getSourceDocument(url: string): Promise<SourceText> {
   const hit = sourceCache.get(url);
   if (hit) return hit;
-  const text = await fetchStoryText(url);
-  sourceCache.set(url, text);
-  return text;
+  const doc = await fetchStoryDocument(url);
+  sourceCache.set(url, doc);
+  return doc;
 }
+
+export async function getSourceText(url: string): Promise<string> {
+  return (await getSourceDocument(url)).text;
+}
+
+/**
+ * The only flags a model may raise. A fixed vocabulary keeps the decision
+ * below a lookup rather than a second opinion about free text.
+ */
+export const CONTENT_WARNINGS = [
+  "graphic-violence",
+  "death",
+  "cannibalism",
+  "sexual-content",
+  "self-harm",
+  "cruelty-to-animals",
+  "substance-use",
+  "horror",
+] as const;
+
+export type ContentWarning = (typeof CONTENT_WARNINGS)[number];
+
+/**
+ * How badly each flag fits a picture book for ages 6-10, from 0 to 10.
+ * Fairy tales are full of dying kings and dark woods, so those sit low: the
+ * fidelity rules keep every major event, which only works when the events are
+ * ones a child may meet at all.
+ */
+const WARNING_SEVERITY: Record<ContentWarning, number> = {
+  "sexual-content": 10,
+  cannibalism: 9,
+  "self-harm": 9,
+  "graphic-violence": 8,
+  horror: 5,
+  "cruelty-to-animals": 5,
+  "substance-use": 3,
+  death: 2,
+};
+
+/**
+ * The one dial to turn. A story is refused when any of its flags scores this
+ * or higher, which is why a death in a fairy tale (2) and a dark wood (5) are
+ * fine while cannibalism (9) and graphic violence (8) are not. Lower it to be
+ * stricter, raise it to let more through.
+ */
+export const CONTENT_SEVERITY_LIMIT = 7;
+
+/** Wording a grown-up can read aloud to the child who asked for the book. */
+const WARNING_LABEL: Record<ContentWarning, string> = {
+  "sexual-content": "grown-up romance",
+  cannibalism: "people being eaten",
+  "self-harm": "someone hurting themselves on purpose",
+  "graphic-violence": "violence shown in painful detail",
+  horror: "frightening scenes",
+  "cruelty-to-animals": "animals being hurt",
+  "substance-use": "drinking or drugs",
+  death: "a character dying",
+};
 
 export type PlotSpine = {
   characters: string[];
@@ -139,7 +265,45 @@ export type PlotSpine = {
   /** Same lists in Thai, for the Thai UI. */
   charactersTh?: string[];
   eventsTh?: string[];
+  /** What the story contains that a 6-10 picture book might not survive. */
+  warnings: ContentWarning[];
 };
+
+export type ContentVerdict = {
+  ok: boolean;
+  /** The flags that pushed this story over the line. */
+  blocking: ContentWarning[];
+  /** The worst score found, so a caller can see how close it came. */
+  severity: number;
+};
+
+/** Decide whether this story can become a picture book for ages 6-10. */
+export function assessPictureBookSafety(spine: PlotSpine): ContentVerdict {
+  const warnings = spine.warnings ?? [];
+  let severity = 0;
+  const blocking: ContentWarning[] = [];
+  for (const warning of warnings) {
+    const score = WARNING_SEVERITY[warning] ?? 0;
+    if (score > severity) severity = score;
+    if (score >= CONTENT_SEVERITY_LIMIT) blocking.push(warning);
+  }
+  return { ok: blocking.length === 0, blocking, severity };
+}
+
+/**
+ * Refuse an unsuitable source out loud. This runs on the spine, which is the
+ * last step before pictures start costing money, and softening the story is
+ * not an option: FIDELITY_RULES deliberately keep every major event.
+ */
+export function assertPictureBookSafe(spine: PlotSpine): void {
+  const verdict = assessPictureBookSafety(spine);
+  if (verdict.ok) return;
+  const reasons = verdict.blocking.map((w) => WARNING_LABEL[w]).join(", and ");
+  throw new Error(
+    `This story is for grown-ups, not for children aged 6-10 — it has ${reasons}. ` +
+      `StoryLingo stopped before drawing anything. Please pick a gentler story.`,
+  );
+}
 
 const FIDELITY_RULES =
   `FAITHFULNESS RULES (very important):\n` +
@@ -151,6 +315,19 @@ const FIDELITY_RULES =
   `(the event still happens, it is just told kindly for ages 6-10).\n` +
   `- Use your own wording (do not copy sentences from the source), but never change what happens.`;
 
+/** Keep only flags from the fixed vocabulary; anything invented is dropped. */
+function parseContentWarnings(value: unknown): ContentWarning[] {
+  if (!Array.isArray(value)) return [];
+  const known = new Set<string>(CONTENT_WARNINGS);
+  const out: ContentWarning[] = [];
+  for (const item of value) {
+    if (typeof item !== "string") continue;
+    const flag = item.trim().toLowerCase().replace(/[\s_]+/g, "-");
+    if (known.has(flag) && !out.includes(flag as ContentWarning)) out.push(flag as ContentWarning);
+  }
+  return out;
+}
+
 /** Pull the real characters and ordered events out of the source before planning. */
 export async function extractPlotSpine(storyText: string): Promise<PlotSpine> {
   const raw = await chatJson<{
@@ -158,14 +335,20 @@ export async function extractPlotSpine(storyText: string): Promise<PlotSpine> {
     events?: unknown;
     characters_th?: unknown;
     events_th?: unknown;
+    content_warnings?: unknown;
   }>(
     "You are a careful story analyst. You extract facts from a story exactly as written, never inventing. Reply with JSON only.",
     `Story source:\n"""${storyText}"""\n\n` +
       `List the real characters (with their real names) and every important event in the order it happens. ` +
       `Do not soften, skip or invent anything — include fights, deaths, tricks and the ending.\n` +
+      `Also say what this story contains that a parent would want to know about before reading it to a child of 6-10.\n` +
       `Return JSON: {"characters": [string (name — one short role description)], "events": [string (one short English sentence per event, in order, 10-40 events)], ` +
       `"characters_th": [string (the SAME characters, same order, written in Thai)], ` +
-      `"events_th": [string (the SAME events, same order, written in Thai)]}`,
+      `"events_th": [string (the SAME events, same order, written in Thai)], ` +
+      `"content_warnings": [string (zero or more ids, EXACTLY from this list and nothing else: ${CONTENT_WARNINGS.join(", ")})]}\n` +
+      `Flag only what actually happens in this source: "death" for any character dying, "graphic-violence" for ` +
+      `killing, torture or wounds described in detail, "cannibalism" for anyone eaten, "horror" for scenes ` +
+      `meant to terrify. Judge the source as written, not the gentle version you would tell a child.`,
   );
   const list = (v: unknown, max: number) =>
     Array.isArray(v)
@@ -181,6 +364,7 @@ export async function extractPlotSpine(storyText: string): Promise<PlotSpine> {
     // Only trust the Thai lists when they line up one-to-one with the English ones.
     charactersTh: charactersTh.length === characters.length ? charactersTh : undefined,
     eventsTh: eventsTh.length === events.length ? eventsTh : undefined,
+    warnings: parseContentWarnings(raw.content_warnings),
   };
 }
 
@@ -191,6 +375,18 @@ export async function buildOutline(
   spine?: PlotSpine,
 ): Promise<Outline> {
   const plotSpine = spine ?? (await extractPlotSpine(storyText).catch(() => null));
+  // The last cheap moment: every illustration after this point costs money, so
+  // an unsuitable source is refused here rather than quietly softened.
+  //
+  // A spine that could not be read is refused as well. Carrying on would make
+  // the check skippable by whatever stops the model answering, and a gate that
+  // opens when something goes wrong is not protecting anybody.
+  if (!plotSpine) {
+    throw new Error(
+      "StoryLingo could not read that story well enough to check it suits a picture book. Please try again in a moment.",
+    );
+  }
+  assertPictureBookSafe(plotSpine);
   const spineText = plotSpine
     ? `Characters in the real story: ${plotSpine.characters.join("; ") || "(none found)"}\n` +
       `Real events in order:\n${plotSpine.events.map((e, i) => `${i + 1}. ${e}`).join("\n")}\n\n`
@@ -482,6 +678,12 @@ export type StoryPreview = {
   artStyleReason: string;
   characters: string[];
   keyEvents: string[];
+  /** How much readable text the source held, before the 24k budget cut it. */
+  sourceChars: number;
+  /** True when only the first part of the source was planned from. */
+  truncated: boolean;
+  /** Only set when the link had a "#" anchor: whether it was found. */
+  fragmentResolved?: boolean;
   /** Thai versions of every free-text field, for the Thai UI. */
   th: {
     title: string;
@@ -511,7 +713,8 @@ type PreviewRaw = {
 
 /** Read a source link and suggest how many chapters the picture book should have. */
 export async function previewStory(url: string, fallbackTitle: string): Promise<StoryPreview> {
-  const storyText = await getSourceText(url);
+  const source = await getSourceDocument(url);
+  const storyText = source.text;
   const [raw, spine] = await Promise.all([
     chatJson<PreviewRaw>(
       "You are a children's book editor planning beginner Mandarin picture books for Thai-speaking children aged 6-10. " +
@@ -532,7 +735,9 @@ export async function previewStory(url: string, fallbackTitle: string): Promise<
         `"title_th": string, "blurb_th": string, "reason_th": string, ` +
         `"chapterTitles_th": [string] (same chapters, same order, in Thai), "artStyleReason_th": string}`,
     ),
-    extractPlotSpine(storyText).catch(() => ({ characters: [], events: [] }) as PlotSpine),
+    extractPlotSpine(storyText).catch(
+      () => ({ characters: [], events: [], warnings: [] }) as PlotSpine,
+    ),
   ]);
 
   const suggested = Math.min(10, Math.max(1, Math.round(Number(raw.suggestedChapters) || 3)));
@@ -559,6 +764,9 @@ export async function previewStory(url: string, fallbackTitle: string): Promise<
     artStyleReason,
     characters: spine.characters,
     keyEvents: spine.events,
+    sourceChars: source.sourceChars,
+    truncated: source.truncated,
+    fragmentResolved: source.fragmentResolved,
     // Fall back to the English text whenever the Thai copy is missing or mismatched.
     th: {
       title: (raw.title_th ?? "").trim() || title,
