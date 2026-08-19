@@ -1,0 +1,20 @@
+{
+  "name": "StoryLingo — Mandarin Picture Books",
+  "short_name": "StoryLingo",
+  "description": "Illustrated Mandarin picture books for Thai-speaking children, with pinyin, read-aloud and quizzes.",
+  "id": "/",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "orientation": "portrait-primary",
+  "background_color": "#09112c",
+  "theme_color": "#09112c",
+  "lang": "th",
+  "dir": "ltr",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

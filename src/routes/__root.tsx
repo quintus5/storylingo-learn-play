@@ -14,6 +14,8 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { LanguageProvider } from "../lib/i18n";
 import { AuthProvider } from "../lib/auth";
 import { AudioFailureToast } from "../components/AudioFailureToast";
+import { InstallPrompt } from "../components/InstallPrompt";
+import { registerServiceWorker } from "../lib/pwa";
 import { useTestUnlock } from "../lib/progress";
 
 function NotFoundComponent() {
@@ -95,6 +97,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:description", content: "A night-desert bookshelf of illustrated Mandarin picture books made from your favourite children's stories." },
       { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/11e02e38-7a10-4b1a-b9ae-d56e62d69754/id-preview-2fd1a8f5--db0a28a1-b4b3-43b4-bbc5-519608bd0a2e.lovable.app-1785332620765.png" },
       { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/11e02e38-7a10-4b1a-b9ae-d56e62d69754/id-preview-2fd1a8f5--db0a28a1-b4b3-43b4-bbc5-519608bd0a2e.lovable.app-1785332620765.png" },
+      // PWA install metadata. theme-color matches --background from styles.css
+      // so the browser chrome and the app's own background never visibly seam.
+      { name: "theme-color", content: "#09112c" },
+      { name: "mobile-web-app-capable", content: "yes" },
+      // iOS ignores the manifest for "Add to Home Screen" and reads these
+      // instead; Android/Chrome read both without conflict.
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "apple-mobile-web-app-title", content: "StoryLingo" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -105,6 +116,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: "https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:wght@400;600;700&family=Noto+Sans+Thai:wght@400;600;700&family=Noto+Serif+SC:wght@500;700&display=swap",
       },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "apple-touch-icon", href: "/icons/apple-touch-icon.png" },
     ],
   }),
 
@@ -132,6 +145,9 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   // Applies ?unlockAll=1 on every page, not just the character screen.
   useTestUnlock();
+  useEffect(() => {
+    registerServiceWorker();
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -140,6 +156,7 @@ function RootComponent() {
           {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
           <Outlet />
           <AudioFailureToast />
+          <InstallPrompt />
         </LanguageProvider>
       </AuthProvider>
     </QueryClientProvider>
