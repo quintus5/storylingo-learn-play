@@ -72,25 +72,67 @@ export function parseJsonLoose<T>(raw: string): T {
   }
 }
 
+// Illustrations are billed by ByteDance's Seedream model directly, called
+// through BytePlus ModelArk, rather than through the Lovable AI gateway used
+// above for text — roughly half of what Gemini's image model costs per page.
+//
+// Model ids on Ark are dated and do change (e.g. a Seedream 5 Lite release
+// looks like "seedream-5-0-lite-<date>"), and the console is the source of
+// truth for the current one — so it is read from an env var rather than
+// hardcoded, and generation fails loudly with a clear message if it is
+// missing rather than silently calling the wrong model.
+const SEEDREAM_ENDPOINT =
+  process.env.SEEDREAM_ENDPOINT ?? "https://ark.ap-southeast.bytepluses.com/api/v3/images/generations";
+
+function seedreamKey(): string {
+  const k = process.env.SEEDREAM_API_KEY;
+  if (!k) throw new Error("Missing SEEDREAM_API_KEY");
+  return k;
+}
+
+function seedreamModel(): string {
+  const m = process.env.SEEDREAM_MODEL;
+  if (!m) throw new Error("Missing SEEDREAM_MODEL — set it to the exact model id shown in the BytePlus console.");
+  return m;
+}
+
+/** Friendly wording for the failures worth explaining; everything else keeps the raw body. */
+function seedreamMessage(status: number, body: string): string {
+  if (status === 401 || status === 403) {
+    return `Image generation was rejected [${status}]. Check that SEEDREAM_API_KEY is correct and that this model is enabled for the account: ${body.slice(0, 300)}`;
+  }
+  if (status === 429) {
+    return "The story machine is busy right now. Please wait a moment and try again.";
+  }
+  return `Image generation failed [${status}]: ${body.slice(0, 300)}`;
+}
+
 /** Generate a single illustration and return the raw PNG bytes. */
 export async function generateIllustration(prompt: string): Promise<Uint8Array> {
-  const res = await fetch(`${GATEWAY}/images/generations`, {
+  const res = await fetch(SEEDREAM_ENDPOINT, {
     method: "POST",
     signal: AbortSignal.timeout(90_000),
     headers: {
-      Authorization: `Bearer ${key()}`,
+      Authorization: `Bearer ${seedreamKey()}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "google/gemini-3.1-flash-image",
-      messages: [{ role: "user", content: prompt }],
-      modalities: ["image", "text"],
+      model: seedreamModel(),
+      prompt,
+      // The book only ever stores a 1280px-max WebP (see image-optimize.server.ts),
+      // so the cheapest tier that comfortably covers that is enough — no reason
+      // to pay Seedream's 2K/4K rate for pixels the pipeline throws away.
+      size: process.env.SEEDREAM_SIZE ?? "1K",
+      response_format: "b64_json",
+      // Seedream can stamp a small visible watermark by default; explicit
+      // off, since one showing up in a children's book is a real defect.
+      watermark: false,
     }),
   });
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(gatewayMessage(res.status, body, "Image generation"));
+    throw new Error(seedreamMessage(res.status, body));
   }
 
   const json = (await res.json()) as { data?: { b64_json?: string }[] };

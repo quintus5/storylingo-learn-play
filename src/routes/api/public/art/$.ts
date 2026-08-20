@@ -20,9 +20,10 @@ function cacheSignedUrl(path: string, url: string, expiresAt: number) {
 }
 
 /**
- * The stored art is a ~2 MB PNG straight from the image model, far larger than
- * any phone needs. Ask storage for a resized, re-compressed copy instead; if
- * this project has no image transformation, fall back to the raw object.
+ * The stored art is already a compressed WebP (see image-optimize.server.ts)
+ * but still sized for a full-screen reader, larger than a bookshelf thumbnail
+ * needs. Ask storage for a resized, re-compressed copy instead; if this
+ * project has no image transformation, fall back to the raw object.
  */
 const TRANSFORM = { width: 1080, quality: 68 } as const;
 
