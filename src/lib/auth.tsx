@@ -13,13 +13,35 @@ import { supabase } from "@/integrations/supabase/client";
 type Ctx = {
   session: Session | null;
   user: User | null;
+  /** True when the person is using the app without a real account. */
+  isGuest: boolean;
   /** False until the stored session has been read, so the UI can stay quiet. */
   loaded: boolean;
   signInWithGoogle: (redirectPath?: string) => Promise<void>;
+  /** Demo path: a purely local session, no network call at all. */
+  continueAsGuest: () => void;
   signOut: () => Promise<void>;
 };
 
 const AuthContext = createContext<Ctx | null>(null);
+
+/** Where the local-only guest session is remembered. */
+const GUEST_KEY = "storylingo.guest";
+export const GUEST_USER_ID = "guest-local";
+
+/** A stand-in user so guest sessions look like any other for routing. */
+function guestUser(): User {
+  return {
+    id: GUEST_USER_ID,
+    aud: "guest",
+    role: "guest",
+    email: undefined,
+    app_metadata: { provider: "guest" },
+    user_metadata: { full_name: "Guest" },
+    created_at: new Date(0).toISOString(),
+  } as unknown as User;
+}
+
 
 /**
  * Who is using the app.
