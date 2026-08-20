@@ -74,7 +74,12 @@ export function parseJsonLoose<T>(raw: string): T {
 
 // Illustrations are billed by ByteDance's Seedream model directly, called
 // through BytePlus ModelArk, rather than through the Lovable AI gateway used
-// above for text — roughly half of what Gemini's image model costs per page.
+// above for text. Confirmed working end to end against a real key; see the
+// size comment below for the one real correction that testing surfaced —
+// check the BytePlus usage dashboard for the actual per-image cost rather
+// than trust a resolution-tier price quoted from elsewhere, since this model
+// only operates at 2K and up and third-party price pages do not always say
+// which tier their headline number is for.
 //
 // Model ids on Ark are dated and do change (e.g. a Seedream 5 Lite release
 // looks like "seedream-5-0-lite-<date>"), and the console is the source of
@@ -119,10 +124,13 @@ export async function generateIllustration(prompt: string): Promise<Uint8Array> 
     body: JSON.stringify({
       model: seedreamModel(),
       prompt,
-      // The book only ever stores a 1280px-max WebP (see image-optimize.server.ts),
-      // so the cheapest tier that comfortably covers that is enough — no reason
-      // to pay Seedream's 2K/4K rate for pixels the pipeline throws away.
-      size: process.env.SEEDREAM_SIZE ?? "1K",
+      // Confirmed against the real API, not assumed: this model rejects
+      // anything under 3,686,400 pixels (roughly the 2K class), so there is
+      // no smaller tier to ask for — "1K" was tried first and failed with
+      // InvalidParameter. The book only ever stores a 1280px-max WebP anyway
+      // (see image-optimize.server.ts), so the extra pixels are downsized
+      // away, not wasted spend on top of what was already necessary.
+      size: process.env.SEEDREAM_SIZE ?? "2K",
       response_format: "b64_json",
       // Seedream can stamp a small visible watermark by default; explicit
       // off, since one showing up in a children's book is a real defect.
