@@ -59,7 +59,7 @@ function ErrorMessage() {
  */
 function BookshelfRoute() {
   const t = useT();
-  const { user, loaded } = useAuth();
+  const { user, loaded, isGuest } = useAuth();
   if (!loaded) return <AppShell title={t("StoryLingo", "StoryLingo")}>{null}</AppShell>;
   if (!user) {
     return (
@@ -74,10 +74,10 @@ function BookshelfRoute() {
       </AppShell>
     );
   }
-  return <Bookshelf userId={user.id} />;
+  return <Bookshelf userId={isGuest ? null : user.id} />;
 }
 
-function Bookshelf({ userId }: { userId: string }) {
+function Bookshelf({ userId }: { userId: string | null }) {
   const { data: books } = useSuspenseQuery(booksQuery(userId));
   const { progress } = useProgress();
   // Operator controls need both the build flag and the hidden dev toggle.
