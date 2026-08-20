@@ -115,18 +115,29 @@ export function SignInPanel({
 /** Header control: who is signed in, and the way out. */
 export function AccountButton() {
   const t = useT();
-  const { user, loaded, signOut } = useAuth();
+  const { user, loaded, isGuest, signOut } = useAuth();
   if (!loaded || !user) return null;
   return (
-    <button
-      type="button"
-      onClick={() => void signOut()}
-      title={user.email ?? undefined}
-      aria-label={t("Sign out", "ออกจากระบบ")}
-      className="press inline-flex h-10 items-center gap-1.5 rounded-full bg-secondary px-3 text-sm font-bold text-secondary-foreground"
-    >
-      <LogIn className="h-4 w-4 rotate-180" />
-      <span className="hidden sm:inline">{t("Sign out", "ออกจากระบบ")}</span>
-    </button>
+    <div className="flex items-center gap-1.5">
+      {isGuest && (
+        <span className="inline-flex h-10 items-center gap-1.5 rounded-full border border-border/70 px-3 text-xs font-bold text-muted-foreground">
+          <UserRound className="h-3.5 w-3.5" />
+          {t("Guest", "ผู้เยี่ยมชม")}
+        </span>
+      )}
+      <button
+        type="button"
+        onClick={() => void signOut()}
+        title={user.email ?? undefined}
+        aria-label={isGuest ? t("Leave guest mode", "ออกจากโหมดผู้เยี่ยมชม") : t("Sign out", "ออกจากระบบ")}
+        className="press inline-flex h-10 items-center gap-1.5 rounded-full bg-secondary px-3 text-sm font-bold text-secondary-foreground"
+      >
+        <LogIn className="h-4 w-4 rotate-180" />
+        <span className="hidden sm:inline">
+          {isGuest ? t("Exit guest", "ออกจากโหมดผู้เยี่ยมชม") : t("Sign out", "ออกจากระบบ")}
+        </span>
+      </button>
+    </div>
   );
 }
+
