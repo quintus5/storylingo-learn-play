@@ -1,16 +1,23 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { BookOpen, Loader2, Search, Wand2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { createBook, generateChapter, markBookFailed, previewBook } from "@/lib/story.functions";
+import { SignInPanel } from "@/components/SignInPanel";
+import { useAuth } from "@/lib/auth";
+import {
+  createBook,
+  generateChapter,
+  markBookFailed,
+  previewBook,
+} from "@/lib/story.functions";
 import { ART_STYLES, DEFAULT_ART_STYLE, artStyle } from "@/lib/art-styles";
 import { CoinPurse } from "@/components/CoinPurse";
 import { CharacterSprite } from "@/components/CharacterSprite";
 import { characterPrompt } from "@/lib/character";
 import { PRICES } from "@/lib/economy";
 import { useProgress } from "@/lib/progress";
-import { useLang } from "@/lib/i18n";
+import { useLang, useT } from "@/lib/i18n";
 import type { ArtStyleId } from "@/lib/art-styles";
 
 type StoryPreview = {
@@ -54,8 +61,27 @@ export const Route = createFileRoute("/create")({
       },
     ],
   }),
-  component: CreatePage,
+  component: CreateRoute,
 });
+
+/**
+ * Anyone may make a book, but a grown-up signs in first: a book belongs to the
+ * account that made it and stays private to them, so there has to be an
+ * account to belong to. Reading the shelf never asks for one.
+ */
+function CreateRoute() {
+  const t = useT();
+  const { user, loaded } = useAuth();
+  if (!loaded) return <AppShell title={t("New story", "สร้างนิทานใหม่")} back={{ to: "/" }}>{null}</AppShell>;
+  if (!user) {
+    return (
+      <AppShell title={t("New story", "สร้างนิทานใหม่")} back={{ to: "/" }}>
+        <SignInPanel redirectPath="/create" />
+      </AppShell>
+    );
+  }
+  return <CreatePage />;
+}
 
 function CreatePage() {
   const { t, lang } = useLang();
@@ -158,6 +184,8 @@ function CreatePage() {
       }
       say(t("Your book is ready!", "หนังสือของคุณพร้อมแล้ว!"));
       spend(PRICES.book);
+      // The book is unpublished, but it belongs to this account, so its owner
+      // can read it straight away — only the shared shelf waits for review.
       await navigate({ to: "/book/$bookId", params: { bookId } });
     } catch (err) {
       const message =

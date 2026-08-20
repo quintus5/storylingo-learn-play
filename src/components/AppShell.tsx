@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { useT } from "@/lib/i18n";
 import { LangToggle } from "@/components/LangToggle";
 import { toggleDevMode, useDevMode } from "@/lib/dev-mode";
+import { AUTHORING_ENABLED } from "@/lib/authoring";
 
 
 export function AppShell({
@@ -34,7 +35,10 @@ export function AppShell({
             </Link>
           ) : (
             <span
-              onDoubleClick={() => toggleDevMode()}
+              onDoubleClick={() => {
+                // No hidden operator menu in the app children install.
+                if (AUTHORING_ENABLED) toggleDevMode();
+              }}
               title={dev ? "Developer mode on" : undefined}
               className={`cursor-default select-none text-2xl transition-opacity ${dev ? "opacity-60" : ""}`}
               aria-hidden

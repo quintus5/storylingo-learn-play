@@ -5,11 +5,15 @@ import { useState } from "react";
 import { booksQuery, coverThumb } from "@/lib/books";
 import { deleteBook, repaintBook } from "@/lib/story.functions";
 import { AppShell } from "@/components/AppShell";
+import { SignInPanel } from "@/components/SignInPanel";
+import { useAuth } from "@/lib/auth";
 import { useProgress } from "@/lib/progress";
 import { CoinPurse } from "@/components/CoinPurse";
 import { CharacterSprite } from "@/components/CharacterSprite";
 import { useDevMode } from "@/lib/dev-mode";
+import { AUTHORING_ENABLED } from "@/lib/authoring";
 import { useLocalText, useT } from "@/lib/i18n";
+import { AccountButton } from "@/components/SignInPanel";
 
 
 export const Route = createFileRoute("/")({
@@ -28,8 +32,10 @@ export const Route = createFileRoute("/")({
       },
     ],
   }),
-  loader: ({ context }) => context.queryClient.ensureQueryData(booksQuery),
-  component: Bookshelf,
+  // No loader here any more: which books to show depends on who is signed
+  // in, and that is only known client-side (the Supabase session lives in
+  // localStorage), so there is nothing useful to prefetch server-side.
+  component: BookshelfRoute,
   errorComponent: () => (
     <AppShell>
       <ErrorMessage />
@@ -46,10 +52,36 @@ function ErrorMessage() {
   );
 }
 
-function Bookshelf() {
-  const { data: books } = useSuspenseQuery(booksQuery);
+/**
+ * There is no reviewed public catalogue yet, so there is nothing for a
+ * signed-out visitor to browse — the shelf can only ever show books someone
+ * made themselves. Sign in first, same as making a new book already asks for.
+ */
+function BookshelfRoute() {
+  const t = useT();
+  const { user, loaded } = useAuth();
+  if (!loaded) return <AppShell title={t("StoryLingo", "StoryLingo")}>{null}</AppShell>;
+  if (!user) {
+    return (
+      <AppShell title={t("StoryLingo", "StoryLingo")}>
+        <SignInPanel
+          title={t("Welcome to StoryLingo", "ยินดีต้อนรับสู่ StoryLingo")}
+          reason={t(
+            "Sign in to keep your own bookshelf — the books you make are yours.",
+            "เข้าสู่ระบบเพื่อเก็บชั้นหนังสือของคุณเอง — หนังสือที่คุณสร้างจะเป็นของคุณ",
+          )}
+        />
+      </AppShell>
+    );
+  }
+  return <Bookshelf userId={user.id} />;
+}
+
+function Bookshelf({ userId }: { userId: string }) {
+  const { data: books } = useSuspenseQuery(booksQuery(userId));
   const { progress } = useProgress();
-  const dev = useDevMode();
+  // Operator controls need both the build flag and the hidden dev toggle.
+  const dev = useDevMode() && AUTHORING_ENABLED;
   const queryClient = useQueryClient();
   const [removing, setRemoving] = useState<string | null>(null);
   const [repainting, setRepainting] = useState<string | null>(null);
@@ -104,6 +136,7 @@ function Bookshelf() {
           >
             <Plus className="h-4 w-4" /> {t("New story", "สร้างนิทานใหม่")}
           </Link>
+          <AccountButton />
         </div>
       }
     >
