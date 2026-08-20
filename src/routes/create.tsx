@@ -71,17 +71,28 @@ export const Route = createFileRoute("/create")({
  */
 function CreateRoute() {
   const t = useT();
-  const { user, loaded } = useAuth();
+  const { user, loaded, isGuest } = useAuth();
   if (!loaded) return <AppShell title={t("New story", "สร้างนิทานใหม่")} back={{ to: "/" }}>{null}</AppShell>;
-  if (!user) {
+  if (!user || isGuest) {
     return (
       <AppShell title={t("New story", "สร้างนิทานใหม่")} back={{ to: "/" }}>
-        <SignInPanel redirectPath="/create" />
+        <SignInPanel
+          redirectPath="/create"
+          reason={
+            isGuest
+              ? t(
+                  "Guest mode can read and play, but making a new book needs an account so the book has an owner.",
+                  "โหมดผู้เยี่ยมชมอ่านและเล่นได้ แต่การสร้างหนังสือใหม่ต้องมีบัญชี เพื่อให้หนังสือมีเจ้าของ",
+                )
+              : undefined
+          }
+        />
       </AppShell>
     );
   }
   return <CreatePage />;
 }
+
 
 function CreatePage() {
   const { t, lang } = useLang();
