@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Loader2, LogIn } from "lucide-react";
+import { Loader2, LogIn, UserRound } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useT } from "@/lib/i18n";
 
@@ -43,7 +43,7 @@ export function SignInPanel({
   redirectPath?: string;
 }) {
   const t = useT();
-  const { signInWithGoogle } = useAuth();
+  const { signInWithGoogle, continueAsGuest } = useAuth();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,10 +72,14 @@ export function SignInPanel({
           try {
             await signInWithGoogle(redirectPath);
           } catch (err) {
+            // Google may not be configured yet; never let a raw provider
+            // error take over the page — offer the guest path instead.
+            console.error(err);
             setError(
-              err instanceof Error
-                ? err.message
-                : t("Could not start sign-in.", "เริ่มการเข้าสู่ระบบไม่สำเร็จ"),
+              t(
+                "Google sign-in isn't set up yet — continue as guest for now.",
+                "ยังไม่ได้ตั้งค่าการเข้าสู่ระบบด้วย Google — ใช้งานแบบผู้เยี่ยมชมไปก่อนได้เลย",
+              ),
             );
             setBusy(false);
           }
@@ -86,10 +90,19 @@ export function SignInPanel({
         {t("Continue with Google", "ดำเนินการต่อด้วย Google")}
       </button>
 
+      <button
+        type="button"
+        onClick={() => continueAsGuest()}
+        className="press mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-secondary px-5 py-4 font-bold text-secondary-foreground"
+      >
+        <UserRound className="h-5 w-5" />
+        {t("Continue as guest", "ใช้งานแบบผู้เยี่ยมชม")}
+      </button>
+
       <p className="mt-3 text-xs text-muted-foreground">
         {t(
-          "We only ever see your name and email address.",
-          "เราเห็นเพียงชื่อและอีเมลของคุณเท่านั้น",
+          "Guest progress is kept on this device only. Sign in later to keep it safe.",
+          "ความคืบหน้าแบบผู้เยี่ยมชมจะเก็บไว้ในเครื่องนี้เท่านั้น เข้าสู่ระบบภายหลังเพื่อเก็บไว้อย่างปลอดภัย",
         )}
       </p>
 
@@ -98,21 +111,33 @@ export function SignInPanel({
   );
 }
 
+
 /** Header control: who is signed in, and the way out. */
 export function AccountButton() {
   const t = useT();
-  const { user, loaded, signOut } = useAuth();
+  const { user, loaded, isGuest, signOut } = useAuth();
   if (!loaded || !user) return null;
   return (
-    <button
-      type="button"
-      onClick={() => void signOut()}
-      title={user.email ?? undefined}
-      aria-label={t("Sign out", "ออกจากระบบ")}
-      className="press inline-flex h-10 items-center gap-1.5 rounded-full bg-secondary px-3 text-sm font-bold text-secondary-foreground"
-    >
-      <LogIn className="h-4 w-4 rotate-180" />
-      <span className="hidden sm:inline">{t("Sign out", "ออกจากระบบ")}</span>
-    </button>
+    <div className="flex items-center gap-1.5">
+      {isGuest && (
+        <span className="inline-flex h-10 items-center gap-1.5 rounded-full border border-border/70 px-3 text-xs font-bold text-muted-foreground">
+          <UserRound className="h-3.5 w-3.5" />
+          {t("Guest", "ผู้เยี่ยมชม")}
+        </span>
+      )}
+      <button
+        type="button"
+        onClick={() => void signOut()}
+        title={user.email ?? undefined}
+        aria-label={isGuest ? t("Leave guest mode", "ออกจากโหมดผู้เยี่ยมชม") : t("Sign out", "ออกจากระบบ")}
+        className="press inline-flex h-10 items-center gap-1.5 rounded-full bg-secondary px-3 text-sm font-bold text-secondary-foreground"
+      >
+        <LogIn className="h-4 w-4 rotate-180" />
+        <span className="hidden sm:inline">
+          {isGuest ? t("Exit guest", "ออกจากโหมดผู้เยี่ยมชม") : t("Sign out", "ออกจากระบบ")}
+        </span>
+      </button>
+    </div>
   );
 }
+
