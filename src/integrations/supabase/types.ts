@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      book_reports: {
+        Row: {
+          book_id: string
+          chapter_idx: number | null
+          created_at: string
+          id: string
+          note: string | null
+          reason: string
+          reported_by: string | null
+        }
+        Insert: {
+          book_id: string
+          chapter_idx?: number | null
+          created_at?: string
+          id?: string
+          note?: string | null
+          reason: string
+          reported_by?: string | null
+        }
+        Update: {
+          book_id?: string
+          chapter_idx?: number | null
+          created_at?: string
+          id?: string
+          note?: string | null
+          reason?: string
+          reported_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "book_reports_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       books: {
         Row: {
           art_style: string
@@ -27,7 +65,10 @@ export type Database = {
           generation_error: string | null
           id: string
           native_lang: string
+          owner_id: string | null
           places: Json
+          published: boolean
+          reviewed_at: string | null
           source_url: string | null
           status: string
           target_lang: string
@@ -46,7 +87,10 @@ export type Database = {
           generation_error?: string | null
           id?: string
           native_lang?: string
+          owner_id?: string | null
           places?: Json
+          published?: boolean
+          reviewed_at?: string | null
           source_url?: string | null
           status?: string
           target_lang?: string
@@ -65,7 +109,10 @@ export type Database = {
           generation_error?: string | null
           id?: string
           native_lang?: string
+          owner_id?: string | null
           places?: Json
+          published?: boolean
+          reviewed_at?: string | null
           source_url?: string | null
           status?: string
           target_lang?: string
