@@ -13,20 +13,32 @@ export function coverThumb(url: string | null | undefined): string | undefined {
   return `${path.replace(/\.webp$/, "-thumb.webp")}${query ? `?${query}` : ""}`;
 }
 
-export const booksQuery = queryOptions({
-  queryKey: ["books"],
-  queryFn: async (): Promise<BookRow[]> => {
-    // No published filter here on purpose: row-level security returns the
-    // published catalogue plus this reader's own books, so a book someone made
-    // is theirs to read immediately while nobody else can see it yet.
-    const { data, error } = await supabase
-      .from("books")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (error) throw new Error(error.message);
-    return (data ?? []) as unknown as BookRow[];
-  },
-});
+/**
+ * The bookshelf is private-only for now: there is no reviewed public
+ * catalogue yet, so a reader sees only the books they made themselves. Pass
+ * the signed-in user's id, or null when nobody is signed in — the query then
+ * resolves to an empty shelf without touching the network, since there is
+ * nothing it could show.
+ *
+ * Row-level security would also let a `published` book through, and older
+ * books made before this existed are still marked published — this filter is
+ * the client-side choice to leave those off the shelf regardless, not a
+ * change to what they're reachable at directly.
+ */
+export const booksQuery = (userId: string | null) =>
+  queryOptions({
+    queryKey: ["books", userId],
+    queryFn: async (): Promise<BookRow[]> => {
+      if (!userId) return [];
+      const { data, error } = await supabase
+        .from("books")
+        .select("*")
+        .eq("owner_id", userId)
+        .order("created_at", { ascending: false });
+      if (error) throw new Error(error.message);
+      return (data ?? []) as unknown as BookRow[];
+    },
+  });
 
 export const bookQuery = (bookId: string) =>
   queryOptions({
