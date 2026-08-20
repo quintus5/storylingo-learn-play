@@ -54,10 +54,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Always start signed out so the server and the first client render agree;
   // the stored session arrives a moment later.
   const [session, setSession] = useState<Session | null>(null);
+  const [guest, setGuest] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+
+    // The guest session is purely local, so it is read from storage after
+    // hydration rather than during the first render.
+    try {
+      if (window.localStorage.getItem(GUEST_KEY) === "1") setGuest(true);
+    } catch {
+      /* storage blocked; guest simply won't persist */
+    }
 
     // onAuthStateChange also fires for the OAuth redirect coming back, so the
     // sign-in round trip needs no separate callback route.
@@ -88,7 +97,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw new Error(error.message);
   }, []);
 
+  const continueAsGuest = useCallback(() => {
+    try {
+      window.localStorage.setItem(GUEST_KEY, "1");
+    } catch {
+      /* storage blocked; the guest session lasts for this page only */
+    }
+    setGuest(true);
+  }, []);
+
   const signOut = useCallback(async () => {
+    try {
+      window.localStorage.removeItem(GUEST_KEY);
+    } catch {
+      /* nothing to clear */
+    }
+    setGuest(false);
     await supabase.auth.signOut();
     setSession(null);
   }, []);
@@ -96,12 +120,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo<Ctx>(
     () => ({
       session,
-      user: session?.user ?? null,
+      user: session?.user ?? (guest ? guestUser() : null),
+      isGuest: !session && guest,
       loaded,
       signInWithGoogle,
+      continueAsGuest,
       signOut,
     }),
-    [session, loaded, signInWithGoogle, signOut],
+    [session, guest, loaded, signInWithGoogle, continueAsGuest, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -114,11 +140,14 @@ export function useAuth(): Ctx {
   return {
     session: null,
     user: null,
+    isGuest: false,
     loaded: false,
     signInWithGoogle: async () => {},
+    continueAsGuest: () => {},
     signOut: async () => {},
   };
 }
+
 
 /** A short name for the header, falling back through what Google gives us. */
 export function displayName(user: User | null): string {
