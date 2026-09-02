@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
 import { BookOpen, Paintbrush, Plus, Sparkles, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { booksQuery, coverThumb } from "@/lib/books";
 import { deleteBook, repaintBook } from "@/lib/story.functions";
 import { AppShell } from "@/components/AppShell";
@@ -10,6 +10,7 @@ import { CoinPurse } from "@/components/CoinPurse";
 import { CharacterSprite } from "@/components/CharacterSprite";
 import { useDevMode } from "@/lib/dev-mode";
 import { AUTHORING_ENABLED } from "@/lib/authoring";
+import { readAdminToken, saveAdminToken } from "@/lib/admin-middleware";
 import { useLocalText, useT } from "@/lib/i18n";
 
 
@@ -65,7 +66,14 @@ function Bookshelf({ userId }: { userId: string | null }) {
   const dev = useDevMode() && AUTHORING_ENABLED;
   const queryClient = useQueryClient();
   const [removing, setRemoving] = useState<string | null>(null);
-  const [repainting, setRepainting] = useState<string | null>(null);
+const [repainting, setRepainting] = useState<string | null>(null);
+  // Operator token: entered once in dev mode, kept in sessionStorage, sent
+  // as x-storylingo-admin on every repaint/delete call.
+  const [tokenDraft, setTokenDraft] = useState("");
+  const [tokenSet, setTokenSet] = useState(false);
+  useEffect(() => {
+    setTokenSet(Boolean(readAdminToken()));
+  }, []);
   const [brokenCovers, setBrokenCovers] = useState<Record<string, true>>({});
   const [fullCoverFallbacks, setFullCoverFallbacks] = useState<Record<string, true>>({});
 
@@ -178,7 +186,74 @@ function Bookshelf({ userId }: { userId: string | null }) {
             {t("Shop", "ร้านค้า")}
           </Link>
         </div>
-      </section>
+</section>
+
+      {dev && (
+        <section className="mb-6 rounded-2xl border border-amber-400/50 bg-amber-400/10 px-4 py-3">
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="font-bold text-amber-500">
+              {t("Developer mode", "โหมดผู้พัฒนา")}
+            </span>
+            <span
+              className={`h-2 w-2 rounded-full ${tokenSet ? "bg-emerald-400" : "bg-amber-500"}`}
+              aria-hidden
+            />
+            <span className="text-muted-foreground">
+              {tokenSet
+                ? t(
+                    "Operator token saved — Repaint and Delete are enabled.",
+                    "บันทึกโทเค็นผู้ดูแลแล้ว — ใช้คำสั่งวาดใหม่และลบได้",
+                  )
+                : t(
+                    "No operator token — Repaint and Delete stay locked server-side.",
+                    "ยังไม่มีโทเค็นผู้ดูแล — คำสั่งวาดใหม่และลบถูกล็อกไว้ที่เซิร์ฟเวอร์",
+                  )}
+            </span>
+          </div>
+          <form
+            className="mt-2 flex flex-wrap items-center gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              saveAdminToken(tokenDraft);
+              setTokenSet(Boolean(tokenDraft.trim()));
+            }}
+          >
+            <input
+              type="password"
+              value={tokenDraft}
+              onChange={(e) => setTokenDraft(e.target.value)}
+              placeholder={t("Operator token", "โทเค็นผู้ดูแล")}
+              autoComplete="off"
+              className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+            />
+            <button
+              type="submit"
+              className="press rounded-xl bg-secondary px-4 py-2 text-sm font-bold text-secondary-foreground"
+            >
+              {t("Save token", "บันทึกโทเค็น")}
+            </button>
+            {tokenSet && (
+              <button
+                type="button"
+                onClick={() => {
+                  saveAdminToken("");
+                  setTokenDraft("");
+                  setTokenSet(false);
+                }}
+                className="text-xs text-muted-foreground underline"
+              >
+                {t("Clear", "ล้าง")}
+              </button>
+            )}
+          </form>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {t(
+              "Use the same value as the ADMIN_TOKEN environment secret. It only lives in this browser session. Double-click the moon in the header to leave developer mode.",
+              "ใช้ค่าเดียวกับ ADMIN_TOKEN ในตัวแปรสภาพแวดล้อม โทเค็นอยู่ในเบราว์เซอร์เซสชันนี้เท่านั้น ดับเบิลคลิกที่พระจันทร์ในแถบหัวเพื่อออกจากโหมดผู้พัฒนา",
+            )}
+          </p>
+        </section>
+      )}
 
       {books.length === 0 ? (
         <div className="rounded-3xl border border-dashed border-border p-10 text-center">
