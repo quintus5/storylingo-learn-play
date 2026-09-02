@@ -31,13 +31,6 @@ const CreateBookInput = z.object({
 /** Books anyone may start in one hour, so a script cannot drain AI credits. */
 const HOURLY_BOOK_LIMIT = 12;
 
-/**
- * Books one account may start in a day. The hourly ceiling above protects the
- * credit balance as a whole; this stops a single enthusiastic reader from
- * spending it all before anyone else gets a turn.
- */
-const DAILY_BOOKS_PER_READER = 3;
-
 export const createBook = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => CreateBookInput.parse(input))
   .handler(async ({ data }) => {
