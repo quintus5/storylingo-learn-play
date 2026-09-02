@@ -32,12 +32,18 @@ export const Route = createFileRoute("/api/public/art/$")({
     handlers: {
       GET: async ({ params, request }) => {
         const path = (params as { _splat?: string })._splat ?? "";
-        // Only "<bookUuid>/<name>.png|.webp" is servable — no traversal, no listing.
-        if (!/^[0-9a-f-]{36}\/[a-z0-9-]{1,64}\.(png|webp)$/i.test(path)) {
+        // Only "<bookUuid>/<name>.png|.webp|.jpg" is servable — no traversal, no listing.
+        if (!/^[0-9a-f-]{36}\/[a-z0-9-]{1,64}\.(png|webp|jpe?g)$/i.test(path)) {
           return new Response("Not found", { status: 404 });
         }
 
-        const type = path.toLowerCase().endsWith(".webp") ? "image/webp" : "image/png";
+        const lower = path.toLowerCase();
+        const type = lower.endsWith(".webp")
+          ? "image/webp"
+          : lower.endsWith(".png")
+            ? "image/png"
+            : "image/jpeg";
+
         const etag = `"art-${path.replace(/[^a-z0-9]/gi, "-")}"`;
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
