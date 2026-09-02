@@ -80,12 +80,17 @@ const [repainting, setRepainting] = useState<string | null>(null);
   const t = useT();
   const local = useLocalText();
 
+const [opError, setOpError] = useState<string | null>(null);
+
   async function removeBook(bookId: string, title: string) {
     if (!window.confirm(t(`Delete "${title}"? This cannot be undone.`, `ลบ "${title}" ใช่ไหม ลบแล้วกู้คืนไม่ได้`))) return;
     setRemoving(bookId);
+    setOpError(null);
     try {
       await deleteBook({ data: { bookId } });
       await queryClient.invalidateQueries({ queryKey: ["books"] });
+    } catch (err) {
+      setOpError(err instanceof Error ? err.message : String(err));
     } finally {
       setRemoving(null);
     }
@@ -102,9 +107,12 @@ const [repainting, setRepainting] = useState<string | null>(null);
     )
       return;
     setRepainting(bookId);
+    setOpError(null);
     try {
       await repaintBook({ data: { bookId } });
       await queryClient.invalidateQueries({ queryKey: ["books"] });
+    } catch (err) {
+      setOpError(err instanceof Error ? err.message : String(err));
     } finally {
       setRepainting(null);
     }
