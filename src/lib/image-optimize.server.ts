@@ -14,7 +14,7 @@
 export type OptimizedImage = {
   bytes: Uint8Array;
   contentType: string;
-  extension: "webp" | "png";
+  extension: "webp" | "png" | "jpg";
 };
 
 type ImageFormat = "png" | "webp" | "jpeg" | "unknown";
@@ -36,6 +36,13 @@ function detectFormat(bytes: Uint8Array): ImageFormat {
   return "unknown";
 }
 
+/** Keep the original bytes, labelled honestly, when conversion is impossible. */
+function passthrough(bytes: Uint8Array, format: ImageFormat): OptimizedImage {
+  if (format === "jpeg") return { bytes, contentType: "image/jpeg", extension: "jpg" };
+  if (format === "webp") return { bytes, contentType: "image/webp", extension: "webp" };
+  return { bytes, contentType: "image/png", extension: "png" };
+}
+
 /** Resize so the longest edge is at most `maxEdge`, then encode to WebP. */
 export async function toWebp(
   source: Uint8Array,
@@ -45,25 +52,19 @@ export async function toWebp(
   const format = detectFormat(source);
 
   if (format === "webp") {
-    // Already the one format this pipeline stores unconverted. Resizing an
-    // oversized WebP would need decoding it anyway, and no image model this
-    // pipeline has used overshoots the target by enough to be worth that.
+    // Already the one format this pipeline stores unconverted.
     return { bytes: source, contentType: "image/webp", extension: "webp" };
   }
 
-  if (format !== "png") {
-    // @jsquash/png is the only decoder installed. A provider switch that
-    // starts returning JPEG (or anything else) needs that decoder added on
-    // purpose — this fails loudly with what actually came back, rather than
-    // storing it mislabelled as a PNG the way the old fallback did.
+  if (format !== "png" && format !== "jpeg") {
     throw new Error(
-      `Illustration came back as ${format}, not PNG or WebP — the pipeline only decodes PNG.`,
+      `Illustration came back as ${format} — the pipeline only decodes PNG, JPEG or WebP.`,
     );
   }
 
   try {
-    const [{ decode }, { default: resize }, { encode }] = await Promise.all([
-      import("@jsquash/png"),
+    const [decoder, { default: resize }, { encode }] = await Promise.all([
+      format === "png" ? import("@jsquash/png") : import("@jsquash/jpeg"),
       import("@jsquash/resize"),
       import("@jsquash/webp"),
     ]);
@@ -72,7 +73,7 @@ export async function toWebp(
       source.byteOffset,
       source.byteOffset + source.byteLength,
     ) as ArrayBuffer;
-    const decoded = await decode(buffer);
+    const decoded = await decoder.decode(buffer);
     const scale = maxEdge / Math.max(decoded.width, decoded.height);
     const sized =
       scale < 1
@@ -85,12 +86,13 @@ export async function toWebp(
     const bytes = new Uint8Array(webp);
     if (!bytes.byteLength) throw new Error("empty WebP output");
     console.log(
-      `Illustration compressed: ${Math.round(source.byteLength / 1024)}KB PNG -> ` +
+      `Illustration compressed: ${Math.round(source.byteLength / 1024)}KB ${format} -> ` +
         `${Math.round(bytes.byteLength / 1024)}KB WebP (max edge ${maxEdge}, q${quality})`,
     );
     return { bytes, contentType: "image/webp", extension: "webp" };
   } catch (err) {
-    console.warn("WebP conversion unavailable, storing the original PNG", err);
-    return { bytes: source, contentType: "image/png", extension: "png" };
+    console.warn(`WebP conversion unavailable, storing the original ${format}`, err);
+    return passthrough(source, format);
   }
 }
+
