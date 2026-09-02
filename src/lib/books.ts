@@ -29,11 +29,9 @@ export const booksQuery = (userId: string | null) =>
   queryOptions({
     queryKey: ["books", userId],
     queryFn: async (): Promise<BookRow[]> => {
-      if (!userId) return [];
       const { data, error } = await supabase
         .from("books")
         .select("*")
-        .eq("owner_id", userId)
         .order("created_at", { ascending: false });
       if (error) throw new Error(error.message);
       return (data ?? []) as unknown as BookRow[];
