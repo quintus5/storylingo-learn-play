@@ -5,15 +5,12 @@ import { useState } from "react";
 import { booksQuery, coverThumb } from "@/lib/books";
 import { deleteBook, repaintBook } from "@/lib/story.functions";
 import { AppShell } from "@/components/AppShell";
-import { SignInPanel } from "@/components/SignInPanel";
-import { useAuth } from "@/lib/auth";
 import { useProgress } from "@/lib/progress";
 import { CoinPurse } from "@/components/CoinPurse";
 import { CharacterSprite } from "@/components/CharacterSprite";
 import { useDevMode } from "@/lib/dev-mode";
 import { AUTHORING_ENABLED } from "@/lib/authoring";
 import { useLocalText, useT } from "@/lib/i18n";
-import { AccountButton } from "@/components/SignInPanel";
 
 
 export const Route = createFileRoute("/")({
@@ -58,23 +55,7 @@ function ErrorMessage() {
  * made themselves. Sign in first, same as making a new book already asks for.
  */
 function BookshelfRoute() {
-  const t = useT();
-  const { user, loaded, isGuest } = useAuth();
-  if (!loaded) return <AppShell title={t("StoryLingo", "StoryLingo")}>{null}</AppShell>;
-  if (!user) {
-    return (
-      <AppShell title={t("StoryLingo", "StoryLingo")}>
-        <SignInPanel
-          title={t("Welcome to StoryLingo", "ยินดีต้อนรับสู่ StoryLingo")}
-          reason={t(
-            "Sign in to keep your own bookshelf — the books you make are yours.",
-            "เข้าสู่ระบบเพื่อเก็บชั้นหนังสือของคุณเอง — หนังสือที่คุณสร้างจะเป็นของคุณ",
-          )}
-        />
-      </AppShell>
-    );
-  }
-  return <Bookshelf userId={isGuest ? null : user.id} />;
+  return <Bookshelf userId={null} />;
 }
 
 function Bookshelf({ userId }: { userId: string | null }) {
@@ -136,7 +117,6 @@ function Bookshelf({ userId }: { userId: string | null }) {
           >
             <Plus className="h-4 w-4" /> {t("New story", "สร้างนิทานใหม่")}
           </Link>
-          <AccountButton />
         </div>
       }
     >

@@ -53,17 +53,6 @@ export const createBook = createServerFn({ method: "POST" })
       throw new Error("StoryLingo is making a lot of books right now. Please try again in a while.");
     }
 
-    const dayAgo = new Date(Date.now() - 86_400_000).toISOString();
-    const { count: mine } = await supabaseAdmin
-      .from("books")
-      .select("id", { count: "exact", head: true })
-      .gte("created_at", dayAgo);
-    if ((mine ?? 0) >= DAILY_BOOKS_PER_READER) {
-      throw new Error(
-        `You have made ${DAILY_BOOKS_PER_READER} books today — that is the daily limit. Come back tomorrow for more!`,
-      );
-    }
-
     const storyText = await getSourceText(data.url);
     // The bible is written once here and reused by every picture in this book.
     const [outline, bible] = await Promise.all([

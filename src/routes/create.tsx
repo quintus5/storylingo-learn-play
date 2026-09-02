@@ -3,8 +3,6 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { BookOpen, Loader2, Search, Wand2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { SignInPanel } from "@/components/SignInPanel";
-import { useAuth } from "@/lib/auth";
 import {
   createBook,
   generateChapter,
@@ -70,26 +68,6 @@ export const Route = createFileRoute("/create")({
  * account to belong to. Reading the shelf never asks for one.
  */
 function CreateRoute() {
-  const t = useT();
-  const { user, loaded, isGuest } = useAuth();
-  if (!loaded) return <AppShell title={t("New story", "สร้างนิทานใหม่")} back={{ to: "/" }}>{null}</AppShell>;
-  if (!user || isGuest) {
-    return (
-      <AppShell title={t("New story", "สร้างนิทานใหม่")} back={{ to: "/" }}>
-        <SignInPanel
-          redirectPath="/create"
-          reason={
-            isGuest
-              ? t(
-                  "Guest mode can read and play, but making a new book needs an account so the book has an owner.",
-                  "โหมดผู้เยี่ยมชมอ่านและเล่นได้ แต่การสร้างหนังสือใหม่ต้องมีบัญชี เพื่อให้หนังสือมีเจ้าของ",
-                )
-              : undefined
-          }
-        />
-      </AppShell>
-    );
-  }
   return <CreatePage />;
 }
 
