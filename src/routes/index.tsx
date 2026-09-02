@@ -253,7 +253,10 @@ const [opError, setOpError] = useState<string | null>(null);
                 {t("Clear", "ล้าง")}
               </button>
             )}
-          </form>
+</form>
+          {opError && (
+            <p className="mt-2 text-xs font-semibold text-destructive">{opError}</p>
+          )}
           <p className="mt-1 text-xs text-muted-foreground">
             {t(
               "Use the same value as the ADMIN_TOKEN environment secret. It only lives in this browser session. Double-click the moon in the header to leave developer mode.",
