@@ -54,6 +54,7 @@ export type Database = {
       }
       books: {
         Row: {
+          anchors: Json | null
           art_style: string
           blurb: string | null
           blurb_th: string | null
@@ -76,6 +77,7 @@ export type Database = {
           title_th: string | null
         }
         Insert: {
+          anchors?: Json | null
           art_style?: string
           blurb?: string | null
           blurb_th?: string | null
@@ -98,6 +100,7 @@ export type Database = {
           title_th?: string | null
         }
         Update: {
+          anchors?: Json | null
           art_style?: string
           blurb?: string | null
           blurb_th?: string | null
