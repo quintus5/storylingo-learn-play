@@ -130,7 +130,14 @@ export async function generateIllustration(prompt: string): Promise<Uint8Array> 
       // InvalidParameter. The book only ever stores a 1280px-max WebP anyway
       // (see image-optimize.server.ts), so the extra pixels are downsized
       // away, not wasted spend on top of what was already necessary.
-      size: process.env.SEEDREAM_SIZE ?? "2K",
+      // Confirmed against the real API, not assumed: this model rejects
+      // anything under 3,686,400 pixels (roughly the 2K class). "2K" alone
+      // leaves the aspect ratio to the model, which often picks portrait;
+      // the reader is landscape-first, so pin an explicit 16:9 size that
+      // sits exactly on the 2K floor (2560x1440 = 3,686,400 px). The book
+      // only ever stores a 1280px-max WebP anyway (see
+      // image-optimize.server.ts), so the extra pixels are downsized away.
+      size: process.env.SEEDREAM_SIZE ?? "2560x1440",
       response_format: "b64_json",
       // Seedream can stamp a small visible watermark by default; explicit
       // off, since one showing up in a children's book is a real defect.
