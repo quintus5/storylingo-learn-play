@@ -542,6 +542,109 @@ export function matchBibleEntries(
   return chosen.slice(0, 5);
 }
 
+/** A painted reference picture, stored once per book. */
+export type AnchorRef = { name: string; path: string };
+export type Anchors = { cast: AnchorRef[]; places: AnchorRef[] };
+
+export function parseAnchors(raw: unknown): Anchors {
+  const list = (value: unknown): AnchorRef[] =>
+    Array.isArray(value)
+      ? value
+          .filter(
+            (e): e is AnchorRef =>
+              !!e && typeof (e as AnchorRef).name === "string" && typeof (e as AnchorRef).path === "string",
+          )
+          .map((e) => ({ name: e.name, path: e.path }))
+          .slice(0, 8)
+      : [];
+  const obj = (raw ?? {}) as { cast?: unknown; places?: unknown };
+  return { cast: list(obj.cast), places: list(obj.places) };
+}
+
+const slug = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 24) || "x";
+
+/** Turn a stored art path into a short-lived URL the image model can fetch. */
+async function signedAnchorUrls(paths: string[]): Promise<string[]> {
+  const urls: string[] = [];
+  for (const path of paths) {
+    const { data, error } = await supabaseAdmin.storage.from(BUCKET).createSignedUrl(path, 3600);
+    if (error || !data?.signedUrl) {
+      console.warn(`Anchor reference unavailable (${path})`, error?.message);
+      continue;
+    }
+    urls.push(data.signedUrl);
+  }
+  return urls;
+}
+
+/**
+ * Paint the book's reference pictures once: a character sheet for each main
+ * character and an empty establishing view for each recurring place. Every
+ * page illustration afterwards is generated with these attached, which is
+ * what actually locks a face or a forest across chapters.
+ *
+ * Failure is never fatal — a book without anchors simply falls back to the
+ * text-only bible it used before.
+ */
+export async function buildAnchors(
+  bookId: string,
+  bible: { cast: BibleEntry[]; places: BibleEntry[] },
+  styleId?: string | null,
+): Promise<Anchors> {
+  const cast = bible.cast.slice(0, 4);
+  const places = bible.places.slice(0, 3);
+
+  const paint = async (kind: "cast" | "place", entry: BibleEntry): Promise<AnchorRef | null> => {
+    const name = `anchor-${kind}-${slug(entry.name)}`;
+    const brief =
+      kind === "cast"
+        ? `Character reference sheet for a children's picture book. Show ONLY this one character, ` +
+          `alone, against a plain flat neutral background: a full-body standing view on the left and a ` +
+          `larger head-and-shoulders view on the right. Neutral friendly expression, even lighting, no props, ` +
+          `no scenery, no other characters.\n\nThe character: ${entry.name} — ${entry.description}`
+        : `Location reference view for a children's picture book. Show ONLY this place, wide establishing ` +
+          `shot, completely empty of people and animals. Fixed palette, fixed time of day, no characters.` +
+          `\n\nThe place: ${entry.name} — ${entry.description}`;
+    try {
+      const url = await makeArt(bookId, name, brief, styleId, null, [], []);
+      return { name: entry.name, path: url.replace(/^\/api\/public\/art\//, "").split("?")[0]! };
+    } catch (err) {
+      console.warn(`Anchor for ${entry.name} failed`, err);
+      return null;
+    }
+  };
+
+  const [castRefs, placeRefs] = await Promise.all([
+    Promise.all(cast.map((e) => paint("cast", e))),
+    Promise.all(places.map((e) => paint("place", e))),
+  ]);
+
+  const anchors = {
+    cast: castRefs.filter((r): r is AnchorRef => !!r),
+    places: placeRefs.filter((r): r is AnchorRef => !!r),
+  };
+  console.log(
+    `Anchors for book ${bookId}: ${anchors.cast.length} character sheets, ${anchors.places.length} places`,
+  );
+  return anchors;
+}
+
+/** Pick the anchor pictures a page needs, from the bible entries it matched. */
+function matchAnchors(entries: BibleEntry[], anchors: Anchors | null | undefined): string[] {
+  if (!anchors) return [];
+  const wanted = entries.map((e) => norm(e.name));
+  const all = [...anchors.cast, ...anchors.places];
+  return all
+    .filter((a) => wanted.includes(norm(a.name)))
+    .map((a) => a.path)
+    .slice(0, 4);
+}
+
 /**
  * Paint the chapter's illustrations: exactly one picture per page, which holds
  * still for every sentence on that page.
@@ -554,7 +657,9 @@ export async function illustratePages(
   styleId?: string | null,
   characterPrompt?: string | null,
   bible?: { cast: BibleEntry[]; places: BibleEntry[] } | null,
+  anchors?: Anchors | null,
 ): Promise<Page[]> {
+
   type Job = { page: number; scene: string; name: string };
 
   const jobs: Job[] = pages.map((page, i) => ({
@@ -574,14 +679,17 @@ export async function illustratePages(
       const job = jobs[k]!;
       const page = pages[job.page]!;
       try {
+        const entries = bible ? matchBibleEntries(page, bible.cast, bible.places, job.scene) : [];
         results[k] = await makeArt(
           bookId,
           job.name,
           job.scene,
           styleId,
           characterPrompt,
-          bible ? matchBibleEntries(page, bible.cast, bible.places, job.scene) : [],
+          entries,
+          matchAnchors(entries, anchors),
         );
+
       } catch (err) {
         console.error(`Illustration ${job.name} failed`, err);
         results[k] = null;
@@ -617,6 +725,8 @@ export async function makeArt(
    */
   _characterPrompt?: string | null,
   refs: BibleEntry[] = [],
+  /** Stored anchor pictures for the characters and place in this scene. */
+  anchorPaths: string[] = [],
 ): Promise<string> {
   const style = artStylePrompt(styleId);
   // The same locked wording goes into every picture of this book, so the
@@ -626,13 +736,33 @@ export async function makeArt(
       `earlier in this book and must look identical, same face, same clothes, same colours):\n` +
       refs.map((r) => `- ${r.name}: ${r.description}`).join("\n")
     : "";
-  const bytes = await generateIllustration(
+  // Words alone get re-interpreted on every call; the reference sheets are
+  // what actually hold a character's face still across a whole book.
+  const anchorUrls = anchorPaths.length ? await signedAnchorUrls(anchorPaths) : [];
+  const anchored = anchorUrls.length
+    ? `\n\nREFERENCE IMAGES: the attached pictures are this book's official character sheets and location ` +
+      `views. Copy them exactly — identical faces, bodies, clothing shapes and colours for the characters, ` +
+      `and the same architecture, landscape, palette and time of day for the location. Do not redesign ` +
+      `anything shown in them. Place these characters into the new scene below, in the poses and actions ` +
+      `the scene describes; ignore the reference sheets' plain backgrounds and neutral poses.`
+    : "";
+  const prompt =
     `Scene (this decides WHAT is depicted — the location, characters, action, weather and time of day): ${scene}\n\n` +
+      `Composition: a single wide 16:9 storybook illustration. Choose the framing the scene calls for ` +
+      `(wide establishing, medium, or close-up), keep every character fully inside the frame, and light the ` +
+      `picture to match the time of day in the scene. No panels, no split images, no text.\n\n` +
       `Style (this decides ONLY HOW it is painted — medium, brushwork, texture, palette and mood, for every ` +
       `element including any characters): ${style}\n\n` +
       `If the style wording and the scene ever disagree about the setting, landscape, weather or time of day, ` +
-      `the scene always wins; treat the style purely as painting technique.${locked}`,
-  );
+      `the scene always wins; treat the style purely as painting technique.${anchored}${locked}`;
+  // If a reference picture cannot be used for any reason, a plain picture is
+  // far better than no picture at all.
+  const bytes = await generateIllustration(prompt, anchorUrls).catch(async (err) => {
+    if (!anchorUrls.length) throw err;
+    console.warn(`Illustration ${name} failed with reference images, retrying without them`, err);
+    return generateIllustration(prompt, []);
+  });
+
 
   // Store a resized WebP when we can — the raw PNG is ~2 MB, the WebP ~150 KB.
   const image = await toWebp(bytes, 1280, 78);

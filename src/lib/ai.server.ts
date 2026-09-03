@@ -112,11 +112,14 @@ function seedreamMessage(status: number, body: string): string {
   return `Image generation failed [${status}]: ${body.slice(0, 300)}`;
 }
 
-/** Generate a single illustration and return the raw PNG bytes. */
-export async function generateIllustration(prompt: string): Promise<Uint8Array> {
+/** Widescreen sizes: the second is tried once if the first came back portrait. */
+const WIDE_SIZES = ["2560x1440", "2496x1664"];
+
+
+async function askSeedream(prompt: string, size: string, refs: string[]): Promise<Uint8Array> {
   const res = await fetch(SEEDREAM_ENDPOINT, {
     method: "POST",
-    signal: AbortSignal.timeout(90_000),
+    signal: AbortSignal.timeout(120_000),
     headers: {
       Authorization: `Bearer ${seedreamKey()}`,
       "Content-Type": "application/json",
@@ -124,6 +127,10 @@ export async function generateIllustration(prompt: string): Promise<Uint8Array> 
     body: JSON.stringify({
       model: seedreamModel(),
       prompt,
+      // Reference pictures: the book's anchor sheets for the characters and
+      // the place in this scene. This is what actually keeps a face the same
+      // from chapter to chapter — words alone get re-interpreted every call.
+      ...(refs.length ? { image: refs } : {}),
       // Confirmed against the real API, not assumed: this model rejects
       // anything under 3,686,400 pixels (roughly the 2K class). "2K" alone
       // leaves the aspect ratio to the model, which often picks portrait;
@@ -131,7 +138,7 @@ export async function generateIllustration(prompt: string): Promise<Uint8Array> 
       // sits exactly on the 2K floor (2560x1440 = 3,686,400 px). The book
       // only ever stores a 1280px-max WebP anyway (see
       // image-optimize.server.ts), so the extra pixels are downsized away.
-      size: process.env.SEEDREAM_SIZE ?? "2560x1440",
+      size,
       response_format: "b64_json",
       // Seedream can stamp a small visible watermark by default; explicit
       // off, since one showing up in a children's book is a real defect.
@@ -152,5 +159,34 @@ export async function generateIllustration(prompt: string): Promise<Uint8Array> 
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
   return bytes;
 }
+
+/**
+ * Generate a single illustration and return the raw image bytes.
+ *
+ * `refs` are reference image URLs (the book's anchor sheets). The result's
+ * real dimensions are checked rather than assumed: a portrait picture in a
+ * landscape reader is a visible defect, so one widescreen retry is made
+ * before accepting whatever came back.
+ */
+export async function generateIllustration(prompt: string, refs: string[] = []): Promise<Uint8Array> {
+  const configured = process.env.SEEDREAM_SIZE;
+  const sizes = configured ? [configured] : WIDE_SIZES;
+  const { imageSize } = await import("./image-optimize.server");
+
+  let last: Uint8Array | null = null;
+  for (const size of sizes) {
+    const bytes = await askSeedream(prompt, size, refs);
+    last = bytes;
+    const dims = imageSize(bytes);
+    if (!dims) return bytes; // unknown header: accept rather than burn credits
+    if (dims.width / dims.height >= 1.3) return bytes;
+    console.warn(
+      `Illustration came back ${dims.width}x${dims.height} (not widescreen) at size "${size}"` +
+        (size === sizes[sizes.length - 1] ? " — keeping it." : " — retrying."),
+    );
+  }
+  return last!;
+}
+
 
 export { artStylePrompt as ART_STYLE_PROMPT } from "./art-styles";

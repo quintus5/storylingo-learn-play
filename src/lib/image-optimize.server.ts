@@ -96,3 +96,55 @@ export async function toWebp(
   }
 }
 
+
+/**
+ * Read an image's pixel dimensions straight from its header, without a full
+ * decode. Used to check the image model really returned the widescreen shape
+ * the reader is built for, instead of trusting the request.
+ */
+export function imageSize(bytes: Uint8Array): { width: number; height: number } | null {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const format = detectFormat(bytes);
+  try {
+    if (format === "png") {
+      return { width: view.getUint32(16), height: view.getUint32(20) };
+    }
+    if (format === "jpeg") {
+      let i = 2;
+      while (i + 9 < bytes.length) {
+        if (bytes[i] !== 0xff) {
+          i++;
+          continue;
+        }
+        const marker = bytes[i + 1]!;
+        // Start-of-frame markers carry the size; skip the other segments.
+        if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+          return { height: view.getUint16(i + 5), width: view.getUint16(i + 7) };
+        }
+        i += 2 + view.getUint16(i + 2);
+      }
+      return null;
+    }
+    if (format === "webp") {
+      const chunk = String.fromCharCode(bytes[12]!, bytes[13]!, bytes[14]!, bytes[15]!);
+      if (chunk === "VP8X") {
+        const w = 1 + (bytes[24]! | (bytes[25]! << 8) | (bytes[26]! << 16));
+        const h = 1 + (bytes[27]! | (bytes[28]! << 8) | (bytes[29]! << 16));
+        return { width: w, height: h };
+      }
+      if (chunk === "VP8 ") {
+        return {
+          width: view.getUint16(26, true) & 0x3fff,
+          height: view.getUint16(28, true) & 0x3fff,
+        };
+      }
+      if (chunk === "VP8L") {
+        const b = view.getUint32(21, true);
+        return { width: (b & 0x3fff) + 1, height: ((b >> 14) & 0x3fff) + 1 };
+      }
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
