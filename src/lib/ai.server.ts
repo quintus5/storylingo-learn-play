@@ -112,6 +112,38 @@ function seedreamMessage(status: number, body: string): string {
   return `Image generation failed [${status}]: ${body.slice(0, 300)}`;
 }
 
+class SeedreamHttpError extends Error {
+  constructor(
+    readonly status: number,
+    readonly retryAfterMs: number | null,
+    body: string,
+  ) {
+    super(seedreamMessage(status, body));
+    this.name = "SeedreamHttpError";
+  }
+}
+
+const RETRYABLE_IMAGE_STATUSES = new Set([429, 500, 502, 503, 504]);
+const RETRY_DELAYS_MS = [2_000, 5_000, 12_000];
+const IMAGE_GAP_MS = 750;
+let imageQueue: Promise<void> = Promise.resolve();
+
+const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/**
+ * The image provider applies one account-wide rate limit. Serialising calls in
+ * this module prevents separate chapters and anchor sheets from creating a
+ * burst, while keeping a rejected queue item from blocking later work.
+ */
+function enqueueImage<T>(work: () => Promise<T>): Promise<T> {
+  const run = imageQueue.then(work, work);
+  imageQueue = run.then(
+    async () => wait(IMAGE_GAP_MS),
+    async () => wait(IMAGE_GAP_MS),
+  );
+  return run;
+}
+
 /** Widescreen sizes: the second is tried once if the first came back portrait. */
 const WIDE_SIZES = ["2560x1440", "2496x1664"];
 
@@ -119,7 +151,6 @@ const WIDE_SIZES = ["2560x1440", "2496x1664"];
 async function askSeedream(prompt: string, size: string, refs: string[]): Promise<Uint8Array> {
   const res = await fetch(SEEDREAM_ENDPOINT, {
     method: "POST",
-    signal: AbortSignal.timeout(120_000),
     headers: {
       Authorization: `Bearer ${seedreamKey()}`,
       "Content-Type": "application/json",
@@ -148,7 +179,13 @@ async function askSeedream(prompt: string, size: string, refs: string[]): Promis
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(seedreamMessage(res.status, body));
+    const retryAfter = res.headers.get("retry-after");
+    const seconds = retryAfter ? Number(retryAfter) : Number.NaN;
+    throw new SeedreamHttpError(
+      res.status,
+      Number.isFinite(seconds) && seconds >= 0 ? seconds * 1000 : null,
+      body,
+    );
   }
 
   const json = (await res.json()) as { data?: { b64_json?: string }[] };
@@ -160,6 +197,28 @@ async function askSeedream(prompt: string, size: string, refs: string[]): Promis
   return bytes;
 }
 
+async function askSeedreamWithRetry(
+  prompt: string,
+  size: string,
+  refs: string[],
+): Promise<Uint8Array> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await askSeedream(prompt, size, refs);
+    } catch (err) {
+      const retryable = err instanceof SeedreamHttpError && RETRYABLE_IMAGE_STATUSES.has(err.status);
+      if (!retryable || attempt >= RETRY_DELAYS_MS.length) throw err;
+      const fallback = RETRY_DELAYS_MS[attempt] ?? 12_000;
+      const delay = Math.max(err.retryAfterMs ?? fallback, fallback) + Math.floor(Math.random() * 500);
+      console.warn(
+        `Image request returned ${err.status}; retrying in ${Math.round(delay / 1000)}s ` +
+          `(attempt ${attempt + 2}/${RETRY_DELAYS_MS.length + 1})`,
+      );
+      await wait(delay);
+    }
+  }
+}
+
 /**
  * Generate a single illustration and return the raw image bytes.
  *
@@ -169,23 +228,26 @@ async function askSeedream(prompt: string, size: string, refs: string[]): Promis
  * before accepting whatever came back.
  */
 export async function generateIllustration(prompt: string, refs: string[] = []): Promise<Uint8Array> {
-  const configured = process.env.SEEDREAM_SIZE;
-  const sizes = configured ? [configured] : WIDE_SIZES;
-  const { imageSize } = await import("./image-optimize.server");
+  return enqueueImage(async () => {
+    const configured = process.env.SEEDREAM_SIZE;
+    const sizes = configured ? [configured] : WIDE_SIZES;
+    const { imageSize } = await import("./image-optimize.server");
 
-  let last: Uint8Array | null = null;
-  for (const size of sizes) {
-    const bytes = await askSeedream(prompt, size, refs);
-    last = bytes;
-    const dims = imageSize(bytes);
-    if (!dims) return bytes; // unknown header: accept rather than burn credits
-    if (dims.width / dims.height >= 1.3) return bytes;
-    console.warn(
-      `Illustration came back ${dims.width}x${dims.height} (not widescreen) at size "${size}"` +
-        (size === sizes[sizes.length - 1] ? " — keeping it." : " — retrying."),
-    );
-  }
-  return last!;
+    let last: Uint8Array | null = null;
+    for (const size of sizes) {
+      const bytes = await askSeedreamWithRetry(prompt, size, refs);
+      last = bytes;
+      const dims = imageSize(bytes);
+      if (!dims) return bytes; // unknown header: accept rather than burn credits
+      if (dims.width / dims.height >= 1.3) return bytes;
+      console.warn(
+        `Illustration came back ${dims.width}x${dims.height} (not widescreen) at size "${size}"` +
+          (size === sizes[sizes.length - 1] ? " — keeping it." : " — retrying."),
+      );
+    }
+    if (!last) throw new Error("Image generation returned no image");
+    return last;
+  });
 }
 
 
