@@ -596,7 +596,6 @@ export async function buildAnchors(
   bible: { cast: BibleEntry[]; places: BibleEntry[] },
   styleId?: string | null,
 ): Promise<Anchors> {
-  const style = artStylePrompt(styleId);
   const cast = bible.cast.slice(0, 4);
   const places = bible.places.slice(0, 3);
 
@@ -612,7 +611,7 @@ export async function buildAnchors(
           `shot, completely empty of people and animals. Fixed palette, fixed time of day, no characters.` +
           `\n\nThe place: ${entry.name} — ${entry.description}`;
     try {
-      const url = await makeArt(bookId, name, brief, styleId, null, [], [], brief);
+      const url = await makeArt(bookId, name, brief, styleId, null, [], []);
       return { name: entry.name, path: url.replace(/^\/api\/public\/art\//, "").split("?")[0]! };
     } catch (err) {
       console.warn(`Anchor for ${entry.name} failed`, err);
@@ -620,7 +619,6 @@ export async function buildAnchors(
     }
   };
 
-  void style;
   const [castRefs, placeRefs] = await Promise.all([
     Promise.all(cast.map((e) => paint("cast", e))),
     Promise.all(places.map((e) => paint("place", e))),
