@@ -109,14 +109,13 @@ export const generateChapter = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => ChapterInput.parse(input))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { buildChapterContent, illustratePages, makeArt, getSourceText } = await import(
-      "./story.server"
-    );
+    const { buildChapterContent, illustratePages, makeArt, getSourceText, buildAnchors, parseAnchors } =
+      await import("./story.server");
 
     const { data: book } = await supabaseAdmin
       .from("books")
       .select(
-        "id, title, chapter_count, art_style, source_url, character_prompt, cast_bible, places, owner_id",
+        "id, title, chapter_count, art_style, source_url, character_prompt, cast_bible, places, anchors, owner_id",
       )
       .eq("id", data.bookId)
       .single();
@@ -132,6 +131,17 @@ export const generateChapter = createServerFn({ method: "POST" })
       cast: parseBibleEntries(book.cast_bible, 12),
       places: parseBibleEntries(book.places, 8),
     };
+
+    // The reference pictures are painted once, with the first chapter, and
+    // every picture in the book afterwards is generated to match them.
+    let anchors = parseAnchors(book.anchors);
+    if (data.idx === 1 && !anchors.cast.length && bible.cast.length) {
+      anchors = await buildAnchors(data.bookId, bible, styleId);
+      if (anchors.cast.length || anchors.places.length) {
+        await supabaseAdmin.from("books").update({ anchors }).eq("id", data.bookId);
+      }
+    }
+    const coverAnchors = [...anchors.cast.slice(0, 2), ...anchors.places.slice(0, 1)].map((a) => a.path);
 
 
     const { data: chapters } = await supabaseAdmin
@@ -193,6 +203,7 @@ export const generateChapter = createServerFn({ method: "POST" })
         styleId,
         characterPrompt,
         bible,
+        anchors,
       ),
       data.idx === 1
         ? makeArt(
@@ -202,6 +213,7 @@ export const generateChapter = createServerFn({ method: "POST" })
             styleId,
             characterPrompt,
             [...bible.cast.slice(0, 3), ...bible.places.slice(0, 1)],
+            coverAnchors,
           ).catch((err) => {
 
             console.error("Cover failed", err);
@@ -405,13 +417,12 @@ export const repaintBook = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => DeleteBookInput.parse(input))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { getSourceText, buildStoryBible, illustratePages, makeArt } = await import(
-      "./story.server"
-    );
+    const { getSourceText, buildStoryBible, illustratePages, makeArt, buildAnchors, parseAnchors } =
+      await import("./story.server");
 
     const { data: book } = await supabaseAdmin
       .from("books")
-      .select("id, title, art_style, source_url, character_prompt, cast_bible, places")
+      .select("id, title, art_style, source_url, character_prompt, cast_bible, places, anchors")
       .eq("id", data.bookId)
       .single();
     if (!book) throw new Error("Book not found");
@@ -428,6 +439,16 @@ export const repaintBook = createServerFn({ method: "POST" })
         .update({ cast_bible: bible.cast, places: bible.places })
         .eq("id", data.bookId);
     }
+
+    // Repaint always starts from fresh reference pictures, so an old book
+    // becomes consistent instead of inheriting whatever it had.
+    const anchors = await buildAnchors(data.bookId, bible, book.art_style ?? null);
+    if (anchors.cast.length || anchors.places.length) {
+      await supabaseAdmin.from("books").update({ anchors }).eq("id", data.bookId);
+    } else {
+      Object.assign(anchors, parseAnchors(book.anchors));
+    }
+    const coverAnchors = [...anchors.cast.slice(0, 2), ...anchors.places.slice(0, 1)].map((a) => a.path);
 
     const { data: chapters } = await supabaseAdmin
       .from("chapters")
@@ -446,6 +467,7 @@ export const repaintBook = createServerFn({ method: "POST" })
         book.art_style ?? null,
         book.character_prompt ?? null,
         bible,
+        anchors,
       );
       // Paths are reused, so add a version so browsers fetch the new picture.
       const stamp = Date.now();
@@ -466,6 +488,7 @@ export const repaintBook = createServerFn({ method: "POST" })
       book.art_style ?? null,
       book.character_prompt ?? null,
       [...bible.cast.slice(0, 3), ...bible.places.slice(0, 1)],
+      coverAnchors,
     ).catch(() => null);
     if (cover) {
       // Bust the browser cache for the replaced cover image.
