@@ -153,6 +153,8 @@ function CreatePage() {
       say(t(`Retelling it as ${count} chapters…`, `กำลังเล่าใหม่เป็น ${count} บท…`));
       // Chapters are built a few at a time so the whole book finishes much faster.
       const BATCH = 3;
+      let missingPictures = 0;
+      let expectedPictures = 0;
       for (let start = 1; start <= count; start += BATCH) {
         const batch = Array.from(
           { length: Math.min(BATCH, count - start + 1) },
@@ -169,9 +171,20 @@ function CreatePage() {
                 `กำลังเขียนบทที่ ${batch[0]}–${batch[batch.length - 1]} และวาดภาพประกอบ…`,
               ),
         );
-        await Promise.all(batch.map((i) => chapter({ data: { bookId, idx: i } })));
+        const results = await Promise.all(batch.map((i) => chapter({ data: { bookId, idx: i } })));
+        missingPictures += results.reduce((sum, result) => sum + result.missingPictures, 0);
+        expectedPictures += results.reduce((sum, result) => sum + result.expectedPictures, 0);
       }
-      say(t("Your book is ready!", "หนังสือของคุณพร้อมแล้ว!"));
+      if (missingPictures > 0) {
+        say(
+          t(
+            `The story is ready, but ${missingPictures} of ${expectedPictures} pictures could not be painted. A grown-up can use Repaint to try them again.`,
+            `นิทานพร้อมแล้ว แต่ยังวาดภาพไม่ได้ ${missingPictures} จาก ${expectedPictures} ภาพ ผู้ใหญ่สามารถใช้ปุ่มวาดใหม่เพื่อลองอีกครั้ง`,
+          ),
+        );
+      } else {
+        say(t("Your book is ready!", "หนังสือของคุณพร้อมแล้ว!"));
+      }
       spend(PRICES.book);
       // The book is unpublished, but it belongs to this account, so its owner
       // can read it straight away — only the shared shelf waits for review.

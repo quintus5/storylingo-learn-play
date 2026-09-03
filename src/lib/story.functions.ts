@@ -193,34 +193,30 @@ export const generateChapter = createServerFn({ method: "POST" })
     );
 
 
-    // Paint every page (and the book cover on chapter 1) at the same time.
-    const [pages, cover] = await Promise.all([
-      illustratePages(
-        data.bookId,
-        data.idx,
-        chapter.title,
-        content.pages,
-        styleId,
-        characterPrompt,
-        bible,
-        anchors,
-      ),
-      data.idx === 1
-        ? makeArt(
-            data.bookId,
-            "cover",
-            `Book cover scene for the children's story "${book.title}". ${scene}`,
-            styleId,
-            characterPrompt,
-            [...bible.cast.slice(0, 3), ...bible.places.slice(0, 1)],
-            coverAnchors,
-          ).catch((err) => {
-
-            console.error("Cover failed", err);
-            return null;
-          })
-        : Promise.resolve(null),
-    ]);
+    const pages = await illustratePages(
+      data.bookId,
+      data.idx,
+      chapter.title,
+      content.pages,
+      styleId,
+      characterPrompt,
+      bible,
+      anchors,
+    );
+    const cover = data.idx === 1
+      ? await makeArt(
+          data.bookId,
+          "cover",
+          `Book cover scene for the children's story "${book.title}". ${scene}`,
+          styleId,
+          characterPrompt,
+          [...bible.cast.slice(0, 3), ...bible.places.slice(0, 1)],
+          coverAnchors,
+        ).catch((err) => {
+          console.error("Cover failed", err);
+          return null;
+        })
+      : null;
 
 
     const imageUrl = pages.find((p) => p.image_url)?.image_url ?? null;
@@ -249,7 +245,8 @@ export const generateChapter = createServerFn({ method: "POST" })
         .eq("id", data.bookId);
     }
 
-    return { ok: true, idx: data.idx };
+    const missingPictures = pages.filter((page) => !page.image_url).length + (data.idx === 1 && !cover ? 1 : 0);
+    return { ok: true, idx: data.idx, missingPictures, expectedPictures: pages.length + (data.idx === 1 ? 1 : 0) };
   });
 
 const FailInput = z.object({
@@ -489,7 +486,10 @@ export const repaintBook = createServerFn({ method: "POST" })
       book.character_prompt ?? null,
       [...bible.cast.slice(0, 3), ...bible.places.slice(0, 1)],
       coverAnchors,
-    ).catch(() => null);
+    ).catch((err) => {
+      console.error("Repaint cover failed", err);
+      return null;
+    });
     if (cover) {
       // Bust the browser cache for the replaced cover image.
       await supabaseAdmin
@@ -498,6 +498,15 @@ export const repaintBook = createServerFn({ method: "POST" })
         .eq("id", data.bookId);
     }
 
-    return { ok: true, chapters: (chapters ?? []).length };
+    const { data: verifiedChapters } = await supabaseAdmin
+      .from("chapters")
+      .select("pages")
+      .eq("book_id", data.bookId);
+    const missingPictures = (verifiedChapters ?? []).reduce(
+      (total, chapter) =>
+        total + ((chapter.pages ?? []) as Page[]).filter((page) => !page.image_url).length,
+      cover ? 0 : 1,
+    );
+    return { ok: true, chapters: (chapters ?? []).length, missingPictures };
   });
 

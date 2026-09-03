@@ -619,10 +619,10 @@ export async function buildAnchors(
     }
   };
 
-  const [castRefs, placeRefs] = await Promise.all([
-    Promise.all(cast.map((e) => paint("cast", e))),
-    Promise.all(places.map((e) => paint("place", e))),
-  ]);
+  const castRefs: (AnchorRef | null)[] = [];
+  const placeRefs: (AnchorRef | null)[] = [];
+  for (const entry of cast) castRefs.push(await paint("cast", entry));
+  for (const entry of places) placeRefs.push(await paint("place", entry));
 
   const anchors = {
     cast: castRefs.filter((r): r is AnchorRef => !!r),
@@ -669,35 +669,27 @@ export async function illustratePages(
   }));
 
   const results = new Array<string | null>(jobs.length).fill(null);
-  let next = 0;
-
-  // A small pool keeps a long chapter from firing a dozen image calls at once.
-  const worker = async () => {
-    while (true) {
-      const k = next++;
-      if (k >= jobs.length) return;
-      const job = jobs[k]!;
-      const page = pages[job.page]!;
-      try {
-        const entries = bible ? matchBibleEntries(page, bible.cast, bible.places, job.scene) : [];
-        results[k] = await makeArt(
-          bookId,
-          job.name,
-          job.scene,
-          styleId,
-          characterPrompt,
-          entries,
-          matchAnchors(entries, anchors),
-        );
-
-      } catch (err) {
-        console.error(`Illustration ${job.name} failed`, err);
-        results[k] = null;
-      }
+  for (let k = 0; k < jobs.length; k++) {
+    const job = jobs[k];
+    if (!job) continue;
+    const page = pages[job.page];
+    if (!page) continue;
+    try {
+      const entries = bible ? matchBibleEntries(page, bible.cast, bible.places, job.scene) : [];
+      results[k] = await makeArt(
+        bookId,
+        job.name,
+        job.scene,
+        styleId,
+        characterPrompt,
+        entries,
+        matchAnchors(entries, anchors),
+      );
+    } catch (err) {
+      console.error(`Illustration ${job.name} failed`, err);
+      results[k] = null;
     }
-  };
-
-  await Promise.all(Array.from({ length: Math.min(4, jobs.length) }, worker));
+  }
 
   // Any per-sentence art a book picked up earlier is cleared, so a repaint
   // never leaves a page pointing at both a new picture and stale old ones.

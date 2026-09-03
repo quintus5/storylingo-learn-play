@@ -109,7 +109,15 @@ const [opError, setOpError] = useState<string | null>(null);
     setRepainting(bookId);
     setOpError(null);
     try {
-      await repaintBook({ data: { bookId } });
+      const result = await repaintBook({ data: { bookId } });
+      if (result.missingPictures > 0) {
+        setOpError(
+          t(
+            `${result.missingPictures} pictures still could not be painted. Please wait and try Repaint again.`,
+            `ยังวาดภาพไม่ได้ ${result.missingPictures} ภาพ กรุณารอสักครู่แล้วลองวาดใหม่อีกครั้ง`,
+          ),
+        );
+      }
       await queryClient.invalidateQueries({ queryKey: ["books"] });
     } catch (err) {
       setOpError(err instanceof Error ? err.message : String(err));
