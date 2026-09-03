@@ -746,7 +746,7 @@ export async function makeArt(
       `anything shown in them. Place these characters into the new scene below, in the poses and actions ` +
       `the scene describes; ignore the reference sheets' plain backgrounds and neutral poses.`
     : "";
-  const bytes = await generateIllustration(
+  const prompt =
     `Scene (this decides WHAT is depicted — the location, characters, action, weather and time of day): ${scene}\n\n` +
       `Composition: a single wide 16:9 storybook illustration. Choose the framing the scene calls for ` +
       `(wide establishing, medium, or close-up), keep every character fully inside the frame, and light the ` +
@@ -754,9 +754,14 @@ export async function makeArt(
       `Style (this decides ONLY HOW it is painted — medium, brushwork, texture, palette and mood, for every ` +
       `element including any characters): ${style}\n\n` +
       `If the style wording and the scene ever disagree about the setting, landscape, weather or time of day, ` +
-      `the scene always wins; treat the style purely as painting technique.${anchored}${locked}`,
-    anchorUrls,
-  );
+      `the scene always wins; treat the style purely as painting technique.${anchored}${locked}`;
+  // If a reference picture cannot be used for any reason, a plain picture is
+  // far better than no picture at all.
+  const bytes = await generateIllustration(prompt, anchorUrls).catch(async (err) => {
+    if (!anchorUrls.length) throw err;
+    console.warn(`Illustration ${name} failed with reference images, retrying without them`, err);
+    return generateIllustration(prompt, []);
+  });
 
 
   // Store a resized WebP when we can — the raw PNG is ~2 MB, the WebP ~150 KB.
