@@ -112,8 +112,9 @@ function seedreamMessage(status: number, body: string): string {
   return `Image generation failed [${status}]: ${body.slice(0, 300)}`;
 }
 
-/** Alternative widescreen sizes tried when the model returns a portrait image. */
-const WIDE_SIZES = ["2560x1440", "2496x1664", "16:9"];
+/** Widescreen sizes: the second is tried once if the first came back portrait. */
+const WIDE_SIZES = ["2560x1440", "2496x1664"];
+
 
 async function askSeedream(prompt: string, size: string, refs: string[]): Promise<Uint8Array> {
   const res = await fetch(SEEDREAM_ENDPOINT, {
