@@ -25,7 +25,10 @@ function cacheSignedUrl(path: string, url: string, expiresAt: number) {
  * needs. Ask storage for a resized, re-compressed copy instead; if this
  * project has no image transformation, fall back to the raw object.
  */
-const TRANSFORM = { width: 1080, quality: 68 } as const;
+// "contain" is load-bearing: with a width alone, storage picks its own height
+// and resizes in cover mode, which centre-crops a 16:9 illustration into a
+// portrait sliver. Give it an explicit box and tell it to fit inside.
+const TRANSFORM = { width: 1280, height: 720, resize: "contain", quality: 68 } as const;
 
 export const Route = createFileRoute("/api/public/art/$")({
   server: {
