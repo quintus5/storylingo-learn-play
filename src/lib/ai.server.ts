@@ -107,6 +107,9 @@ function seedreamMessage(status: number, body: string): string {
     return `Image generation was rejected [${status}]. Check that SEEDREAM_API_KEY is correct and that this model is enabled for the account: ${body.slice(0, 300)}`;
   }
   if (status === 429) {
+    if (body.includes("SetLimitExceeded") || body.includes("Safe Experience Mode")) {
+      return "Image generation is paused by the image provider's account limit. The app owner needs to raise or disable Safe Experience Mode, then use Repaint.";
+    }
     return "The story machine is busy right now. Please wait a moment and try again.";
   }
   return `Image generation failed [${status}]: ${body.slice(0, 300)}`;
@@ -116,6 +119,7 @@ class SeedreamHttpError extends Error {
   constructor(
     readonly status: number,
     readonly retryAfterMs: number | null,
+    readonly retryable: boolean,
     body: string,
   ) {
     super(seedreamMessage(status, body));
@@ -184,6 +188,9 @@ async function askSeedream(prompt: string, size: string, refs: string[]): Promis
     throw new SeedreamHttpError(
       res.status,
       Number.isFinite(seconds) && seconds >= 0 ? seconds * 1000 : null,
+      RETRYABLE_IMAGE_STATUSES.has(res.status) &&
+        !body.includes("SetLimitExceeded") &&
+        !body.includes("Safe Experience Mode"),
       body,
     );
   }
@@ -206,7 +213,7 @@ async function askSeedreamWithRetry(
     try {
       return await askSeedream(prompt, size, refs);
     } catch (err) {
-      const retryable = err instanceof SeedreamHttpError && RETRYABLE_IMAGE_STATUSES.has(err.status);
+      const retryable = err instanceof SeedreamHttpError && err.retryable;
       if (!retryable || attempt >= RETRY_DELAYS_MS.length) throw err;
       const fallback = RETRY_DELAYS_MS[attempt] ?? 12_000;
       const delay = Math.max(err.retryAfterMs ?? fallback, fallback) + Math.floor(Math.random() * 500);
