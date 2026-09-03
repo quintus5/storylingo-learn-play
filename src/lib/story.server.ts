@@ -679,14 +679,17 @@ export async function illustratePages(
       const job = jobs[k]!;
       const page = pages[job.page]!;
       try {
+        const entries = bible ? matchBibleEntries(page, bible.cast, bible.places, job.scene) : [];
         results[k] = await makeArt(
           bookId,
           job.name,
           job.scene,
           styleId,
           characterPrompt,
-          bible ? matchBibleEntries(page, bible.cast, bible.places, job.scene) : [],
+          entries,
+          matchAnchors(entries, anchors),
         );
+
       } catch (err) {
         console.error(`Illustration ${job.name} failed`, err);
         results[k] = null;
