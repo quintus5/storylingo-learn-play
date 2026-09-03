@@ -722,6 +722,8 @@ export async function makeArt(
    */
   _characterPrompt?: string | null,
   refs: BibleEntry[] = [],
+  /** Stored anchor pictures for the characters and place in this scene. */
+  anchorPaths: string[] = [],
 ): Promise<string> {
   const style = artStylePrompt(styleId);
   // The same locked wording goes into every picture of this book, so the
@@ -731,13 +733,28 @@ export async function makeArt(
       `earlier in this book and must look identical, same face, same clothes, same colours):\n` +
       refs.map((r) => `- ${r.name}: ${r.description}`).join("\n")
     : "";
+  // Words alone get re-interpreted on every call; the reference sheets are
+  // what actually hold a character's face still across a whole book.
+  const anchorUrls = anchorPaths.length ? await signedAnchorUrls(anchorPaths) : [];
+  const anchored = anchorUrls.length
+    ? `\n\nREFERENCE IMAGES: the attached pictures are this book's official character sheets and location ` +
+      `views. Copy them exactly — identical faces, bodies, clothing shapes and colours for the characters, ` +
+      `and the same architecture, landscape, palette and time of day for the location. Do not redesign ` +
+      `anything shown in them. Place these characters into the new scene below, in the poses and actions ` +
+      `the scene describes; ignore the reference sheets' plain backgrounds and neutral poses.`
+    : "";
   const bytes = await generateIllustration(
     `Scene (this decides WHAT is depicted — the location, characters, action, weather and time of day): ${scene}\n\n` +
+      `Composition: a single wide 16:9 storybook illustration. Choose the framing the scene calls for ` +
+      `(wide establishing, medium, or close-up), keep every character fully inside the frame, and light the ` +
+      `picture to match the time of day in the scene. No panels, no split images, no text.\n\n` +
       `Style (this decides ONLY HOW it is painted — medium, brushwork, texture, palette and mood, for every ` +
       `element including any characters): ${style}\n\n` +
       `If the style wording and the scene ever disagree about the setting, landscape, weather or time of day, ` +
-      `the scene always wins; treat the style purely as painting technique.${locked}`,
+      `the scene always wins; treat the style purely as painting technique.${anchored}${locked}`,
+    anchorUrls,
   );
+
 
   // Store a resized WebP when we can — the raw PNG is ~2 MB, the WebP ~150 KB.
   const image = await toWebp(bytes, 1280, 78);
