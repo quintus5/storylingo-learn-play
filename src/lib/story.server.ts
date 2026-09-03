@@ -542,6 +542,111 @@ export function matchBibleEntries(
   return chosen.slice(0, 5);
 }
 
+/** A painted reference picture, stored once per book. */
+export type AnchorRef = { name: string; path: string };
+export type Anchors = { cast: AnchorRef[]; places: AnchorRef[] };
+
+export function parseAnchors(raw: unknown): Anchors {
+  const list = (value: unknown): AnchorRef[] =>
+    Array.isArray(value)
+      ? value
+          .filter(
+            (e): e is AnchorRef =>
+              !!e && typeof (e as AnchorRef).name === "string" && typeof (e as AnchorRef).path === "string",
+          )
+          .map((e) => ({ name: e.name, path: e.path }))
+          .slice(0, 8)
+      : [];
+  const obj = (raw ?? {}) as { cast?: unknown; places?: unknown };
+  return { cast: list(obj.cast), places: list(obj.places) };
+}
+
+const slug = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 24) || "x";
+
+/** Turn a stored art path into a short-lived URL the image model can fetch. */
+async function signedAnchorUrls(paths: string[]): Promise<string[]> {
+  const urls: string[] = [];
+  for (const path of paths) {
+    const { data, error } = await supabaseAdmin.storage.from(BUCKET).createSignedUrl(path, 3600);
+    if (error || !data?.signedUrl) {
+      console.warn(`Anchor reference unavailable (${path})`, error?.message);
+      continue;
+    }
+    urls.push(data.signedUrl);
+  }
+  return urls;
+}
+
+/**
+ * Paint the book's reference pictures once: a character sheet for each main
+ * character and an empty establishing view for each recurring place. Every
+ * page illustration afterwards is generated with these attached, which is
+ * what actually locks a face or a forest across chapters.
+ *
+ * Failure is never fatal — a book without anchors simply falls back to the
+ * text-only bible it used before.
+ */
+export async function buildAnchors(
+  bookId: string,
+  bible: { cast: BibleEntry[]; places: BibleEntry[] },
+  styleId?: string | null,
+): Promise<Anchors> {
+  const style = artStylePrompt(styleId);
+  const cast = bible.cast.slice(0, 4);
+  const places = bible.places.slice(0, 3);
+
+  const paint = async (kind: "cast" | "place", entry: BibleEntry): Promise<AnchorRef | null> => {
+    const name = `anchor-${kind}-${slug(entry.name)}`;
+    const brief =
+      kind === "cast"
+        ? `Character reference sheet for a children's picture book. Show ONLY this one character, ` +
+          `alone, against a plain flat neutral background: a full-body standing view on the left and a ` +
+          `larger head-and-shoulders view on the right. Neutral friendly expression, even lighting, no props, ` +
+          `no scenery, no other characters.\n\nThe character: ${entry.name} — ${entry.description}`
+        : `Location reference view for a children's picture book. Show ONLY this place, wide establishing ` +
+          `shot, completely empty of people and animals. Fixed palette, fixed time of day, no characters.` +
+          `\n\nThe place: ${entry.name} — ${entry.description}`;
+    try {
+      const url = await makeArt(bookId, name, brief, styleId, null, [], [], brief);
+      return { name: entry.name, path: url.replace(/^\/api\/public\/art\//, "").split("?")[0]! };
+    } catch (err) {
+      console.warn(`Anchor for ${entry.name} failed`, err);
+      return null;
+    }
+  };
+
+  void style;
+  const [castRefs, placeRefs] = await Promise.all([
+    Promise.all(cast.map((e) => paint("cast", e))),
+    Promise.all(places.map((e) => paint("place", e))),
+  ]);
+
+  const anchors = {
+    cast: castRefs.filter((r): r is AnchorRef => !!r),
+    places: placeRefs.filter((r): r is AnchorRef => !!r),
+  };
+  console.log(
+    `Anchors for book ${bookId}: ${anchors.cast.length} character sheets, ${anchors.places.length} places`,
+  );
+  return anchors;
+}
+
+/** Pick the anchor pictures a page needs, from the bible entries it matched. */
+function matchAnchors(entries: BibleEntry[], anchors: Anchors | null | undefined): string[] {
+  if (!anchors) return [];
+  const wanted = entries.map((e) => norm(e.name));
+  const all = [...anchors.cast, ...anchors.places];
+  return all
+    .filter((a) => wanted.includes(norm(a.name)))
+    .map((a) => a.path)
+    .slice(0, 4);
+}
+
 /**
  * Paint the chapter's illustrations: exactly one picture per page, which holds
  * still for every sentence on that page.
@@ -554,7 +659,9 @@ export async function illustratePages(
   styleId?: string | null,
   characterPrompt?: string | null,
   bible?: { cast: BibleEntry[]; places: BibleEntry[] } | null,
+  anchors?: Anchors | null,
 ): Promise<Page[]> {
+
   type Job = { page: number; scene: string; name: string };
 
   const jobs: Job[] = pages.map((page, i) => ({
