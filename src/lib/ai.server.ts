@@ -151,6 +151,61 @@ function enqueueImage<T>(work: () => Promise<T>): Promise<T> {
 /** Widescreen sizes: the second is tried once if the first came back portrait. */
 const WIDE_SIZES = ["2560x1440", "2496x1664"];
 
+/**
+ * Which service paints the pictures. Seedream needs its own activated account;
+ * "lovable" uses the built-in Lovable image model and the workspace credits,
+ * which is the default so the app keeps working without an external account.
+ */
+function imageProvider(): "lovable" | "seedream" {
+  const p = (process.env.IMAGE_PROVIDER ?? "lovable").toLowerCase();
+  return p === "seedream" ? "seedream" : "lovable";
+}
+
+const LOVABLE_IMAGE_MODEL = process.env.LOVABLE_IMAGE_MODEL ?? "google/gemini-3.1-flash-image";
+
+/** Paint one picture with the Lovable image model (16:9 asked for in words). */
+async function askLovable(prompt: string, refs: string[]): Promise<Uint8Array> {
+  const content: unknown[] = [
+    {
+      type: "text",
+      text:
+        `${prompt}\n\nComposition: a single wide 16:9 landscape illustration, ` +
+        `widescreen cinematic framing, no borders, no text, no watermark.`,
+    },
+    ...refs.map((url) => ({ type: "image_url", image_url: { url } })),
+  ];
+
+  const res = await fetch(`${GATEWAY}/images/generations`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${key()}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: LOVABLE_IMAGE_MODEL,
+      messages: [{ role: "user", content }],
+      modalities: ["image", "text"],
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new SeedreamHttpError(
+      res.status,
+      null,
+      RETRYABLE_IMAGE_STATUSES.has(res.status),
+      body,
+    );
+  }
+
+  const json = (await res.json()) as { data?: { b64_json?: string }[] };
+  const b64 = json.data?.[0]?.b64_json;
+  if (!b64) throw new Error("Image generation returned no image");
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
 
 async function askSeedream(prompt: string, size: string, refs: string[]): Promise<Uint8Array> {
   const res = await fetch(SEEDREAM_ENDPOINT, {
@@ -204,14 +259,16 @@ async function askSeedream(prompt: string, size: string, refs: string[]): Promis
   return bytes;
 }
 
-async function askSeedreamWithRetry(
+async function askImageWithRetry(
   prompt: string,
   size: string,
   refs: string[],
 ): Promise<Uint8Array> {
   for (let attempt = 0; ; attempt++) {
     try {
-      return await askSeedream(prompt, size, refs);
+      return imageProvider() === "seedream"
+        ? await askSeedream(prompt, size, refs)
+        : await askLovable(prompt, refs);
     } catch (err) {
       const retryable = err instanceof SeedreamHttpError && err.retryable;
       if (!retryable || attempt >= RETRY_DELAYS_MS.length) throw err;
@@ -242,7 +299,7 @@ export async function generateIllustration(prompt: string, refs: string[] = []):
 
     let last: Uint8Array | null = null;
     for (const size of sizes) {
-      const bytes = await askSeedreamWithRetry(prompt, size, refs);
+      const bytes = await askImageWithRetry(prompt, size, refs);
       last = bytes;
       const dims = imageSize(bytes);
       if (!dims) return bytes; // unknown header: accept rather than burn credits
