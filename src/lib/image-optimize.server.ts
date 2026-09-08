@@ -51,8 +51,13 @@ function passthrough(bytes: Uint8Array, format: ImageFormat): OptimizedImage {
  */
 let codecsPrimed: Promise<void> | null = null;
 
+const primed = new Map<string, Promise<void>>();
+
 async function primeCodecs(format: ImageFormat): Promise<void> {
-  codecsPrimed ??= (async () => {
+  const existing = primed.get(format);
+  if (existing) return existing;
+
+  const run = (async () => {
     let readFile: ((p: string) => Promise<Uint8Array>) | null = null;
     try {
       const fs = await import("node:fs/promises");
@@ -61,19 +66,28 @@ async function primeCodecs(format: ImageFormat): Promise<void> {
       return; // no filesystem: the runtime loads the codecs itself
     }
 
+    const bases = [`${process.cwd()}/node_modules/`, "/dev-server/node_modules/"];
     const compile = async (relative: string) => {
-      const bytes = await readFile!(`${process.cwd()}/node_modules/${relative}`);
-      return WebAssembly.compile(bytes as unknown as BufferSource);
+      let lastErr: unknown;
+      for (const base of bases) {
+        try {
+          const bytes = await readFile!(`${base}${relative}`);
+          return await WebAssembly.compile(bytes as unknown as BufferSource);
+        } catch (err) {
+          lastErr = err;
+        }
+      }
+      throw lastErr;
     };
-    const step = async (run: () => Promise<unknown>) => {
+    const step = async (name: string, run: () => Promise<unknown>) => {
       try {
         await run();
-      } catch {
-        /* leave this codec to load itself */
+      } catch (err) {
+        console.warn(`Image codec ${name} could not be preloaded`, err);
       }
     };
 
-    await step(async () => {
+    await step("decoder", async () => {
       const dec = (await (format === "png"
         ? import("@jsquash/png/decode")
         : import("@jsquash/jpeg/decode"))) as { init?: (m: unknown) => Promise<unknown> };
@@ -85,7 +99,7 @@ async function primeCodecs(format: ImageFormat): Promise<void> {
         ),
       );
     });
-    await step(async () => {
+    await step("resize", async () => {
       const rs = (await import("@jsquash/resize")) as unknown as {
         initResize?: (m: unknown) => unknown;
       };
@@ -93,15 +107,18 @@ async function primeCodecs(format: ImageFormat): Promise<void> {
         await compile("@jsquash/resize/lib/resize/pkg/squoosh_resize_bg.wasm"),
       );
     });
-    await step(async () => {
+    await step("webp encoder", async () => {
       const enc = (await import("@jsquash/webp/encode")) as {
         init?: (m: unknown) => Promise<unknown>;
       };
       return enc.init?.(await compile("@jsquash/webp/codec/enc/webp_enc_simd.wasm"));
     });
   })();
-  return codecsPrimed;
+
+  primed.set(format, run);
+  return run;
 }
+
 
 
 
