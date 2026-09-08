@@ -49,7 +49,7 @@ function passthrough(bytes: Uint8Array, format: ImageFormat): OptimizedImage {
  * from disk instead. In the deployed edge runtime the codecs load themselves,
  * so every step here is best-effort and failures are ignored.
  */
-let codecsPrimed: Promise<void> | null = null;
+
 
 const primed = new Map<string, Promise<void>>();
 
