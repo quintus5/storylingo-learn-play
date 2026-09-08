@@ -42,6 +42,85 @@ function passthrough(bytes: Uint8Array, format: ImageFormat): OptimizedImage {
   if (format === "webp") return { bytes, contentType: "image/webp", extension: "webp" };
   return { bytes, contentType: "image/png", extension: "png" };
 }
+/**
+ * In local development the codecs run on Node, where they try to `fetch` their
+ * own .wasm file off disk — which Node refuses, so compression silently fell
+ * back to storing the raw multi-megabyte original. Load those files straight
+ * from disk instead. In the deployed edge runtime the codecs load themselves,
+ * so every step here is best-effort and failures are ignored.
+ */
+
+
+const primed = new Map<string, Promise<void>>();
+
+async function primeCodecs(format: ImageFormat): Promise<void> {
+  const existing = primed.get(format);
+  if (existing) return existing;
+
+  const run = (async () => {
+    let readFile: ((p: string) => Promise<Uint8Array>) | null = null;
+    try {
+      const fs = await import("node:fs/promises");
+      readFile = (p) => fs.readFile(p) as unknown as Promise<Uint8Array>;
+    } catch {
+      return; // no filesystem: the runtime loads the codecs itself
+    }
+
+    const bases = [`${process.cwd()}/node_modules/`, "/dev-server/node_modules/"];
+    const compile = async (relative: string) => {
+      let lastErr: unknown;
+      for (const base of bases) {
+        try {
+          const bytes = await readFile!(`${base}${relative}`);
+          return await WebAssembly.compile(bytes as unknown as BufferSource);
+        } catch (err) {
+          lastErr = err;
+        }
+      }
+      throw lastErr;
+    };
+    const step = async (name: string, run: () => Promise<unknown>) => {
+      try {
+        await run();
+      } catch (err) {
+        console.warn(`Image codec ${name} could not be preloaded`, err);
+      }
+    };
+
+    await step("decoder", async () => {
+      const dec = (await (format === "png"
+        ? import("@jsquash/png/decode")
+        : import("@jsquash/jpeg/decode"))) as { init?: (m: unknown) => Promise<unknown> };
+      return dec.init?.(
+        await compile(
+          format === "png"
+            ? "@jsquash/png/codec/pkg/squoosh_png_bg.wasm"
+            : "@jsquash/jpeg/codec/dec/mozjpeg_dec.wasm",
+        ),
+      );
+    });
+    await step("resize", async () => {
+      const rs = (await import("@jsquash/resize")) as unknown as {
+        initResize?: (m: unknown) => unknown;
+      };
+      return rs.initResize?.(
+        await compile("@jsquash/resize/lib/resize/pkg/squoosh_resize_bg.wasm"),
+      );
+    });
+    await step("webp encoder", async () => {
+      const enc = (await import("@jsquash/webp/encode")) as {
+        init?: (m: unknown) => Promise<unknown>;
+      };
+      return enc.init?.(await compile("@jsquash/webp/codec/enc/webp_enc_simd.wasm"));
+    });
+  })();
+
+  primed.set(format, run);
+  return run;
+}
+
+
+
 
 /** Resize so the longest edge is at most `maxEdge`, then encode to WebP. */
 export async function toWebp(
@@ -63,11 +142,16 @@ export async function toWebp(
   }
 
   try {
-    const [decoder, { default: resize }, { encode }] = await Promise.all([
+    const [decoder, resizeMod, webpMod] = await Promise.all([
       format === "png" ? import("@jsquash/png") : import("@jsquash/jpeg"),
       import("@jsquash/resize"),
       import("@jsquash/webp"),
     ]);
+    const { default: resize } = resizeMod;
+    const { encode } = webpMod;
+
+    await primeCodecs(format);
+
 
     const buffer = source.buffer.slice(
       source.byteOffset,
